@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../providers/language_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
@@ -85,13 +86,27 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
   // Selected service rows (each row = one service line)
   final List<_ServiceRow> _rows = [];
 
+  // Available extras
+  List<dynamic> _availableExtras = [];
+  // Selected extras
+  final List<Map<String, dynamic>> _selectedExtras = [];
+
   // Amount collected
   final _amountCollectedController = TextEditingController(text: '0.00');
 
   // ── Computed totals ──────────────────────────────────────────────────────
   double get totalServicesAmount => _rows.fold(0.0, (s, r) => s + r.rate);
+  double get totalExtrasAmount => _selectedExtras.fold(
+      0.0,
+      (s, e) =>
+          s +
+          (double.tryParse(
+                  (e['priceController'] as TextEditingController).text) ??
+              0.0));
   double get totalDiscount => _rows.fold(0.0, (s, r) => s + r.effectiveDiscount);
-  double get subtotal => (totalServicesAmount - totalDiscount).clamp(0.0, double.infinity);
+  double get subtotal =>
+      (totalServicesAmount + totalExtrasAmount - totalDiscount)
+          .clamp(0.0, double.infinity);
   double get taxAmount {
     double t = 0;
     for (final tax in _availableTaxes) {
@@ -139,6 +154,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
     for (final row in _rows) {
       row.dispose();
     }
+    for (final extra in _selectedExtras) {
+      (extra['priceController'] as TextEditingController).dispose();
+    }
     _amountCollectedController.dispose();
     super.dispose();
   }
@@ -152,6 +170,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
         widget.vehicle['id'],
         token,
       );
+      final extRes = await ApiService.getExtrasList(token);
       setState(() {
         if (svcRes['success'] == true) {
           _allServices = svcRes['services'] ?? [];
@@ -160,6 +179,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               rawTaxes.map((t) => Map<String, dynamic>.from(t as Map)).toList();
           _selectedTaxIds =
               _availableTaxes.map((t) => t['id'] as String).toSet();
+        }
+        if (extRes['success'] == true) {
+          _availableExtras = extRes['extras'] ?? [];
         }
         _isLoading = false;
         _syncAmountCollected();
@@ -323,14 +345,20 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
       final primarySchemeId = primaryRow.selectedScheme?['id'];
       final primaryVoucherId = primaryRow.validatedVoucherId;
 
-      final services = _rows
-          .map((r) => {
-                'id': r.serviceId,
-                'name': r.serviceName,
-                'rate': r.rate,
-                'discount': r.effectiveDiscount,
-              })
-          .toList();
+      final services = [
+        ..._rows.map((r) => {
+              'id': r.serviceId,
+              'name': r.serviceName,
+              'rate': r.rate,
+              'discount': r.effectiveDiscount,
+            }),
+        ..._selectedExtras.map((e) => {
+              'id': null,
+              'name': e['extra']['name'],
+              'rate': double.tryParse((e['priceController'] as TextEditingController).text) ?? 0.0,
+              'discount': 0.0,
+            }),
+      ];
 
       final invoiceData = {
         'customer_id': widget.customer['id'],
@@ -396,7 +424,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
       backgroundColor: const Color(0xFFF1F5F9),
       appBar: AppBar(
         title: Text(
-          'Create Invoice',
+          context.tr('Create Invoice'),
           style: GoogleFonts.inter(fontWeight: FontWeight.w700),
         ),
         backgroundColor: const Color(0xFF000080),
@@ -420,6 +448,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                   _customerCard(),
                   const SizedBox(height: 16),
                   _serviceSelectionCard(),
+                 
                   const SizedBox(height: 16),
                   // Per-row scheme + discount sections
                   for (final row in _rows) ...[
@@ -430,6 +459,8 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     _taxSelectionSection(),
                     const SizedBox(height: 16),
                   ],
+                   const SizedBox(height: 16),
+                  _extrasCard(),
                   if (_rows.isNotEmpty) ...[
                     _billSummary(),
                     const SizedBox(height: 16),
@@ -483,7 +514,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                   ),
                 ),
                 Text(
-                  '${widget.vehicle['no']} · ${widget.vehicle['type']}',
+                  (widget.vehicle['vehicle_type'] != null && widget.vehicle['vehicle_type'].toString().isNotEmpty)
+                      ? "${widget.vehicle['no']} · ${widget.vehicle['vehicle_type']} - ${widget.vehicle['type']}"
+                      : "${widget.vehicle['no']} · ${widget.vehicle['type']}",
                   style: GoogleFonts.inter(
                     fontSize: 12,
                     color: Colors.grey.shade600,
@@ -506,7 +539,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
       child: _allServices.isEmpty
           ? Center(
               child: Text(
-                'No services available',
+                context.tr('No services available'),
                 style: GoogleFonts.inter(color: Colors.grey),
               ),
             )
@@ -603,7 +636,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                               border: Border.all(color: Colors.orange.shade200),
                             ),
                             child: Text(
-                              'No price',
+                              context.tr('No price'),
                               style: GoogleFonts.inter(
                                 fontSize: 10,
                                 color: Colors.orange.shade700,
@@ -613,7 +646,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                           )
                         else
                           Text(
-                            '$currencySymbol${rate.toStringAsFixed(2)}',
+                            context.tr('$currencySymbol${rate.toStringAsFixed(2)}'),
                             style: GoogleFonts.inter(
                               fontWeight: FontWeight.w800,
                               fontSize: 15,
@@ -661,7 +694,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                       size: 16, color: Colors.grey.shade500),
                   const SizedBox(width: 8),
                   Text(
-                    'No schemes available for this service',
+                    context.tr('No schemes available for this service'),
                     style: GoogleFonts.inter(
                         color: Colors.grey.shade600, fontSize: 12),
                   ),
@@ -670,7 +703,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
             )
           else ...[
             Text(
-              'Available Schemes',
+              context.tr('Available Schemes'),
               style: GoogleFonts.inter(
                 fontWeight: FontWeight.w700,
                 fontSize: 12,
@@ -707,7 +740,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Line Total',
+                  context.tr('Line Total'),
                   style: GoogleFonts.inter(
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
@@ -716,12 +749,12 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 ),
                 if (row.effectiveDiscount > 0)
                   Text(
-                    '$currencySymbol${row.rate.toStringAsFixed(2)} − $currencySymbol${row.effectiveDiscount.toStringAsFixed(2)} = ',
+                    context.tr('$currencySymbol${row.rate.toStringAsFixed(2)} − $currencySymbol${row.effectiveDiscount.toStringAsFixed(2)} = '),
                     style: GoogleFonts.inter(
                         fontSize: 12, color: Colors.grey.shade600),
                   ),
                 Text(
-                  '$currencySymbol${row.lineTotal.toStringAsFixed(2)}',
+                  context.tr('$currencySymbol${row.lineTotal.toStringAsFixed(2)}'),
                   style: GoogleFonts.inter(
                     fontWeight: FontWeight.w800,
                     fontSize: 15,
@@ -741,7 +774,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               icon: const Icon(Icons.remove_circle_outline,
                   color: Colors.red, size: 16),
               label: Text(
-                'Remove Service',
+                context.tr('Remove Service'),
                 style: GoogleFonts.inter(color: Colors.red, fontSize: 12),
               ),
               style: TextButton.styleFrom(
@@ -851,7 +884,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                       ),
                       if (lockedByOtherRow)
                         Text(
-                          'Already applied to another service',
+                          context.tr('Already applied to another service'),
                           style: GoogleFonts.inter(
                             fontSize: 10,
                             color: Colors.orange.shade600,
@@ -920,7 +953,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Progress: $current / $target washes',
+              context.tr('Progress: $current / $target washes'),
               style: GoogleFonts.inter(
                 fontSize: 11,
                 color: Colors.grey.shade600,
@@ -951,7 +984,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
-          'Manual Discount',
+          context.tr('Manual Discount'),
           style:
               GoogleFonts.inter(color: Colors.grey.shade700, fontSize: 13),
         ),
@@ -987,7 +1020,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Enter Voucher Number',
+          context.tr('Enter Voucher Number'),
           style: GoogleFonts.inter(
             fontWeight: FontWeight.w700,
             fontSize: 13,
@@ -1002,7 +1035,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 controller: row.voucherController,
                 style: GoogleFonts.inter(fontWeight: FontWeight.w600),
                 decoration: InputDecoration(
-                  hintText: 'Enter voucher number',
+                  hintText: context.tr('Enter voucher number'),
                   hintStyle:
                       GoogleFonts.inter(color: Colors.grey.shade400),
                   suffixIcon:
@@ -1035,7 +1068,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                       child: CircularProgressIndicator(
                           color: Colors.white, strokeWidth: 2),
                     )
-                  : Text('Apply',
+                  : Text(context.tr('Apply'),
                       style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
             ),
           ],
@@ -1095,7 +1128,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               ),
               Expanded(
                 child: Text(
-                  '$name (${percent.toStringAsFixed(1)}%)',
+                  context.tr('$name (${percent.toStringAsFixed(1)}%)'),
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -1147,6 +1180,14 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
             ],
             const SizedBox(height: 6),
           ],
+          // Per-extra lines
+          for (final e in _selectedExtras) ...[
+            _summaryRow(
+              e['extra']['name'] as String,
+              '$currencySymbol${(double.tryParse((e['priceController'] as TextEditingController).text) ?? 0.0).toStringAsFixed(2)}',
+            ),
+            const SizedBox(height: 6),
+          ],
           if (_rows.length > 1)
             _summaryRow(
               'Services Subtotal',
@@ -1167,7 +1208,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Total Amount',
+                context.tr('Total Amount'),
                 style: GoogleFonts.inter(
                   fontWeight: FontWeight.w800,
                   fontSize: 17,
@@ -1175,7 +1216,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 ),
               ),
               Text(
-                '$currencySymbol${total.toStringAsFixed(2)}',
+                context.tr('$currencySymbol${total.toStringAsFixed(2)}'),
                 style: GoogleFonts.inter(
                   fontWeight: FontWeight.w900,
                   fontSize: 20,
@@ -1197,7 +1238,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            'Collected',
+            context.tr('Collected'),
             style: GoogleFonts.inter(
               color: Colors.green.shade700,
               fontWeight: FontWeight.w600,
@@ -1250,7 +1291,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
             )
           : const Icon(Icons.check_circle_outline),
       label: Text(
-        'Save Invoice',
+        context.tr('Save Invoice'),
         style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15),
       ),
       style: ElevatedButton.styleFrom(
@@ -1260,6 +1301,160 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
         shape:
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
+    );
+  }
+
+  Widget _extrasCard() {
+    return _card(
+      title: 'Add Extras',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (_selectedExtras.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                context.tr('No extras added yet'),
+                style: GoogleFonts.inter(color: Colors.grey, fontSize: 13),
+                textAlign: TextAlign.center,
+              ),
+            )
+          else
+            ..._selectedExtras.map((extraMap) {
+              final extra = extraMap['extra'] as Map<String, dynamic>;
+              final name = extra['name'] as String;
+              final controller = extraMap['priceController'] as TextEditingController;
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        name,
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: const Color(0xFF1e293b),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    SizedBox(
+                      width: 100,
+                      child: TextField(
+                        controller: controller,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        textAlign: TextAlign.right,
+                        style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14),
+                        decoration: InputDecoration(
+                          prefixText: '$currencySymbol ',
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                          isDense: true,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        onChanged: (_) => setState(() => _syncAmountCollected()),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, color: Colors.red),
+                      onPressed: () {
+                        setState(() {
+                          controller.dispose();
+                          _selectedExtras.remove(extraMap);
+                          _syncAmountCollected();
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              );
+            }),
+          const SizedBox(height: 8),
+          ElevatedButton.icon(
+            onPressed: _showAddExtraSelector,
+            icon: const Icon(Icons.add, size: 16),
+            label: Text(context.tr('Add Extra Item')),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: const Color(0xFF000080),
+              elevation: 0,
+              side: const BorderSide(color: Color(0xFF000080)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddExtraSelector() {
+    final remainingExtras = _availableExtras.where((ext) {
+      return !_selectedExtras.any((se) => se['extra']['id'] == ext['id']);
+    }).toList();
+
+    if (remainingExtras.isEmpty) {
+      _snack(context.tr('All available extras already added'), isError: true);
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  context.tr('Select Extra'),
+                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16, color: const Color(0xFF000080)),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              const Divider(),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: remainingExtras.length,
+                  itemBuilder: (context, index) {
+                    final ext = remainingExtras[index];
+                    return ListTile(
+                      leading: const Icon(Icons.add, color: Color(0xFF000080)),
+                      title: Text(ext['name'] ?? '', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        setState(() {
+                          final controller = TextEditingController(text: '0.00');
+                          controller.addListener(() => setState(() {
+                                _syncAmountCollected();
+                              }));
+                          _selectedExtras.add({
+                            'extra': ext,
+                            'priceController': controller,
+                          });
+                          _syncAmountCollected();
+                        });
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

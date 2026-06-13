@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../providers/language_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
@@ -296,7 +297,7 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
             controller: _searchController,
             style: GoogleFonts.inter(color: Colors.white),
             decoration: InputDecoration(
-              hintText: 'Search by name or phone…',
+              hintText: context.tr('Search by name or phone…'),
               hintStyle: GoogleFonts.inter(color: Colors.white60),
               prefixIcon: const Icon(Icons.search, color: Colors.white70),
               suffixIcon: _searchController.text.isNotEmpty
@@ -321,13 +322,13 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
                       const SizedBox(height: 12),
                       Text(_listError, style: GoogleFonts.inter(color: Colors.red.shade600)),
                       const SizedBox(height: 16),
-                      ElevatedButton.icon(onPressed: _fetchCustomers, icon: const Icon(Icons.refresh), label: const Text('Retry')),
+                      ElevatedButton.icon(onPressed: _fetchCustomers, icon: const Icon(Icons.refresh), label: Text(context.tr('Retry'))),
                     ]))
                   : _filteredCustomers.isEmpty
                       ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                           Icon(Icons.person_search, size: 56, color: Colors.grey.shade400),
                           const SizedBox(height: 12),
-                          Text('No customers found', style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 15)),
+                          Text(context.tr('No customers found'), style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 15)),
                         ]))
                       : RefreshIndicator(
                           onRefresh: _fetchCustomers,
@@ -384,7 +385,7 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
                   const SizedBox(width: 8),
                   Icon(Icons.directions_car, size: 13, color: Colors.grey.shade500),
                   const SizedBox(width: 3),
-                  Text('${c['vehicle_count']} vehicle${(c['vehicle_count'] as int) != 1 ? "s" : ""}',
+                  Text(context.tr('${c['vehicle_count']} vehicle${(c['vehicle_count'] as int) != 1 ? "s" : ""}'),
                       style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade500)),
                 ]),
               ]),
@@ -444,7 +445,7 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
               const SizedBox(height: 14),
               _buildTextField(_addressController, 'Address', Icons.location_on_outlined, maxLines: 2),
               const SizedBox(height: 14),
-              Text('Customer Type *', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+              Text(context.tr('Customer Type *'), style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
               const SizedBox(height: 6),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -452,6 +453,7 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<Map<String, dynamic>>(
                     isExpanded: true,
+                    menuMaxHeight: 350,
                     value: _selectedCustomerType,
                     items: _customerTypes.map((ct) => DropdownMenuItem<Map<String, dynamic>>(
                       value: ct as Map<String, dynamic>,
@@ -473,12 +475,12 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
             trailing: TextButton.icon(
               onPressed: _addNewVehicleRow,
               icon: const Icon(Icons.add, size: 18),
-              label: const Text('Add New'),
+              label: Text(context.tr('Add New')),
               style: TextButton.styleFrom(foregroundColor: const Color(0xFF000080)),
             ),
             children: [
               if (_existingVehicleRows.isEmpty && _newVehicleRows.isEmpty)
-                Center(child: Text('No vehicles registered.', style: GoogleFonts.inter(color: Colors.grey.shade500))),
+                Center(child: Text(context.tr('No vehicles registered.'), style: GoogleFonts.inter(color: Colors.grey.shade500))),
 
               // Existing
               ...List.generate(_existingVehicleRows.length, (i) => _buildVehicleRow(i, isNew: false)),
@@ -501,7 +503,7 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
             ),
             child: _isSaving
                 ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : Text('Save Changes', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold)),
+                : Text(context.tr('Save Changes'), style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold)),
           ),
           const SizedBox(height: 20),
         ],
@@ -552,7 +554,7 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
             ),
           ]),
           const SizedBox(height: 12),
-          Text('Vehicle Model', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+          Text(context.tr('Vehicle Model'), style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
           const SizedBox(height: 6),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -560,21 +562,22 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
             child: DropdownButtonHideUnderline(
               child: DropdownButton<Map<String, dynamic>>(
                 isExpanded: true,
+                menuMaxHeight: 350,
                 value: row['model'],
-                hint: const Text('Select model...'),
+                hint: Text(context.tr('Select model...')),
                 items: _buildGroupedDropdownItems(),
                 onChanged: (val) => setState(() => rows[index]['model'] = val),
               ),
             ),
           ),
           const SizedBox(height: 10),
-          Text('Vehicle Number', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+          Text(context.tr('Vehicle Number'), style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
           const SizedBox(height: 6),
           TextField(
             controller: row['controller'] as TextEditingController,
             textCapitalization: TextCapitalization.characters,
             decoration: InputDecoration(
-              hintText: 'e.g. KL 01 AB 1234',
+              hintText: context.tr('e.g. KL 01 AB 1234'),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
               enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
               focusedBorder: const OutlineInputBorder(

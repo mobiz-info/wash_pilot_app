@@ -1,5 +1,6 @@
 import 'package:car_wash_mobile/screens/dashboard_screen.dart';
 import 'package:flutter/material.dart';
+import '../providers/language_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
@@ -17,6 +18,14 @@ import 'schemes_screen.dart';
 import 'reports_screen.dart';
 import 'broadcast_screen.dart';
 import 'complaints_screen.dart';
+import 'language_screen.dart';
+import 'expense_screen.dart';
+import 'staff_leave_screen.dart';
+import 'purchase_request_screen.dart';
+import 'expense_head_screen.dart';
+import 'stock_item_screen.dart';
+import 'extras_screen.dart';
+import '../services/api_service.dart';
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
@@ -75,23 +84,37 @@ class _MenuScreenState extends State<MenuScreen> {
       'icon': Icons.directions_car,
       'color': Color(0xFF6366F1),
     },
-    {'title': 'Broadcasts', 'icon': Icons.campaign, 'color': Color(0xFF00BFFF)},
-    {'title': 'Language', 'icon': Icons.language, 'color': Color(0xFF92400E)},
+    {
+      'title': 'Expense',
+      'icon': Icons.account_balance_wallet_outlined,
+      'color': Color(0xFFF59E0B),
+    },
+    {
+      'title': 'Staff Leaves',
+      'icon': Icons.calendar_month_outlined,
+      'color': Color(0xFF10B981),
+    },
+    {
+      'title': 'Purchase',
+      'icon': Icons.shopping_cart_outlined,
+      'color': Color(0xFF6366F1),
+    },
+ 
     {
       'title': 'Complaints',
       'icon': Icons.assignment_late_outlined,
       'color': Color(0xFFF43F5E),
     },
-    // {
-    //   'title': 'Profile',
-    //   'icon': Icons.person_outline,
-    //   'color': Color(0xFF64748B),
-    // },
-    // {
-    //   'title': 'Settings',
-    //   'icon': Icons.settings_outlined,
-    //   'color': Color(0xFF94A3B8),
-    // },
+    {
+      'title': 'Broadcasts',
+      'icon': Icons.campaign,
+      'color': Color(0xFF00BFFF),
+    },
+    {
+      'title': 'Language',
+      'icon': Icons.language,
+      'color': Color(0xFF92400E),
+    },
   ];
 
   final List<Map<String, dynamic>> _companyMenuItems = [
@@ -117,9 +140,50 @@ class _MenuScreenState extends State<MenuScreen> {
       'color': Color(0xFFA855F7),
     },
     {
+      'title': 'Expense',
+      'icon': Icons.account_balance_wallet_outlined,
+      'color': Color(0xFFF59E0B),
+    },
+    {
+      'title': 'Staff Leaves',
+      'icon': Icons.calendar_month_outlined,
+      'color': Color(0xFF10B981),
+    },
+    {
+      'title': 'Purchase',
+      'icon': Icons.shopping_cart_outlined,
+      'color': Color(0xFF6366F1),
+    },
+    {
+      'title': 'Expense Heads',
+      'icon': Icons.label_outline,
+      'color': Color(0xFF8B5CF6),
+    },
+    {
+      'title': 'Stock Items',
+      'icon': Icons.inventory_2_outlined,
+      'color': const Color(0xFF0284C7),
+    },
+    {
+      'title': 'Extras',
+      'icon': Icons.more_horiz_outlined,
+      'color': const Color(0xFFEC4899),
+    },
+   
+    {
       'title': 'Complaints',
       'icon': Icons.assignment_late_outlined,
       'color': Color(0xFFF43F5E),
+    },
+    {
+      'title': 'Broadcasts',
+      'icon': Icons.campaign,
+      'color': Color(0xFF00BFFF),
+    },
+    {
+      'title': 'Language',
+      'icon': Icons.language,
+      'color': Color(0xFF92400E),
     },
   ];
 
@@ -138,6 +202,13 @@ class _MenuScreenState extends State<MenuScreen> {
       'Schemes': const SchemesScreen(),
       'Broadcasts': const BroadcastScreen(),
       'Complaints': const ComplaintsScreen(),
+      'Language': const LanguageScreen(),
+      'Expense': const ExpenseScreen(),
+      'Staff Leaves': const StaffLeaveScreen(),
+      'Purchase': const PurchaseRequestScreen(),
+      'Expense Heads': const ExpenseHeadScreen(),
+      'Stock Items': const StockItemScreen(),
+      'Extras': const ExtrasScreen(),
     };
     final screen = routes[title];
     if (screen != null) {
@@ -182,17 +253,11 @@ class _MenuScreenState extends State<MenuScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Icon(
-                        Icons.local_car_wash,
-                        color: Colors.white,
-                        size: 32,
-                      ),
+                    Image.asset(
+                      ApiService.appIconPath,
+                      width: 56,
+                      height: 56,
+                      fit: BoxFit.contain,
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -214,7 +279,7 @@ class _MenuScreenState extends State<MenuScreen> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        isBranch ? 'Branch Admin' : 'Company Admin',
+                        context.tr(isBranch ? 'Branch Admin' : 'Company Admin'),
                         style: GoogleFonts.inter(
                           color: Colors.white70,
                           fontSize: 12,
@@ -293,6 +358,43 @@ class _MenuScreenState extends State<MenuScreen> {
                         MaterialPageRoute(builder: (_) => const CustomersScreen()),
                       );
                     }),
+                    _drawerItem(Icons.account_balance_wallet_outlined, 'Expense', () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ExpenseScreen()),
+                      );
+                    }),
+                    _drawerItem(Icons.calendar_month_outlined, 'Staff Leaves', () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const StaffLeaveScreen()),
+                      );
+                    }),
+                    if (isCompany) ...[
+                      _drawerItem(Icons.label_outline, 'Expense Heads', () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const ExpenseHeadScreen()),
+                        );
+                      }),
+                      _drawerItem(Icons.inventory_2_outlined, 'Stock Items', () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const StockItemScreen()),
+                        );
+                      }),
+                      _drawerItem(Icons.more_horiz_outlined, 'Extras', () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const ExtrasScreen()),
+                        );
+                      }),
+                    ],
                     if (!isCompany)
                       _drawerItem(
                         Icons.directions_car_outlined,
@@ -320,6 +422,19 @@ class _MenuScreenState extends State<MenuScreen> {
                         );
                       },
                     ),
+                    _drawerItem(
+                      Icons.language_outlined,
+                      'Language',
+                      () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const LanguageScreen(),
+                          ),
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -340,7 +455,7 @@ class _MenuScreenState extends State<MenuScreen> {
                   ),
                 ),
                 title: Text(
-                  'Logout',
+                  context.tr('Logout'),
                   style: GoogleFonts.inter(
                     fontWeight: FontWeight.w700,
                     color: Colors.red.shade600,
@@ -356,18 +471,18 @@ class _MenuScreenState extends State<MenuScreen> {
                         borderRadius: BorderRadius.circular(14),
                       ),
                       title: Text(
-                        'Logout',
+                        context.tr('Logout'),
                         style: GoogleFonts.inter(fontWeight: FontWeight.bold),
                       ),
                       content: Text(
-                        'Are you sure you want to logout?',
+                        context.tr('Are you sure you want to logout?'),
                         style: GoogleFonts.inter(color: Colors.grey.shade600),
                       ),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(ctx, false),
                           child: Text(
-                            'Cancel',
+                            context.tr('Cancel'),
                             style: GoogleFonts.inter(color: Colors.grey),
                           ),
                         ),
@@ -381,7 +496,7 @@ class _MenuScreenState extends State<MenuScreen> {
                             ),
                           ),
                           child: Text(
-                            'Logout',
+                            context.tr('Logout'),
                             style: GoogleFonts.inter(
                               fontWeight: FontWeight.bold,
                             ),
@@ -398,7 +513,7 @@ class _MenuScreenState extends State<MenuScreen> {
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Text(
-                  'v1.0.5',
+                  context.tr('v1.0.6'),
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     color: Colors.grey.shade400,
@@ -422,21 +537,15 @@ class _MenuScreenState extends State<MenuScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.local_car_wash,
-                color: Color(0xFF000080),
-                size: 20,
-              ),
+            Image.asset(
+              ApiService.appIconPath,
+              width: 24,
+              height: 24,
+              fit: BoxFit.contain,
             ),
             const SizedBox(width: 10),
             Text(
-              'Car Wash',
+              ApiService.appName,
               style: GoogleFonts.inter(
                 fontWeight: FontWeight.w700,
                 fontSize: 18,
@@ -461,7 +570,7 @@ class _MenuScreenState extends State<MenuScreen> {
             const SizedBox(height: 20),
 
             // ── Quick Menu ──────────────────────────────────────────────
-            buildSectionTitle('Quick Menu', Icons.grid_view_outlined),
+            buildSectionTitle(context.tr('Quick Menu'), Icons.grid_view_outlined),
             const SizedBox(height: 10),
             _buildMenuGrid(),
             const SizedBox(height: 20),
@@ -498,7 +607,7 @@ class _MenuScreenState extends State<MenuScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Welcome Back 👋',
+                  '${context.tr('Welcome Back')} 👋',
                   style: GoogleFonts.inter(color: Colors.white70, fontSize: 13),
                 ),
                 const SizedBox(height: 6),
@@ -523,7 +632,7 @@ class _MenuScreenState extends State<MenuScreen> {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    isBranch ? 'Branch Admin' : 'Company Admin',
+                    context.tr(isBranch ? 'Branch Admin' : 'Company Admin'),
                     style: GoogleFonts.inter(
                       color: Colors.white70,
                       fontSize: 11,
@@ -568,9 +677,16 @@ class _MenuScreenState extends State<MenuScreen> {
       itemCount: menuItems.length,
       itemBuilder: (context, index) {
         final item = menuItems[index];
-        final color = item['color'] as Color;
+        final title = item['title'] as String;
+        if (title.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        final isBroadcast = title == 'Broadcasts';
+        final isEnabled = !isBroadcast || auth.canBroadcast;
+        final color = isEnabled ? (item['color'] as Color) : Colors.grey;
+        
         return InkWell(
-          onTap: () => _navigate(context, item['title']),
+          onTap: isEnabled ? () => _navigate(context, title) : null,
           borderRadius: BorderRadius.circular(16),
           child: Container(
             decoration: BoxDecoration(
@@ -597,11 +713,11 @@ class _MenuScreenState extends State<MenuScreen> {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  item['title'],
+                  context.tr(item['title']),
                   textAlign: TextAlign.center,
                   style: GoogleFonts.inter(
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF334155),
+                    color: isEnabled ? const Color(0xFF334155) : Colors.grey,
                     fontSize: 12,
                   ),
                 ),
@@ -620,7 +736,7 @@ class _MenuScreenState extends State<MenuScreen> {
     return ListTile(
       leading: Icon(icon, color: const Color(0xFF000080), size: 22),
       title: Text(
-        label,
+        context.tr(label),
         style: GoogleFonts.inter(
           fontWeight: FontWeight.w600,
           fontSize: 14,

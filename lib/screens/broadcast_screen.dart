@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import '../providers/language_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -98,14 +99,14 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
   void _startBroadcast() {
     if (_messageController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a message to broadcast.'), backgroundColor: Colors.orange),
+        SnackBar(content: Text(context.tr('Please enter a message to broadcast.')), backgroundColor: Colors.orange),
       );
       return;
     }
 
     if (_selectedCustomerIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select at least one customer.'), backgroundColor: Colors.orange),
+        SnackBar(content: Text(context.tr('Please select at least one customer.')), backgroundColor: Colors.orange),
       );
       return;
     }
@@ -148,8 +149,8 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
         showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('🎉 Broadcast Complete!'),
-            content: const Text('You have reached the end of the broadcast list.'),
+            title: Text(context.tr('🎉 Broadcast Complete!')),
+            content: Text(context.tr('You have reached the end of the broadcast list.')),
             actions: [
               TextButton(
                 onPressed: () {
@@ -160,7 +161,7 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
                     _messageController.clear();
                   });
                 },
-                child: const Text('Done'),
+                child: Text(context.tr('Done')),
               )
             ],
           ),
@@ -168,7 +169,7 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open WhatsApp. Is it installed?'), backgroundColor: Colors.red),
+        SnackBar(content: Text(context.tr('Could not open WhatsApp. Is it installed?')), backgroundColor: Colors.red),
       );
     }
   }
@@ -204,7 +205,7 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
       appBar: AppBar(
-        title: Text('New Broadcast', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+        title: Text(context.tr('New Broadcast'), style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
         backgroundColor: const Color(0xFF000080),
         foregroundColor: Colors.white,
       ),
@@ -221,13 +222,13 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Message Content', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                          Text(context.tr('Message Content'), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
                           const SizedBox(height: 8),
                           TextField(
                             controller: _messageController,
                             maxLines: 4,
                             decoration: InputDecoration(
-                              hintText: 'Type something...',
+                              hintText: context.tr('Type something...'),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                               filled: true,
                               fillColor: Colors.grey.shade50,
@@ -245,7 +246,7 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
                       child: TextField(
                         controller: _searchController,
                         decoration: InputDecoration(
-                          hintText: 'Search customers...',
+                          hintText: context.tr('Search customers...'),
                           prefixIcon: const Icon(Icons.search),
                           filled: true,
                           fillColor: Colors.white,
@@ -264,12 +265,12 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Select Customers (${_selectedCustomerIds.length} selected)',
+                            context.tr('Select Customers (${_selectedCustomerIds.length} selected)'),
                             style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: Colors.grey.shade700),
                           ),
                           Row(
                             children: [
-                              Text('Select All', style: GoogleFonts.inter(fontSize: 13)),
+                              Text(context.tr('Select All'), style: GoogleFonts.inter(fontSize: 13)),
                               Checkbox(
                                 value: allSelected,
                                 onChanged: _toggleSelectAll,
@@ -332,7 +333,7 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                           child: Text(
-                            'Start Broadcasting to ${_selectedCustomerIds.length}',
+                            context.tr('Start Broadcasting to ${_selectedCustomerIds.length}'),
                             style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold),
                           ),
                         ),
@@ -345,7 +346,7 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
 
   Widget _buildBroadcastingView() {
     if (_currentIndex >= _broadcastQueue.length) {
-      return const Scaffold(body: Center(child: Text('Done')));
+      return Scaffold(body: Center(child: Text(context.tr('Done'))));
     }
     
     final currentCustomer = _broadcastQueue[_currentIndex];
@@ -353,7 +354,7 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
       appBar: AppBar(
-        title: Text('Broadcasting...', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+        title: Text(context.tr('Broadcasting...'), style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
         backgroundColor: const Color(0xFF000080),
         foregroundColor: Colors.white,
         leading: IconButton(
@@ -367,7 +368,7 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              'Customer ${_currentIndex + 1} of ${_broadcastQueue.length}',
+              context.tr('Customer ${_currentIndex + 1} of ${_broadcastQueue.length}'),
               style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
             ),
             const SizedBox(height: 8),
@@ -410,7 +411,7 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
                   ElevatedButton.icon(
                     onPressed: _sendToCurrent,
                     icon: const Icon(Icons.send),
-                    label: Text('Send in WhatsApp', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold)),
+                    label: Text(context.tr('Send in WhatsApp'), style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF25D366), // WhatsApp Green
                       foregroundColor: Colors.white,
@@ -423,7 +424,7 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
                   
                   TextButton(
                     onPressed: _skipCurrent,
-                    child: Text('Skip Customer', style: GoogleFonts.inter(color: Colors.grey.shade600, fontSize: 16)),
+                    child: Text(context.tr('Skip Customer'), style: GoogleFonts.inter(color: Colors.grey.shade600, fontSize: 16)),
                   ),
                 ],
               ),
@@ -432,7 +433,7 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
             const Spacer(),
             
             Text(
-              'Tip: After pressing Send, WhatsApp will open. Hit send there, then return to this app to automatically advance to the next customer.',
+              context.tr('Tip: After pressing Send, WhatsApp will open. Hit send there, then return to this app to automatically advance to the next customer.'),
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 13, height: 1.5),
             )

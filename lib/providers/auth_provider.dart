@@ -20,8 +20,17 @@ class AuthProvider with ChangeNotifier {
   String? get branchName => _branchName;
   String? get displayName => _displayName;
   String? get username => _username;
-  bool get isBranchAdmin => _role == 'BRANCH_ADMIN';
+  bool get isBranchAdmin =>
+      _role == 'BRANCH_ADMIN' ||
+      _role == 'BRANCH_MANAGER' ||
+      _role == 'MARKETING' ||
+      _role == 'CLERICAL' ||
+      _role == 'SERVICE';
   bool get isCompanyAdmin => _role == 'COMPANY_ADMIN';
+  bool get canBroadcast =>
+      _role == 'COMPANY_ADMIN' ||
+      _role == 'BRANCH_ADMIN' ||
+      _role == 'BRANCH_MANAGER';
   String get currencySymbol => _currencySymbol;
 
   Future<void> checkAuthStatus() async {

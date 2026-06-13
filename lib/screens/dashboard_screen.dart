@@ -1,6 +1,7 @@
 import 'package:car_wash_mobile/providers/auth_provider.dart';
 import 'package:car_wash_mobile/services/api_service.dart';
 import 'package:flutter/material.dart';
+import '../providers/language_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
@@ -16,6 +17,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _totalJobs = 0;
   String _todayRevenue = '0';
   String _todayCollected = '0';
+  String _todayExpense = '0';
+  String _todayNetProfit = '0';
   String _totalOutstanding = '0';
   int _outstandingCount = 0;
   int _totalCustomers = 0;
@@ -33,6 +36,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _totalJobs = res['today_jobs'] ?? 0;
           _todayRevenue = res['today_revenue'] ?? '0';
           _todayCollected = res['today_collected'] ?? '0';
+          _todayExpense = res['today_expense'] ?? '0';
+          _todayNetProfit = res['today_net_profit'] ?? '0';
           _totalOutstanding = res['total_outstanding'] ?? '0';
           _outstandingCount = res['outstanding_count'] ?? 0;
           _totalCustomers = res['total_customers'] ?? 0;
@@ -70,8 +75,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Dashboard',
+        title: Text(
+          context.tr('Dashboard'),
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
         leading: IconButton(
@@ -86,27 +91,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           children: [
             // ── Today's Stats ───────────────────────────────────────────
-            buildSectionTitle('Today\'s Summary', Icons.today_outlined),
+            buildSectionTitle(context.tr("Today's Summary"), Icons.today_outlined),
             const SizedBox(height: 10),
             _buildTodayStats(),
             const SizedBox(height: 20),
         
             // ── Totals Row ──────────────────────────────────────────────
-            buildSectionTitle('Overview', Icons.analytics_outlined),
+            buildSectionTitle(context.tr('Overview'), Icons.analytics_outlined),
             const SizedBox(height: 10),
             _buildOverviewRow(),
             const SizedBox(height: 20),
         
             // ── Recent Invoices ─────────────────────────────────────────
-            if (_recentInvoices.isNotEmpty) ...[
-              buildSectionTitle(
-                'Today\'s Recent Jobs',
-                Icons.receipt_long_outlined,
-              ),
-              const SizedBox(height: 10),
-              _buildRecentInvoices(),
-              const SizedBox(height: 20),
-            ],
+            // if (_recentInvoices.isNotEmpty) ...[
+            //   buildSectionTitle(
+            //     'Today\'s Recent Jobs',
+            //     Icons.receipt_long_outlined,
+            //   ),
+            //   const SizedBox(height: 10),
+            //   _buildRecentInvoices(),
+            //   const SizedBox(height: 20),
+            // ],
           ],
         ),
       ),
@@ -117,37 +122,76 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // ─── Today Stats (3 cards) ───────────────────────────────────────────────
   Widget _buildTodayStats() {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: _statCard(
-            'Revenue',
-            _statsLoading ? '...' : _todayRevenue,
-            Icons.trending_up,
-            const Color(0xFF3B82F6),
-            const Color(0xFFEFF6FF),
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: _statCard(
+                'Revenue',
+                _statsLoading ? '...' : _todayRevenue,
+                Icons.trending_up,
+                const Color(0xFF3B82F6),
+                const Color(0xFFEFF6FF),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _statCard(
+                'Collected',
+                _statsLoading ? '...' : _todayCollected,
+                Icons.check_circle_outline,
+                const Color(0xFF22C55E),
+                const Color(0xFFF0FDF4),
+              ),
+            ),
+            const SizedBox(width: 8),
+            
+          ],
         ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _statCard(
-            'Collected',
-            _statsLoading ? '...' : _todayCollected,
-            Icons.check_circle_outline,
-            const Color(0xFF22C55E),
-            const Color(0xFFF0FDF4),
-          ),
+        const SizedBox(height: 10),
+       
+        Row(
+          children: [
+            Expanded(
+              child: _statCard(
+                'Expense',
+                _statsLoading ? '...' : _todayExpense,
+                Icons.trending_down,
+                const Color(0xFFEF4444),
+                const Color(0xFFFFF1F2),
+              ),
+            ),
+            const SizedBox(width: 10),
+            
+           
+          ],
         ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _statCard(
-            'Jobs',
-            _statsLoading ? '...' : '$_totalJobs',
-            Icons.work_outline,
-            const Color(0xFF8B5CF6),
-            const Color(0xFFF5F3FF),
-          ),
+         const SizedBox(height: 10),
+         Row(
+          children: [
+            Expanded(
+              child: _statCard(
+                'Net Profit',
+                _statsLoading ? '...' : _todayNetProfit,
+                Icons.account_balance,
+                const Color(0xFF0F766E),
+                const Color(0xFFE6F4F1),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _statCard(
+                'Jobs',
+                _statsLoading ? '...' : '$_totalJobs',
+                Icons.work_outline,
+                const Color(0xFF8B5CF6),
+                const Color(0xFFF5F3FF),
+              ),
+            ),
+          ],
         ),
+        const SizedBox(height: 10),
       ],
     );
   }
@@ -163,7 +207,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Icons.warning_amber_outlined,
             const Color(0xFFEF4444),
             const Color(0xFFFFF1F2),
-            subtitle: _statsLoading ? '' : '$_outstandingCount invoices',
+            subtitle: _statsLoading ? '' : '$_outstandingCount ${context.tr('invoices')}',
           ),
         ),
         const SizedBox(width: 10),
@@ -232,7 +276,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
                 subtitle: Text(
-                  '${inv['invoice_number'] ?? ''} · ${inv['vehicle'] ?? ''}',
+                  context.tr('${inv['invoice_number'] ?? ''} · ${inv['vehicle'] ?? ''}'),
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     color: const Color(0xFF94A3B8),
@@ -243,7 +287,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      '$currencySymbol$total',
+                      context.tr('$currencySymbol$total'),
                       style: GoogleFonts.inter(
                         fontWeight: FontWeight.w800,
                         fontSize: 13,
@@ -252,7 +296,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     if (outstanding > 0)
                       Text(
-                        'Due $currencySymbol${outstanding.toStringAsFixed(0)}',
+                        context.tr('Due $currencySymbol${outstanding.toStringAsFixed(0)}'),
                         style: GoogleFonts.inter(
                           fontSize: 10,
                           color: Colors.red.shade400,
@@ -261,7 +305,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       )
                     else
                       Text(
-                        'Paid',
+                        context.tr('Paid'),
                         style: GoogleFonts.inter(
                           fontSize: 10,
                           color: Colors.green.shade500,
@@ -322,7 +366,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 2),
           Text(
-            label,
+            context.tr(label),
             style: GoogleFonts.inter(
               fontSize: 11,
               fontWeight: FontWeight.w600,

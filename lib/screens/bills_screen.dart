@@ -1,9 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../providers/language_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -48,8 +51,8 @@ class _BillsScreenState extends State<BillsScreen> {
   String _displayDate(DateTime d) =>
       '${d.day.toString().padLeft(2, '0')} ${_monthName(d.month)} ${d.year}';
 
-  String _monthName(int m) =>
-      ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m - 1];
+  String _monthName(int m) => context.tr(
+      ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m - 1]);
 
   String _formatDisplayDate(String raw) {
     try {
@@ -79,7 +82,7 @@ class _BillsScreenState extends State<BillsScreen> {
         if (res['success'] == true) {
           _invoices = res['invoices'] as List<dynamic>;
         } else {
-          _errorMessage = res['message'] ?? 'Failed to load invoices';
+          _errorMessage = res['message'] ?? context.tr('Failed to load invoices');
         }
       });
     } catch (e) {
@@ -117,90 +120,162 @@ class _BillsScreenState extends State<BillsScreen> {
     _fetchInvoices();
   }
 
-  // ── PDF Generation & Share ──────────────────────────────────────────
+  // ── PDF Generation & Share/Download/Print ──────────────────────────
+  Future<pw.Document> _generateInvoicePdf(Map<String, dynamic> inv) async {
+    final fontData = await rootBundle.load('assets/fonts/NotoSans-Regular.ttf');
+    final notoFont = pw.Font.ttf(fontData);
+
+    final pdf = pw.Document(
+      theme: pw.ThemeData.withFont(
+        base: notoFont,
+        bold: notoFont,
+      ),
+    );
+    final services = inv['services'] as List<dynamic>? ?? [];
+
+    pdf.addPage(pw.Page(
+      pageFormat: PdfPageFormat.a4,
+      build: (pw.Context ctx) => pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          // Header
+          pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
+            pw.Text('INVOICE',
+                style: pw.TextStyle(fontSize: 26, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
+            pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
+              pw.Text(inv['invoice_number'],
+                  style: pw.TextStyle(fontSize: 14, color: PdfColors.grey700, fontWeight: pw.FontWeight.bold)),
+              pw.Text(_formatDisplayDate(inv['date']),
+                  style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey600)),
+            ]),
+          ]),
+          pw.Divider(height: 30),
+
+          // Customer & Vehicle
+          pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
+            pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+              pw.Text('BILLED TO', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.grey500)),
+              pw.SizedBox(height: 4),
+              pw.Text(inv['customer']['name'], style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+              pw.Text(inv['customer']['phone'], style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey700)),
+            ]),
+            pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
+              pw.Text('VEHICLE', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.grey500)),
+              pw.SizedBox(height: 4),
+              pw.Text(inv['vehicle']['number'], style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+              pw.Text(inv['vehicle']['model'], style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey700)),
+            ]),
+          ]),
+          pw.SizedBox(height: 24),
+
+          // Services table
+          pw.Text('SERVICES', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.grey500)),
+          pw.SizedBox(height: 8),
+          pw.Table.fromTextArray(
+            headers: ['Service', 'Rate ($currencySymbol)'],
+            data: services.map((s) => [s['name'], s['rate']]).toList(),
+            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+            headerDecoration: const pw.BoxDecoration(color: PdfColors.indigo900),
+            cellHeight: 28,
+            cellAlignments: {0: pw.Alignment.centerLeft, 1: pw.Alignment.centerRight},
+          ),
+          pw.SizedBox(height: 20),
+
+          // Totals
+          pw.Container(
+            alignment: pw.Alignment.centerRight,
+            child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
+              pw.Text('Subtotal:  $currencySymbol${inv['subtotal']}'),
+              pw.Text('Discount:  $currencySymbol${inv['discount']}'),
+              pw.Text('Tax:       $currencySymbol${inv['tax_amount']}'),
+              pw.Divider(),
+              pw.Text('Total:     $currencySymbol${inv['total']}',
+                  style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
+              pw.SizedBox(height: 4),
+              pw.Text('Collected: $currencySymbol${inv['amount_collected']}',
+                  style: pw.TextStyle(fontSize: 12, color: PdfColors.green700)),
+            ]),
+          ),
+          pw.Spacer(),
+          pw.Center(child: pw.Text('Thank you for choosing us!',
+              style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey600))),
+        ],
+      ),
+    ));
+    return pdf;
+  }
+
   Future<void> _shareInvoice(Map<String, dynamic> inv) async {
     try {
-      final pdf = pw.Document();
-      final services = inv['services'] as List<dynamic>? ?? [];
-
-      pdf.addPage(pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        build: (pw.Context ctx) => pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            // Header
-            pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-              pw.Text('INVOICE',
-                  style: pw.TextStyle(fontSize: 26, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
-              pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
-                pw.Text(inv['invoice_number'],
-                    style: pw.TextStyle(fontSize: 14, color: PdfColors.grey700, fontWeight: pw.FontWeight.bold)),
-                pw.Text(_formatDisplayDate(inv['date']),
-                    style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey600)),
-              ]),
-            ]),
-            pw.Divider(height: 30),
-
-            // Customer & Vehicle
-            pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-              pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-                pw.Text('BILLED TO', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.grey500)),
-                pw.SizedBox(height: 4),
-                pw.Text(inv['customer']['name'], style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                pw.Text(inv['customer']['phone'], style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey700)),
-              ]),
-              pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
-                pw.Text('VEHICLE', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.grey500)),
-                pw.SizedBox(height: 4),
-                pw.Text(inv['vehicle']['number'], style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                pw.Text(inv['vehicle']['model'], style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey700)),
-              ]),
-            ]),
-            pw.SizedBox(height: 24),
-
-            // Services table
-            pw.Text('SERVICES', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.grey500)),
-            pw.SizedBox(height: 8),
-            pw.Table.fromTextArray(
-              headers: ['Service', 'Rate ($currencySymbol)'],
-              data: services.map((s) => [s['name'], s['rate']]).toList(),
-              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
-              headerDecoration: const pw.BoxDecoration(color: PdfColors.indigo900),
-              cellHeight: 28,
-              cellAlignments: {0: pw.Alignment.centerLeft, 1: pw.Alignment.centerRight},
-            ),
-            pw.SizedBox(height: 20),
-
-            // Totals
-            pw.Container(
-              alignment: pw.Alignment.centerRight,
-              child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
-                pw.Text('Subtotal:  $currencySymbol${inv['subtotal']}'),
-                pw.Text('Discount:  $currencySymbol${inv['discount']}'),
-                pw.Text('Tax:       $currencySymbol${inv['tax_amount']}'),
-                pw.Divider(),
-                pw.Text('Total:     $currencySymbol${inv['total']}',
-                    style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
-                pw.SizedBox(height: 4),
-                pw.Text('Collected: $currencySymbol${inv['amount_collected']}',
-                    style: pw.TextStyle(fontSize: 12, color: PdfColors.green700)),
-              ]),
-            ),
-            pw.Spacer(),
-            pw.Center(child: pw.Text('Thank you for choosing us!',
-                style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey600))),
-          ],
-        ),
-      ));
-
+      final pdf = await _generateInvoicePdf(inv);
       final dir = await getTemporaryDirectory();
-      final file = File('${dir.path}/${inv['invoice_number']}.pdf');
+      final file = File('${dir.path}/${inv['invoice_number'].replaceAll('/', '_')}.pdf');
       await file.writeAsBytes(await pdf.save());
       await Share.shareXFiles([XFile(file.path)], text: 'Invoice ${inv['invoice_number']}');
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text(context.tr('Error: $e')), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _downloadInvoice(Map<String, dynamic> inv) async {
+    try {
+      final pdf = await _generateInvoicePdf(inv);
+      Directory? dir;
+      if (Platform.isAndroid) {
+        dir = Directory('/storage/emulated/0/Download');
+        if (!await dir.exists()) {
+          dir = await getExternalStorageDirectory();
+        }
+      } else {
+        dir = await getApplicationDocumentsDirectory();
+      }
+
+      if (dir == null) {
+        throw Exception(context.tr('Could not find download directory'));
+      }
+
+      final filename = '${inv['invoice_number'].replaceAll('/', '_')}.pdf';
+      final file = File('${dir.path}/$filename');
+      await file.writeAsBytes(await pdf.save());
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${context.tr('Invoice downloaded successfully')}: $filename'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${context.tr('Failed to download invoice')}: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _printInvoice(Map<String, dynamic> inv) async {
+    try {
+      final pdf = await _generateInvoicePdf(inv);
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdf.save(),
+        name: '${inv['invoice_number'].replaceAll('/', '_')}.pdf',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${context.tr('Failed to print invoice')}: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -215,7 +290,7 @@ class _BillsScreenState extends State<BillsScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
       appBar: AppBar(
-        title: Text('Bills', style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+        title: Text(context.tr('Bills'), style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
         backgroundColor: const Color(0xFF000080),
         foregroundColor: Colors.white,
         elevation: 0,
@@ -258,10 +333,10 @@ class _BillsScreenState extends State<BillsScreen> {
                   Row(children: [
                     Icon(Icons.receipt_long, size: 16, color: Colors.grey.shade500),
                     const SizedBox(width: 8),
-                    Text('${_invoices.length} invoice${_invoices.length == 1 ? '' : 's'}',
+                    Text(context.tr('${_invoices.length} invoice${_invoices.length == 1 ? '' : 's'}'),
                         style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: Colors.grey.shade700, fontSize: 13)),
                   ]),
-                  Text('Total: $currencySymbol${totalAmount.toStringAsFixed(2)}',
+                  Text(context.tr('Total: $currencySymbol${totalAmount.toStringAsFixed(2)}'),
                       style: GoogleFonts.inter(fontWeight: FontWeight.w800, color: const Color(0xFF000080), fontSize: 14)),
                 ],
               ),
@@ -350,7 +425,7 @@ class _BillsScreenState extends State<BillsScreen> {
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: isFullyPaid ? Colors.green.shade200 : Colors.orange.shade200),
                   ),
-                  child: Text(isFullyPaid ? '✓ Paid' : '⏳ Partial',
+                  child: Text(isFullyPaid ? '✓ ${context.tr('Paid')}' : '⏳ ${context.tr('Partial')}',
                       style: GoogleFonts.inter(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
@@ -381,15 +456,15 @@ class _BillsScreenState extends State<BillsScreen> {
 
                 // Services
                 if (services.isNotEmpty) ...[
-                  Text('Services', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.grey.shade500, letterSpacing: 0.5)),
+                  Text(context.tr('Services'), style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.grey.shade500, letterSpacing: 0.5)),
                   const SizedBox(height: 6),
                   ...services.map((s) => Padding(
                         padding: const EdgeInsets.only(bottom: 4.0),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(s['name'], style: GoogleFonts.inter(fontSize: 13, color: Colors.grey.shade700)),
-                            Text('$currencySymbol${s['rate']}', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13)),
+                            Text(context.tr(s['name']), style: GoogleFonts.inter(fontSize: 13, color: Colors.grey.shade700)),
+                            Text(context.tr('$currencySymbol${s['rate']}'), style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13)),
                           ],
                         ),
                       )),
@@ -404,8 +479,8 @@ class _BillsScreenState extends State<BillsScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Total', style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 16)),
-                    Text('$currencySymbol${inv['total']}',
+                    Text(context.tr('Total'), style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 16)),
+                    Text(context.tr('$currencySymbol${inv['total']}'),
                         style: GoogleFonts.inter(fontWeight: FontWeight.w900, fontSize: 18, color: const Color(0xFF000080))),
                   ],
                 ),
@@ -413,28 +488,62 @@ class _BillsScreenState extends State<BillsScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Collected', style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 12)),
-                    Text('$currencySymbol${inv['amount_collected']}',
+                    Text(context.tr('Collected'), style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 12)),
+                    Text(context.tr('$currencySymbol${inv['amount_collected']}'),
                         style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.green.shade700)),
                   ],
                 ),
                 const SizedBox(height: 16),
 
-                // Share Button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () => _shareInvoice(inv),
-                    icon: const Icon(Icons.share, size: 18),
-                    label: Text('Share Invoice', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF000080),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 13),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      elevation: 0,
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _downloadInvoice(inv),
+                        icon: const Icon(Icons.download, size: 16),
+                        label: Text(context.tr('Download'), style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 11)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFF000080),
+                          side: const BorderSide(color: Color(0xFF000080)),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          elevation: 0,
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _printInvoice(inv),
+                        icon: const Icon(Icons.print, size: 16),
+                        label: Text(context.tr('Print'), style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 11)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFF000080),
+                          side: const BorderSide(color: Color(0xFF000080)),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          elevation: 0,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _shareInvoice(inv),
+                        icon: const Icon(Icons.share, size: 16),
+                        label: Text(context.tr('Share'), style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 11)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF000080),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          elevation: 0,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -463,8 +572,8 @@ class _BillsScreenState extends State<BillsScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Text(label, style: GoogleFonts.inter(color: Colors.grey.shade600, fontSize: 13)),
-        Text('${isNegative ? '-' : ''}$currencySymbol$value',
+        Text(context.tr(label), style: GoogleFonts.inter(color: Colors.grey.shade600, fontSize: 13)),
+        Text(context.tr('${isNegative ? '-' : ''}$currencySymbol$value'),
             style: GoogleFonts.inter(fontWeight: FontWeight.w500, fontSize: 13,
                 color: isNegative ? Colors.red.shade400 : Colors.grey.shade800)),
       ]),
@@ -475,8 +584,8 @@ class _BillsScreenState extends State<BillsScreen> {
     return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
       Icon(Icons.receipt_long_outlined, size: 80, color: Colors.grey.shade200),
       const SizedBox(height: 16),
-      Text('No invoices found', style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 16, fontWeight: FontWeight.w600)),
-      Text('for the selected date range.', style: GoogleFonts.inter(color: Colors.grey.shade400, fontSize: 13)),
+      Text(context.tr('No invoices found'), style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 16, fontWeight: FontWeight.w600)),
+      Text(context.tr('for the selected date range.'), style: GoogleFonts.inter(color: Colors.grey.shade400, fontSize: 13)),
     ]));
   }
 
@@ -484,7 +593,7 @@ class _BillsScreenState extends State<BillsScreen> {
     return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
       Icon(Icons.error_outline, size: 60, color: Colors.red.shade200),
       const SizedBox(height: 16),
-      Text(_errorMessage, textAlign: TextAlign.center, style: GoogleFonts.inter(color: Colors.red, fontSize: 14)),
+      Text(context.tr(_errorMessage), textAlign: TextAlign.center, style: GoogleFonts.inter(color: Colors.red, fontSize: 14)),
     ]));
   }
 }

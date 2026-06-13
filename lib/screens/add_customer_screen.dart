@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../providers/language_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
@@ -165,7 +166,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       if (res['success'] == true) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Customer added successfully!'), backgroundColor: Colors.green),
+          SnackBar(content: Text(context.tr('Customer added successfully!')), backgroundColor: Colors.green),
         );
         // Return the customer data to NewJobScreen
         Navigator.pop(context, res['customer']);
@@ -190,7 +191,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
       appBar: AppBar(
-        title: Text('Add New Customer', style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+        title: Text(context.tr('Add New Customer'), style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
         backgroundColor: const Color(0xFF000080),
         foregroundColor: Colors.white,
         elevation: 0,
@@ -225,7 +226,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Customer Type *', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+                              Text(context.tr('Customer Type *'), style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
                               const SizedBox(height: 6),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -237,6 +238,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                                 child: DropdownButtonHideUnderline(
                                   child: DropdownButton<Map<String, dynamic>>(
                                     isExpanded: true,
+                                    menuMaxHeight: 350,
                                     value: _selectedCustomerType,
                                     items: _customerTypes.map((ct) {
                                       return DropdownMenuItem<Map<String, dynamic>>(
@@ -259,7 +261,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                         trailing: TextButton.icon(
                           onPressed: _addVehicleRow,
                           icon: const Icon(Icons.add, size: 18),
-                          label: const Text('Add Vehicle'),
+                          label: Text(context.tr('Add Vehicle')),
                           style: TextButton.styleFrom(foregroundColor: const Color(0xFF000080)),
                         ),
                         children: [
@@ -278,7 +280,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                         ),
                         child: _isSaving
                             ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                            : Text('Save Customer', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold)),
+                            : Text(context.tr('Save Customer'), style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),
@@ -385,7 +387,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
               children: [
                 Icon(Icons.directions_car, size: 18, color: const Color(0xFF000080).withOpacity(0.7)),
                 const SizedBox(width: 6),
-                Text('Vehicle ${index + 1}', style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: const Color(0xFF000080))),
+                Text(context.tr('Vehicle ${index + 1}'), style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: const Color(0xFF000080))),
                 const Spacer(),
                 if (_vehicleRows.length > 1)
                   GestureDetector(
@@ -396,7 +398,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
             ),
             const SizedBox(height: 12),
             // Vehicle Model Dropdown (groups by type)
-            Text('Vehicle Model *', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+            Text(context.tr('Vehicle Model *'), style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
             const SizedBox(height: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -408,8 +410,9 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<Map<String, dynamic>>(
                   isExpanded: true,
+                  menuMaxHeight: 350,
                   value: row['model'],
-                  hint: const Text('Select model...'),
+                  hint: Text(context.tr('Select model...')),
                   items: _buildGroupedDropdownItems(),
                   onChanged: (val) => setState(() => _vehicleRows[index]['model'] = val),
                 ),
@@ -417,13 +420,13 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
             ),
             const SizedBox(height: 10),
             // Vehicle Number
-            Text('Vehicle Number *', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+            Text(context.tr('Vehicle Number *'), style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
             const SizedBox(height: 6),
             TextField(
               controller: row['controller'] as TextEditingController,
               textCapitalization: TextCapitalization.characters,
               decoration: InputDecoration(
-                hintText: 'e.g. KL 01 AB 1234',
+                hintText: context.tr('e.g. KL 01 AB 1234'),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
                 enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
                 focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF000080))),

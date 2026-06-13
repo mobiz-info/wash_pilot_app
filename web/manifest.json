@@ -1,6 +1,6 @@
 {
-    "name": "car_wash_mobile",
-    "short_name": "car_wash_mobile",
+    "name": "Wash Pilot",
+    "short_name": "Wash Pilot",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

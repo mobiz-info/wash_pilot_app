@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../providers/language_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
@@ -165,8 +166,8 @@ class _AddSchemeScreenState extends State<AddSchemeScreen> {
       if (!mounted) return;
       if (res['success'] == true) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Scheme created'),
+          SnackBar(
+            content: Text(context.tr('Scheme created')),
             backgroundColor: Colors.green,
           ),
         );
@@ -196,7 +197,7 @@ class _AddSchemeScreenState extends State<AddSchemeScreen> {
         backgroundColor: const Color(0xFF000080),
         foregroundColor: Colors.white,
         title: Text(
-          'Add Scheme',
+          context.tr('Add Scheme'),
           style: GoogleFonts.inter(
             fontWeight: FontWeight.w800,
             fontSize: 18,
@@ -226,7 +227,7 @@ class _AddSchemeScreenState extends State<AddSchemeScreen> {
               style: const TextStyle(color: Colors.red),
             ),
             const SizedBox(height: 16),
-            ElevatedButton(onPressed: _loadOptions, child: const Text('Retry')),
+            ElevatedButton(onPressed: _loadOptions, child: Text(context.tr('Retry'))),
           ],
         ),
       );
@@ -313,14 +314,14 @@ class _AddSchemeScreenState extends State<AddSchemeScreen> {
           OutlinedButton.icon(
             onPressed: _addVoucher,
             icon: const Icon(Icons.add),
-            label: const Text('Add Voucher'),
+            label: Text(context.tr('Add Voucher')),
           ),
           ..._vouchers.asMap().entries.map((entry) {
             final voucher = entry.value;
             return ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text(voucher['voucher_number'] ?? ''),
-              subtitle: Text('Discount: ${voucher['discount']}'),
+              subtitle: Text(context.tr('Discount: ${voucher['discount']}')),
               trailing: IconButton(
                 icon: const Icon(Icons.delete_outline, color: Colors.red),
                 onPressed: () => setState(() => _vouchers.removeAt(entry.key)),
@@ -376,6 +377,7 @@ class _AddSchemeScreenState extends State<AddSchemeScreen> {
     return DropdownButtonFormField<String>(
       value: _schemeTypeId,
       isExpanded: true,
+      menuMaxHeight: 350,
       decoration: _inputDecoration('Scheme Type', Icons.category_outlined),
       items: types.map((item) {
         final type = Map<String, dynamic>.from(item as Map);
@@ -484,7 +486,7 @@ class _AddSchemeScreenState extends State<AddSchemeScreen> {
         const SizedBox(height: 8),
         if (items.isEmpty)
           Text(
-            'All $title',
+            context.tr('All $title'),
             style: GoogleFonts.inter(
               color: const Color(0xFF64748B),
               fontSize: 13,

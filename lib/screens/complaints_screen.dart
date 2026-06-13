@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../providers/language_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
@@ -50,7 +51,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading complaints: $e')),
+          SnackBar(content: Text(context.tr('Error loading complaints: $e'))),
         );
       }
     } finally {
@@ -70,7 +71,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
             return AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               title: Text(
-                'Resolve Complaint',
+                context.tr('Resolve Complaint'),
                 style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
               ),
               content: Column(
@@ -78,7 +79,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'Enter resolution remarks/notes:',
+                    context.tr('Enter resolution remarks/notes:'),
                     style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade600),
                   ),
                   const SizedBox(height: 8),
@@ -86,7 +87,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                     controller: remarksController,
                     maxLines: 3,
                     decoration: InputDecoration(
-                      hintText: 'e.g. Pump repaired and tested. Working fine now.',
+                      hintText: context.tr('e.g. Pump repaired and tested. Working fine now.'),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                       contentPadding: const EdgeInsets.all(10),
                     ),
@@ -96,7 +97,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
               actions: [
                 TextButton(
                   onPressed: isSaving ? null : () => Navigator.pop(dialogCtx),
-                  child: Text('Cancel', style: GoogleFonts.inter(color: Colors.grey)),
+                  child: Text(context.tr('Cancel'), style: GoogleFonts.inter(color: Colors.grey)),
                 ),
                 ElevatedButton(
                   onPressed: isSaving
@@ -105,7 +106,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                           final remarks = remarksController.text.trim();
                           if (remarks.isEmpty) {
                             ScaffoldMessenger.of(dialogCtx).showSnackBar(
-                              const SnackBar(content: Text('Please enter resolution remarks')),
+                              SnackBar(content: Text(context.tr('Please enter resolution remarks'))),
                             );
                             return;
                           }
@@ -123,7 +124,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                               Navigator.pop(dialogCtx);
                               if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Complaint marked as resolved')),
+                                  SnackBar(content: Text(context.tr('Complaint marked as resolved'))),
                                 );
                               }
                               _loadData();
@@ -134,7 +135,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                             }
                           } catch (e) {
                             ScaffoldMessenger.of(dialogCtx).showSnackBar(
-                              SnackBar(content: Text('Error: $e')),
+                              SnackBar(content: Text(context.tr('Error: $e'))),
                             );
                           } finally {
                             setDialogState(() => isSaving = false);
@@ -151,7 +152,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                           width: 16,
                           child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                         )
-                      : Text('Resolve', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                      : Text(context.tr('Resolve'), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
                 ),
               ],
             );
@@ -198,7 +199,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Create Complaint',
+                        context.tr('Create Complaint'),
                         style: GoogleFonts.inter(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -216,7 +217,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
 
                   // Complaint Type
                   Text(
-                    'Complaint Type',
+                    context.tr('Complaint Type'),
                     style: GoogleFonts.inter(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -236,7 +237,8 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                           child: DropdownButtonHideUnderline(
                             child: DropdownButton<String>(
                               isExpanded: true,
-                              hint: const Text('Select Complaint Type'),
+                              menuMaxHeight: 350,
+                              hint: Text(context.tr('Select Complaint Type')),
                               value: localSelectedTypeId,
                               items: _complaintTypes.map<DropdownMenuItem<String>>((t) {
                                 return DropdownMenuItem<String>(
@@ -271,7 +273,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
 
                   // Priority Segment control
                   Text(
-                    'Priority Level',
+                    context.tr('Priority Level'),
                     style: GoogleFonts.inter(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -323,7 +325,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
 
                   // Complaint Description
                   Text(
-                    'Complaint Details',
+                    context.tr('Complaint Details'),
                     style: GoogleFonts.inter(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -335,7 +337,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                     controller: descController,
                     maxLines: 4,
                     decoration: InputDecoration(
-                      hintText: 'Describe the issue or complaint in detail...',
+                      hintText: context.tr('Describe the issue or complaint in detail...'),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -350,13 +352,13 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                         : () async {
                             if (localSelectedTypeId == null) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Please select complaint type')),
+                                SnackBar(content: Text(context.tr('Please select complaint type'))),
                               );
                               return;
                             }
                             if (descController.text.trim().isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Please enter complaint description')),
+                                SnackBar(content: Text(context.tr('Please enter complaint description'))),
                               );
                               return;
                             }
@@ -373,7 +375,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                                 Navigator.pop(context);
                                 _loadData();
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Complaint created successfully')),
+                                  SnackBar(content: Text(context.tr('Complaint created successfully'))),
                                 );
                               } else {
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -382,7 +384,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                               }
                             } catch (e) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Error: $e')),
+                                SnackBar(content: Text(context.tr('Error: $e'))),
                               );
                             } finally {
                               setModalState(() => isSaving = false);
@@ -403,7 +405,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                             child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                           )
                         : Text(
-                            'Submit Complaint',
+                            context.tr('Submit Complaint'),
                             style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14),
                           ),
                   ),
@@ -430,7 +432,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
             return AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               title: Text(
-                'Add Complaint Type',
+                context.tr('Add Complaint Type'),
                 style: GoogleFonts.inter(fontWeight: FontWeight.bold),
               ),
               content: Column(
@@ -438,14 +440,14 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'Complaint Type Name',
+                    context.tr('Complaint Type Name'),
                     style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade600),
                   ),
                   const SizedBox(height: 6),
                   TextField(
                     controller: typeNameController,
                     decoration: InputDecoration(
-                      hintText: 'e.g. Water Supply Issue',
+                      hintText: context.tr('e.g. Water Supply Issue'),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     ),
@@ -455,7 +457,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
               actions: [
                 TextButton(
                   onPressed: isSaving ? null : () => Navigator.pop(dialogCtx),
-                  child: Text('Cancel', style: GoogleFonts.inter(color: Colors.grey)),
+                  child: Text(context.tr('Cancel'), style: GoogleFonts.inter(color: Colors.grey)),
                 ),
                 ElevatedButton(
                   onPressed: isSaving
@@ -464,7 +466,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                           final name = typeNameController.text.trim();
                           if (name.isEmpty) {
                             ScaffoldMessenger.of(dialogCtx).showSnackBar(
-                              const SnackBar(content: Text('Please enter a type name')),
+                              SnackBar(content: Text(context.tr('Please enter a type name'))),
                             );
                             return;
                           }
@@ -480,7 +482,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                             }
                           } catch (e) {
                             ScaffoldMessenger.of(dialogCtx).showSnackBar(
-                              SnackBar(content: Text('Error: $e')),
+                              SnackBar(content: Text(context.tr('Error: $e'))),
                             );
                           } finally {
                             setDialogState(() => isSaving = false);
@@ -497,7 +499,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                           width: 16,
                           child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                         )
-                      : Text('Add', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                      : Text(context.tr('Add'), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
                 ),
               ],
             );
@@ -681,7 +683,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                     ),
                   ),
                   child: Text(
-                    'Resolve',
+                    context.tr('Resolve'),
                     style: GoogleFonts.inter(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -714,7 +716,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
       backgroundColor: const Color(0xFFF1F5F9),
       appBar: AppBar(
         title: Text(
-          'Complaints',
+          context.tr('Complaints'),
           style: GoogleFonts.inter(fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.white,
@@ -730,7 +732,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
               child: Row(
                 children: [
                   Text(
-                    'Filter by Branch: ',
+                    context.tr('Filter by Branch: '),
                     style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
                   ),
                   const SizedBox(width: 8),
@@ -745,6 +747,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                         child: DropdownButton<String>(
                           value: _selectedBranch,
                           isExpanded: true,
+                          menuMaxHeight: 350,
                           items: _branches.map((b) {
                             return DropdownMenuItem<String>(
                               value: b,
@@ -788,7 +791,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                                     ),
                                     const SizedBox(height: 16),
                                     Text(
-                                      'No Complaints found',
+                                      context.tr('No Complaints found'),
                                       style: GoogleFonts.inter(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
@@ -797,7 +800,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'Swipe down to check for updates.',
+                                      context.tr('Swipe down to check for updates.'),
                                       style: GoogleFonts.inter(
                                         fontSize: 12,
                                         color: Colors.grey.shade400,
@@ -826,7 +829,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
               backgroundColor: const Color(0xFF000080),
               icon: const Icon(Icons.add, color: Colors.white),
               label: Text(
-                'Add Complaint',
+                context.tr('Add Complaint'),
                 style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white),
               ),
             )

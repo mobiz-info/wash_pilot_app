@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../providers/language_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
@@ -156,7 +157,7 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Close', style: GoogleFonts.inter(color: Colors.grey)),
+            child: Text(context.tr('Close'), style: GoogleFonts.inter(color: Colors.grey)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -215,7 +216,7 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open WhatsApp.'), backgroundColor: Colors.red),
+          SnackBar(content: Text(context.tr('Could not open WhatsApp.')), backgroundColor: Colors.red),
         );
       }
     }
@@ -226,7 +227,7 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
       appBar: AppBar(
-        title: Text('Bookings', style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+        title: Text(context.tr('Bookings'), style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
         backgroundColor: const Color(0xFF000080),
         foregroundColor: Colors.white,
         elevation: 0,
@@ -272,7 +273,7 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
                   Icon(Icons.calendar_month, size: 16, color: Colors.grey.shade500),
                   const SizedBox(width: 8),
                   Text(
-                    '${_bookings.length} booking${_bookings.length == 1 ? '' : 's'}',
+                    context.tr('${_bookings.length} booking${_bookings.length == 1 ? '' : 's'}'),
                     style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: Colors.grey.shade700, fontSize: 13),
                   ),
                 ],
@@ -568,8 +569,8 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
         children: [
           Icon(Icons.calendar_today_outlined, size: 80, color: Colors.grey.shade200),
           const SizedBox(height: 16),
-          Text('No bookings found', style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 16, fontWeight: FontWeight.w600)),
-          Text('for the selected date range.', style: GoogleFonts.inter(color: Colors.grey.shade400, fontSize: 13)),
+          Text(context.tr('No bookings found'), style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 16, fontWeight: FontWeight.w600)),
+          Text(context.tr('for the selected date range.'), style: GoogleFonts.inter(color: Colors.grey.shade400, fontSize: 13)),
         ],
       ),
     );

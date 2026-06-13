@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import '../providers/language_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
@@ -359,7 +360,7 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        SnackBar(content: Text(context.tr('Error: $e')), backgroundColor: Colors.red),
       );
     }
   }
@@ -391,7 +392,7 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
         backgroundColor: const Color(0xFF000080),
         foregroundColor: Colors.white,
         title: Text(
-          'Receipts',
+          context.tr('Receipts'),
           style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 18),
         ),
         actions: [
@@ -456,7 +457,7 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
             child: TextField(
               onChanged: (value) => setState(() => _search = value),
               decoration: InputDecoration(
-                hintText: 'Search receipt, customer, invoice or vehicle',
+                hintText: context.tr('Search receipt, customer, invoice or vehicle'),
                 hintStyle: GoogleFonts.inter(
                   fontSize: 13,
                   color: const Color(0xFF94A3B8),
@@ -502,7 +503,7 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: _fetchReceipts,
-                      child: const Text('Retry'),
+                      child: Text(context.tr('Retry')),
                     ),
                   ],
                 ),
@@ -558,7 +559,7 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Total Collected',
+                    context.tr('Total Collected'),
                     style: GoogleFonts.inter(
                       fontWeight: FontWeight.w700,
                       color: const Color(0xFF64748B),
@@ -566,7 +567,7 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
                     ),
                   ),
                   Text(
-                    '₹${_totalCollected.toStringAsFixed(2)}',
+                    context.tr('₹${_totalCollected.toStringAsFixed(2)}'),
                     style: GoogleFonts.inter(
                       fontWeight: FontWeight.w900,
                       color: Colors.green.shade700,
@@ -585,6 +586,7 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
     return DropdownButtonFormField<String>(
       value: _selectedBranchId,
       isExpanded: true,
+      menuMaxHeight: 350,
       decoration: InputDecoration(
         filled: true,
         fillColor: Colors.white,
@@ -597,9 +599,9 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
           borderSide: BorderSide.none,
         ),
       ),
-      hint: const Text('All branches'),
+      hint: Text(context.tr('All branches')),
       items: [
-        const DropdownMenuItem<String>(value: '', child: Text('All branches')),
+        DropdownMenuItem<String>(value: '', child: Text(context.tr('All branches'))),
         ..._branches.map((branch) {
           final item = Map<String, dynamic>.from(branch as Map);
           return DropdownMenuItem<String>(
@@ -711,7 +713,7 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '$customerName • $customerPhone',
+                        context.tr('$customerName • $customerPhone'),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.inter(
@@ -733,7 +735,7 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
                     border: Border.all(color: Colors.green.shade200),
                   ),
                   child: Text(
-                    '₹${_formatAmount(receipt['amount'])}',
+                    context.tr('₹${_formatAmount(receipt['amount'])}'),
                     style: GoogleFonts.inter(
                       fontWeight: FontWeight.w900,
                       fontSize: 15,
@@ -766,7 +768,7 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
                 onPressed: () => _shareReceipt(receipt),
                 icon: const Icon(Icons.share, size: 18),
                 label: Text(
-                  'Share Receipt',
+                  context.tr('Share Receipt'),
                   style: GoogleFonts.inter(fontWeight: FontWeight.bold),
                 ),
                 style: ElevatedButton.styleFrom(

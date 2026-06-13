@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import 'providers/auth_provider.dart';
 import 'providers/customer_provider.dart';
+import 'providers/language_provider.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/menu_screen.dart';
 import 'screens/login_screen.dart';
+import 'services/api_service.dart';
 
 void main() {
   runApp(
@@ -16,6 +19,7 @@ void main() {
           create: (_) => AuthProvider()..checkAuthStatus(),
         ),
         ChangeNotifierProvider(create: (_) => CustomerProvider()),
+        ChangeNotifierProvider(create: (_) => LanguageProvider()),
       ],
       child: const CarWashApp(),
     ),
@@ -27,9 +31,25 @@ class CarWashApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final languageProvider = context.watch<LanguageProvider>();
+
     return MaterialApp(
-      title: 'Car Wash Admin',
+      title: ApiService.appName,
       debugShowCheckedModeBanner: false,
+      locale: languageProvider.locale,
+      supportedLocales: const [
+        Locale('en', 'US'),
+        Locale('hi', 'IN'),
+        Locale('ml', 'IN'),
+        Locale('ar', 'AE'),
+        Locale('ur', 'PK'),
+        Locale('bn', 'BD'),
+      ],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       theme: ThemeData(
         scaffoldBackgroundColor: const Color(
           0xFFF8FAFC,
@@ -82,12 +102,12 @@ class _MainScreenState extends State<MainScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        title: const Text('Exit App'),
-        content: const Text('Do you want to close the app?'),
+        title: Text(context.translate('exit_app')),
+        content: Text(context.translate('exit_confirm')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(context.translate('cancel')),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -95,7 +115,7 @@ class _MainScreenState extends State<MainScreen> {
               backgroundColor: const Color(0xFF000080),
               foregroundColor: Colors.white,
             ),
-            child: const Text('Exit'),
+            child: Text(context.translate('exit')),
           ),
         ],
       ),
@@ -129,16 +149,16 @@ class _MainScreenState extends State<MainScreen> {
             },
             backgroundColor: Colors.white,
             elevation: 0,
-            items: const [
+            items: [
               BottomNavigationBarItem(
-                icon: Icon(Icons.dashboard_outlined),
-                activeIcon: Icon(Icons.dashboard),
-                label: 'Dashboard',
+                icon: const Icon(Icons.dashboard_outlined),
+                activeIcon: const Icon(Icons.dashboard),
+                label: context.translate('dashboard'),
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.grid_view_outlined),
-                activeIcon: Icon(Icons.grid_view),
-                label: 'Menu',
+                icon: const Icon(Icons.grid_view_outlined),
+                activeIcon: const Icon(Icons.grid_view),
+                label: context.translate('menu'),
               ),
             ],
           ),

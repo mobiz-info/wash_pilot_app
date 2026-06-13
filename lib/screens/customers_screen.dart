@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../providers/language_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -403,7 +404,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
           if (_selectedCustomer == null && isBranch)
             IconButton(
               icon: const Icon(Icons.person_add_alt_1),
-              tooltip: 'Add Customer',
+              tooltip: context.tr('Add Customer'),
               onPressed: () async {
                 final added = await Navigator.push(
                   context,
@@ -445,7 +446,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
           ElevatedButton.icon(
               onPressed: _fetchCustomers,
               icon: const Icon(Icons.refresh),
-              label: const Text('Retry')),
+              label: Text(context.tr('Retry'))),
         ],
       ));
     }
@@ -654,7 +655,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
             controller: _searchController,
             style: GoogleFonts.inter(color: Colors.white),
             decoration: InputDecoration(
-              hintText: 'Search by name or phone…',
+              hintText: context.tr('Search by name or phone…'),
               hintStyle: GoogleFonts.inter(color: Colors.white60),
               prefixIcon: const Icon(Icons.search, color: Colors.white70),
               suffixIcon: _searchController.text.isNotEmpty
@@ -823,7 +824,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                     Icon(Icons.directions_car, size: 13, color: Colors.grey.shade500),
                     const SizedBox(width: 3),
                     Text(
-                        '${c['vehicle_count']} vehicle${(c['vehicle_count'] as int) != 1 ? "s" : ""}',
+                        context.tr('${c['vehicle_count']} vehicle${(c['vehicle_count'] as int) != 1 ? "s" : ""}'),
                         style: GoogleFonts.inter(
                             fontSize: 12, color: Colors.grey.shade500)),
                   ]),
@@ -901,7 +902,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
               _buildTextField(_addressController, 'Address', Icons.location_on_outlined,
                   maxLines: 2),
               const SizedBox(height: 14),
-              Text('Customer Type *',
+              Text(context.tr('Customer Type *'),
                   style: GoogleFonts.inter(
                       fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
               const SizedBox(height: 6),
@@ -914,6 +915,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<Map<String, dynamic>>(
                     isExpanded: true,
+                    menuMaxHeight: 350,
                     value: _selectedCustomerType,
                     items: _customerTypes
                         .map((ct) => DropdownMenuItem<Map<String, dynamic>>(
@@ -937,13 +939,13 @@ class _CustomersScreenState extends State<CustomersScreen> {
             trailing: TextButton.icon(
               onPressed: _addNewVehicleRow,
               icon: const Icon(Icons.add, size: 18),
-              label: const Text('Add New'),
+              label: Text(context.tr('Add New')),
               style: TextButton.styleFrom(foregroundColor: const Color(0xFF000080)),
             ),
             children: [
               if (_existingVehicleRows.isEmpty && _newVehicleRows.isEmpty)
                 Center(
-                    child: Text('No vehicles registered.',
+                    child: Text(context.tr('No vehicles registered.'),
                         style: GoogleFonts.inter(color: Colors.grey.shade500))),
 
               // Existing
@@ -972,7 +974,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                     height: 20,
                     width: 20,
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : Text('Save Changes',
+                : Text(context.tr('Save Changes'),
                     style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold)),
           ),
           const SizedBox(height: 20),
@@ -1024,7 +1026,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
             ),
           ]),
           const SizedBox(height: 12),
-          Text('Vehicle Model',
+          Text(context.tr('Vehicle Model'),
               style: GoogleFonts.inter(
                   fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
           const SizedBox(height: 6),
@@ -1037,15 +1039,16 @@ class _CustomersScreenState extends State<CustomersScreen> {
             child: DropdownButtonHideUnderline(
               child: DropdownButton<Map<String, dynamic>>(
                 isExpanded: true,
+                menuMaxHeight: 350,
                 value: row['model'],
-                hint: const Text('Select model...'),
+                hint: Text(context.tr('Select model...')),
                 items: _buildGroupedDropdownItems(),
                 onChanged: (val) => setState(() => rows[index]['model'] = val),
               ),
             ),
           ),
           const SizedBox(height: 10),
-          Text('Vehicle Number',
+          Text(context.tr('Vehicle Number'),
               style: GoogleFonts.inter(
                   fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
           const SizedBox(height: 6),
@@ -1053,7 +1056,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
             controller: row['controller'] as TextEditingController,
             textCapitalization: TextCapitalization.characters,
             decoration: InputDecoration(
-              hintText: 'e.g. KL 01 AB 1234',
+              hintText: context.tr('e.g. KL 01 AB 1234'),
               border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
               enabledBorder: OutlineInputBorder(

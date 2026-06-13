@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../providers/language_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
@@ -284,7 +285,7 @@ class _SchemesScreenState extends State<SchemesScreen> {
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: _fetchSchemes,
-                  child: const Text('Retry'),
+                  child: Text(context.tr('Retry')),
                 ),
               ],
             ),
@@ -301,7 +302,7 @@ class _SchemesScreenState extends State<SchemesScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'No schemes available',
+                  context.tr('No schemes available'),
                   style: GoogleFonts.inter(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,

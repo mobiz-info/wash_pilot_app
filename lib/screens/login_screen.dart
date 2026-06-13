@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../providers/language_provider.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../services/api_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -27,7 +29,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (username.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter username and password'), backgroundColor: Colors.red),
+        SnackBar(content: Text(context.tr('Please enter username and password')), backgroundColor: Colors.red),
       );
       return;
     }
@@ -58,10 +60,18 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.local_car_wash, size: 80, color: Colors.white),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.asset(
+                    ApiService.appIconPath,
+                    width: 100,
+                    height: 80,
+                    fit: BoxFit.cover,
+                  ),
+                ),
                 const SizedBox(height: 16),
-                const Text(
-                  'Mobiz Car Wash',
+                Text(
+                  ApiService.appName,
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
@@ -84,8 +94,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   child: Column(
                     children: [
-                      const Text(
-                        'Admin Login',
+                      Text(
+                        context.tr('Login'),
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -96,7 +106,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       TextField(
                         controller: _usernameController,
                         decoration: InputDecoration(
-                          hintText: 'Username',
+                          hintText: context.tr('Username'),
                           prefixIcon: const Icon(Icons.person_outline),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -113,7 +123,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         controller: _passwordController,
                         obscureText: true,
                         decoration: InputDecoration(
-                          hintText: 'Password',
+                          hintText: context.tr('Password'),
                           prefixIcon: const Icon(Icons.lock_outline),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -144,7 +154,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   width: 24,
                                   child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                                 )
-                              : const Text('Login', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                              : Text(context.tr('Login'), style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                         ),
                       ),
                     ],

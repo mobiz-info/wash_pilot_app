@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../providers/language_provider.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
@@ -177,8 +178,8 @@ class _CollectionScreenState extends State<CollectionScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Collect Payment',
+                  Text(
+                    context.tr('Collect Payment'),
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
@@ -193,7 +194,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Invoice #${inv['invoice_number']}',
+                context.tr('Invoice #${inv['invoice_number']}'),
                 style: const TextStyle(fontSize: 13, color: Color(0xFF64748b)),
               ),
               const SizedBox(height: 16),
@@ -211,8 +212,8 @@ class _CollectionScreenState extends State<CollectionScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Outstanding Balance',
+                    Text(
+                      context.tr('Outstanding Balance'),
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -220,7 +221,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                       ),
                     ),
                     Text(
-                      '$currencySymbol${outstanding.toStringAsFixed(2)}',
+                      context.tr('$currencySymbol${outstanding.toStringAsFixed(2)}'),
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w900,
@@ -232,7 +233,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Amount to Collect ($currencySymbol)',
+                context.tr('Amount to Collect ($currencySymbol)'),
                 style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -251,7 +252,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                 ),
                 decoration: InputDecoration(
                   prefixText: '$currencySymbol ',
-                  hintText: '0.00',
+                  hintText: context.tr('0.00'),
                   filled: true,
                   fillColor: const Color(0xFFf8fafc),
                   border: OutlineInputBorder(
@@ -290,8 +291,8 @@ class _CollectionScreenState extends State<CollectionScreen> {
                               );
                               if (amt == null || amt <= 0) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Enter a valid amount'),
+                                  SnackBar(
+                                    content: Text(context.tr('Enter a valid amount')),
                                     backgroundColor: Colors.red,
                                   ),
                                 );
@@ -301,7 +302,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text(
-                                      'Amount exceeds outstanding $currencySymbol${outstanding.toStringAsFixed(2)}',
+                                      context.tr('Amount exceeds outstanding $currencySymbol${outstanding.toStringAsFixed(2)}'),
                                     ),
                                     backgroundColor: Colors.red,
                                   ),
@@ -347,7 +348,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                                 Navigator.pop(context);
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text('Error: $e'),
+                                    content: Text(context.tr('Error: $e')),
                                     backgroundColor: Colors.red,
                                   ),
                                 );
@@ -362,8 +363,8 @@ class _CollectionScreenState extends State<CollectionScreen> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Text(
-                              'Confirm Collection',
+                          : Text(
+                              context.tr('Confirm Collection'),
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
@@ -391,8 +392,8 @@ class _CollectionScreenState extends State<CollectionScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF000080),
         foregroundColor: Colors.white,
-        title: const Text(
-          'Outstanding',
+        title: Text(
+          context.tr('Outstanding'),
           style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
         ),
         actions: [
@@ -458,7 +459,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
             child: TextField(
               onChanged: (v) => setState(() => _search = v),
               decoration: InputDecoration(
-                hintText: 'Search by customer, phone or invoice #',
+                hintText: context.tr('Search by customer, phone or invoice #'),
                 hintStyle: const TextStyle(
                   fontSize: 13,
                   color: Color(0xFF94a3b8),
@@ -505,7 +506,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: _fetchOutstanding,
-                      child: const Text('Retry'),
+                      child: Text(context.tr('Retry')),
                     ),
                   ],
                 ),
@@ -612,7 +613,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                                     ),
                                   ),
                                   child: Text(
-                                    '$currencySymbol${outstanding.toStringAsFixed(2)}',
+                                    context.tr('$currencySymbol${outstanding.toStringAsFixed(2)}'),
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w900,
                                       fontSize: 15,
@@ -661,7 +662,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                                       MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
-                                      'Collected: $currencySymbol${collected.toStringAsFixed(2)}',
+                                      context.tr('Collected: $currencySymbol${collected.toStringAsFixed(2)}'),
                                       style: const TextStyle(
                                         fontSize: 11,
                                         color: Color(0xFF16a34a),
@@ -669,7 +670,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                                       ),
                                     ),
                                     Text(
-                                      'Total: $currencySymbol${total.toStringAsFixed(2)}',
+                                      context.tr('Total: $currencySymbol${total.toStringAsFixed(2)}'),
                                       style: const TextStyle(
                                         fontSize: 11,
                                         color: Color(0xFF64748b),
@@ -701,8 +702,8 @@ class _CollectionScreenState extends State<CollectionScreen> {
                                   Icons.currency_rupee,
                                   size: 16,
                                 ),
-                                label: const Text(
-                                  'Collect Payment',
+                                label: Text(
+                                  context.tr('Collect Payment'),
                                   style: TextStyle(fontWeight: FontWeight.w700),
                                 ),
                                 style: ElevatedButton.styleFrom(
@@ -734,8 +735,8 @@ class _CollectionScreenState extends State<CollectionScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Total Outstanding',
+                  Text(
+                    context.tr('Total Outstanding'),
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
                       color: Color(0xFF64748b),
@@ -743,7 +744,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                     ),
                   ),
                   Text(
-                    '$currencySymbol${_totalOutstanding.toStringAsFixed(2)}',
+                    context.tr('$currencySymbol${_totalOutstanding.toStringAsFixed(2)}'),
                     style: const TextStyle(
                       fontWeight: FontWeight.w900,
                       color: Color(0xFFdc2626),
@@ -762,6 +763,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
     return DropdownButtonFormField<String>(
       value: _selectedBranchId,
       isExpanded: true,
+      menuMaxHeight: 350,
       decoration: InputDecoration(
         filled: true,
         fillColor: Colors.white,
@@ -774,9 +776,9 @@ class _CollectionScreenState extends State<CollectionScreen> {
           borderSide: BorderSide.none,
         ),
       ),
-      hint: const Text('All branches'),
+      hint: Text(context.tr('All branches')),
       items: [
-        const DropdownMenuItem<String>(value: '', child: Text('All branches')),
+        DropdownMenuItem<String>(value: '', child: Text(context.tr('All branches'))),
         ..._branches.map((branch) {
           final item = Map<String, dynamic>.from(branch as Map);
           return DropdownMenuItem<String>(

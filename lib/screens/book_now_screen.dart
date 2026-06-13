@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../providers/language_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
@@ -36,7 +37,7 @@ class _BookNowScreenState extends State<BookNowScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
       appBar: AppBar(
-        title: Text('Book Now', style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+        title: Text(context.tr('Book Now'), style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
         backgroundColor: const Color(0xFF000080),
         foregroundColor: Colors.white,
         elevation: 0,
@@ -55,7 +56,7 @@ class _BookNowScreenState extends State<BookNowScreen> {
                     keyboardType: TextInputType.phone,
                     style: GoogleFonts.inter(fontWeight: FontWeight.w500),
                     decoration: InputDecoration(
-                      hintText: 'Enter mobile number...',
+                      hintText: context.tr('Enter mobile number...'),
                       hintStyle: GoogleFonts.inter(color: Colors.grey.shade500),
                       filled: true,
                       fillColor: Colors.white,
@@ -108,7 +109,7 @@ class _BookNowScreenState extends State<BookNowScreen> {
                       children: [
                         Icon(Icons.calendar_today_outlined, size: 80, color: Colors.grey.shade300),
                         const SizedBox(height: 16),
-                        Text('Search a customer to book a slot', style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 15)),
+                        Text(context.tr('Search a customer to book a slot'), style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 15)),
                       ],
                     ),
                   );
@@ -156,7 +157,7 @@ class _BookNowScreenState extends State<BookNowScreen> {
                     const SizedBox(height: 20),
 
                     Text(
-                      'Select a Vehicle to Book',
+                      context.tr('Select a Vehicle to Book'),
                       style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15, color: Colors.grey.shade700),
                     ),
                     const SizedBox(height: 12),
@@ -169,7 +170,7 @@ class _BookNowScreenState extends State<BookNowScreen> {
 
                     if (vehicles.isEmpty)
                       Center(
-                        child: Text('No vehicles found for this customer.', style: GoogleFonts.inter(color: Colors.grey)),
+                        child: Text(context.tr('No vehicles found for this customer.'), style: GoogleFonts.inter(color: Colors.grey)),
                       ),
                   ],
                 );
@@ -218,22 +219,22 @@ class _VehicleBookingCard extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Confirm Booking', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+        title: Text(context.tr('Confirm Booking'), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _confirmRow(Icons.directions_car, 'Vehicle', vehicle['no']),
+            _confirmRow(context, Icons.directions_car, 'Vehicle', vehicle['no']),
             const SizedBox(height: 8),
-            _confirmRow(Icons.calendar_today, 'Date', '${picked.day}/${picked.month}/${picked.year}'),
+            _confirmRow(context, Icons.calendar_today, 'Date', '${picked.day}/${picked.month}/${picked.year}'),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(context.tr('Cancel'))),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000080), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-            child: const Text('Book'),
+            child: Text(context.tr('Book')),
           ),
         ],
       ),
@@ -260,12 +261,12 @@ class _VehicleBookingCard extends StatelessWidget {
     );
   }
 
-  Widget _confirmRow(IconData icon, String label, String value) {
+  Widget _confirmRow(BuildContext context, IconData icon, String label, String value) {
     return Row(
       children: [
         Icon(icon, size: 16, color: Colors.grey.shade500),
         const SizedBox(width: 8),
-        Text('$label: ', style: GoogleFonts.inter(color: Colors.grey.shade600, fontSize: 13)),
+        Text(context.tr('$label: '), style: GoogleFonts.inter(color: Colors.grey.shade600, fontSize: 13)),
         Text(value, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13)),
       ],
     );
@@ -304,7 +305,12 @@ class _VehicleBookingCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(vehicle['no'], style: GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w800, color: const Color(0xFF1e293b), letterSpacing: 0.8)),
-                Text(vehicle['type'] ?? '', style: GoogleFonts.inter(color: Colors.grey.shade600, fontSize: 12)),
+                Text(
+                  (vehicle['vehicle_type'] != null && vehicle['vehicle_type'].toString().isNotEmpty)
+                      ? "${vehicle['vehicle_type']} - ${vehicle['type']}"
+                      : (vehicle['type'] ?? ''),
+                  style: GoogleFonts.inter(color: Colors.grey.shade600, fontSize: 12),
+                ),
                 if (hasScheme) ...[
                   const SizedBox(height: 4),
                   Row(
@@ -317,7 +323,7 @@ class _VehicleBookingCard extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(color: Colors.green.shade100, borderRadius: BorderRadius.circular(20)),
-                          child: Text('FREE', style: GoogleFonts.inter(fontSize: 10, color: Colors.green.shade800, fontWeight: FontWeight.bold)),
+                          child: Text(context.tr('FREE'), style: GoogleFonts.inter(fontSize: 10, color: Colors.green.shade800, fontWeight: FontWeight.bold)),
                         ),
                       ],
                     ],
@@ -337,7 +343,7 @@ class _VehicleBookingCard extends StatelessWidget {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               elevation: 0,
             ),
-            child: Text('Book Now', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13)),
+            child: Text(context.tr('Book Now'), style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13)),
           ),
         ],
       ),

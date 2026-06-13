@@ -2,10 +2,69 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
+  static const String appName = "Car Wash";
+  static const String appIconPath = "assets/icons/mobiz_logo_foreground.png";
   // Use 10.0.2.2 for Android Emulator, or your local IP if on a real device
-  static const String baseUrl = "http://172.20.10.5:8000/api";
+  static const String baseUrl = "http://10.54.237.238:8000/api";
+
+  static final Map<String, String> _modelToTypeMap = {};
+
+  static Future<void> ensureModelToTypeMap(String token) async {
+    if (_modelToTypeMap.isNotEmpty) return;
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/customer/form-data/'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode == 200) {
+        final res = jsonDecode(response.body);
+        if (res['success'] == true) {
+          final models = res['vehicle_models'] as List<dynamic>;
+          for (final m in models) {
+            final modelName = m['name'] as String;
+            final typeName = m['vehicle_type'] as String;
+            _modelToTypeMap[modelName] = typeName;
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  static Map<String, dynamic> _mapVehicleTypesInResponse(Map<String, dynamic> data) {
+    if (data['customer'] != null && data['customer']['vehicles'] != null) {
+      final vehicles = data['customer']['vehicles'] as List<dynamic>;
+      for (final v in vehicles) {
+        if (v is Map) {
+          final typeVal = v['vehicle_type']?.toString() ?? '';
+          if (typeVal.isEmpty) {
+            final modelName = (v['type'] ?? v['vehicle_model_name'] ?? '').toString();
+            if (modelName.isNotEmpty) {
+              v['vehicle_type'] = _modelToTypeMap[modelName] ?? '';
+            }
+          }
+        }
+      }
+    }
+    if (data['vehicle'] != null) {
+      final v = data['vehicle'];
+      if (v is Map) {
+        final typeVal = v['vehicle_type']?.toString() ?? '';
+        if (typeVal.isEmpty) {
+          final modelName = (v['model'] ?? '').toString();
+          if (modelName.isNotEmpty) {
+            v['vehicle_type'] = _modelToTypeMap[modelName] ?? '';
+          }
+        }
+      }
+    }
+    return data;
+  }
   // "http://10.17.6.238:8000/api";
   // 'http://68.183.94.11:78/api';
+  // http://172.20.10.5:8000/api
   // Update this to 'http://10.0.2.2:8000/api' if testing on Android Emulator
 
   static Future<Map<String, dynamic>> login(
@@ -32,6 +91,7 @@ class ApiService {
     String mobile,
     String token,
   ) async {
+    await ensureModelToTypeMap(token);
     final response = await http.get(
       Uri.parse('$baseUrl/customer/search/?mobile=$mobile'),
       headers: {
@@ -43,7 +103,7 @@ class ApiService {
     if (response.statusCode == 200 ||
         response.statusCode == 404 ||
         response.statusCode == 401) {
-      return jsonDecode(response.body);
+      return _mapVehicleTypesInResponse(jsonDecode(response.body));
     } else {
       throw Exception('Failed to connect to the server.');
     }
@@ -114,6 +174,7 @@ class ApiService {
     Map<String, dynamic> data,
     String token,
   ) async {
+    await ensureModelToTypeMap(token);
     final response = await http.post(
       Uri.parse('$baseUrl/customer/add/'),
       headers: {
@@ -125,7 +186,7 @@ class ApiService {
     if (response.statusCode == 200 ||
         response.statusCode == 400 ||
         response.statusCode == 401) {
-      return jsonDecode(response.body);
+      return _mapVehicleTypesInResponse(jsonDecode(response.body));
     } else {
       throw Exception('Failed to connect to the server.');
     }
@@ -157,6 +218,7 @@ class ApiService {
     String vehicleNumber,
     String token,
   ) async {
+    await ensureModelToTypeMap(token);
     final response = await http.get(
       Uri.parse('$baseUrl/vehicle/search/?vehicle_number=$vehicleNumber'),
       headers: {
@@ -167,7 +229,7 @@ class ApiService {
     if (response.statusCode == 200 ||
         response.statusCode == 404 ||
         response.statusCode == 401) {
-      return jsonDecode(response.body);
+      return _mapVehicleTypesInResponse(jsonDecode(response.body));
     } else {
       throw Exception('Failed to connect to the server.');
     }
@@ -490,6 +552,7 @@ class ApiService {
     String customerId,
     String token,
   ) async {
+    await ensureModelToTypeMap(token);
     final response = await http.get(
       Uri.parse('$baseUrl/customer/get/?customer_id=$customerId'),
       headers: {
@@ -501,7 +564,7 @@ class ApiService {
         response.statusCode == 400 ||
         response.statusCode == 404 ||
         response.statusCode == 401) {
-      return jsonDecode(response.body);
+      return _mapVehicleTypesInResponse(jsonDecode(response.body));
     } else {
       throw Exception('Failed to load customer.');
     }
@@ -627,6 +690,19 @@ class ApiService {
     branchId: branchId,
   );
 
+  static Future<Map<String, dynamic>> getServiceTypeReport(
+    String token,
+    String fromDate,
+    String toDate, {
+    String? branchId,
+  }) => _reportGet(
+    'reports/service-type/',
+    token,
+    fromDate,
+    toDate,
+    branchId: branchId,
+  );
+
   static Future<Map<String, dynamic>> listComplaintTypes(String token) async {
     final response = await http.get(
       Uri.parse('$baseUrl/complaint-types/'),
@@ -724,4 +800,396 @@ class ApiService {
       throw Exception('Failed to update complaint status.');
     }
   }
+
+  static Future<Map<String, dynamic>> getExpenseHeads(String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/expenses/heads/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load expense heads.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> createExpenseEntry(
+    String token,
+    Map<String, dynamic> data,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/expenses/create/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(data),
+    );
+    if (response.statusCode == 200 || response.statusCode == 400) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to create expense.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getStaffList(String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/staff/list/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load staff list.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getStaffLeaves(String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/staff/leaves/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load staff leaves.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> createStaffLeave(
+    String token,
+    Map<String, dynamic> data,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/staff/leaves/create/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(data),
+    );
+    if (response.statusCode == 200 || response.statusCode == 400) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to record staff leave.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getStockList(String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/stock/list/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load stock list.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getPurchaseRequests(String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/purchase-requests/list/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load purchase requests.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> createPurchaseRequest(
+    String token,
+    Map<String, dynamic> data,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/purchase-requests/create/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(data),
+    );
+    if (response.statusCode == 200 || response.statusCode == 400) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to submit purchase request.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> createExpenseHead(
+    String token,
+    String name,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/expenses/heads/create/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'name': name}),
+    );
+    if (response.statusCode == 200 || response.statusCode == 400) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to create expense head.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> createStock(
+    String token,
+    String itemName,
+    String unit, {
+    String? expenseHeadId,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/stock/create/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'item_name': itemName,
+        'unit': unit,
+        if (expenseHeadId != null) 'expense_head_id': expenseHeadId,
+      }),
+    );
+    if (response.statusCode == 200 || response.statusCode == 400) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to create stock item.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getExtrasList(String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/extras/list/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load extras list.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> createExtra(
+    String token,
+    String name,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/extras/create/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'name': name,
+      }),
+    );
+    if (response.statusCode == 200 || response.statusCode == 400) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to create extra item.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getExpenseHeadWiseReport(
+    String token,
+    String fromDate,
+    String toDate, {
+    String? branchId,
+  }) async {
+    final params = <String, String>{'from_date': fromDate, 'to_date': toDate};
+    if (branchId != null && branchId.isNotEmpty) {
+      params['branch_id'] = branchId;
+    }
+    final url = Uri.parse('$baseUrl/reports/expense-head-wise/').replace(queryParameters: params);
+    print('DEBUG getExpenseHeadWiseReport URL: $url');
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    print('DEBUG getExpenseHeadWiseReport STATUS: ${response.statusCode}');
+    print('DEBUG getExpenseHeadWiseReport BODY: ${response.body}');
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to load expense head report (status: ${response.statusCode}, body: ${response.body}).');
+  }
+
+  static Future<Map<String, dynamic>> getExpenseHeadDetailReport(
+    String token,
+    String expenseHeadId,
+    String fromDate,
+    String toDate, {
+    String? branchId,
+  }) async {
+    final params = <String, String>{
+      'expense_head_id': expenseHeadId,
+      'from_date': fromDate,
+      'to_date': toDate,
+    };
+    if (branchId != null && branchId.isNotEmpty) {
+      params['branch_id'] = branchId;
+    }
+    final url = Uri.parse('$baseUrl/reports/expense-head-wise/detail/').replace(queryParameters: params);
+    print('DEBUG getExpenseHeadDetailReport URL: $url');
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    print('DEBUG getExpenseHeadDetailReport STATUS: ${response.statusCode}');
+    print('DEBUG getExpenseHeadDetailReport BODY: ${response.body}');
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to load expense head detail report (status: ${response.statusCode}, body: ${response.body}).');
+  }
+
+  static Future<Map<String, dynamic>> getLeaveReport(
+    String token,
+    String fromDate,
+    String toDate, {
+    String? branchId,
+  }) async {
+    final params = <String, String>{'from_date': fromDate, 'to_date': toDate};
+    if (branchId != null && branchId.isNotEmpty) {
+      params['branch_id'] = branchId;
+    }
+    final url = Uri.parse('$baseUrl/reports/leave/').replace(queryParameters: params);
+    print('DEBUG getLeaveReport URL: $url');
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    print('DEBUG getLeaveReport STATUS: ${response.statusCode}');
+    print('DEBUG getLeaveReport BODY: ${response.body}');
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to load leave report (status: ${response.statusCode}, body: ${response.body}).');
+  }
+
+  static Future<Map<String, dynamic>> getServiceTypeDetailReport(
+    String token,
+    String serviceName,
+    String fromDate,
+    String toDate, {
+    String? branchId,
+    String? vehicleTypeId,
+    String? vehicleTypeModelId,
+  }) async {
+    final Map<String, String> params = {
+      'service_name': serviceName,
+      'from_date': fromDate,
+      'to_date': toDate,
+    };
+    if (branchId != null && branchId.isNotEmpty) {
+      params['branch_id'] = branchId;
+    }
+    if (vehicleTypeId != null && vehicleTypeId.isNotEmpty) {
+      params['vehicle_type_id'] = vehicleTypeId;
+    }
+    if (vehicleTypeModelId != null && vehicleTypeModelId.isNotEmpty) {
+      params['vehicle_type_model_id'] = vehicleTypeModelId;
+    }
+    final url = Uri.parse('$baseUrl/reports/service-type/detail/').replace(queryParameters: params);
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to load service type detail report.');
+  }
+
+  static Future<Map<String, dynamic>> getServiceTypeVehicleBreakdownReport(
+    String token,
+    String serviceName,
+    String fromDate,
+    String toDate, {
+    String? branchId,
+  }) async {
+    final Map<String, String> params = {
+      'service_name': serviceName,
+      'from_date': fromDate,
+      'to_date': toDate,
+    };
+    if (branchId != null && branchId.isNotEmpty) {
+      params['branch_id'] = branchId;
+    }
+    final url = Uri.parse('$baseUrl/reports/service-type/vehicle-breakdown/').replace(queryParameters: params);
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to load service type vehicle breakdown report.');
+  }
+
+  static Future<Map<String, dynamic>> getProfitLossReport(
+    String token,
+    String fromDate,
+    String toDate, {
+    String? branchId,
+  }) async {
+    final Map<String, String> params = {
+      'from_date': fromDate,
+      'to_date': toDate,
+    };
+    if (branchId != null && branchId.isNotEmpty) {
+      params['branch_id'] = branchId;
+    }
+    final url = Uri.parse('$baseUrl/reports/profit-loss/').replace(queryParameters: params);
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to load profit/loss report.');
+  }
 }
+

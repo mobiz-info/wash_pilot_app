@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../providers/language_provider.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pdf/pdf.dart';
@@ -130,7 +131,10 @@ class InvoiceViewScreen extends StatelessWidget {
                             style: pw.TextStyle(
                                 fontSize: 13,
                                 fontWeight: pw.FontWeight.bold)),
-                        pw.Text(vehicle['type'] ?? '',
+                        pw.Text(
+                            (vehicle['vehicle_type'] != null && vehicle['vehicle_type'].toString().isNotEmpty)
+                                ? "${vehicle['vehicle_type']} - ${vehicle['type']}"
+                                : (vehicle['type'] ?? ''),
                             style: const pw.TextStyle(
                                 fontSize: 11, color: PdfColors.grey700)),
                       ],
@@ -292,7 +296,7 @@ class InvoiceViewScreen extends StatelessWidget {
       print(e.toString());
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error generating PDF: $e')),
+          SnackBar(content: Text(context.tr('Error generating PDF: $e'))),
         );
       }
     }
@@ -353,7 +357,7 @@ class InvoiceViewScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: Text('Invoice Details',
+        title: Text(context.tr('Invoice Details'),
             style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
         backgroundColor: const Color(0xFF000080),
         foregroundColor: Colors.white,
@@ -361,7 +365,7 @@ class InvoiceViewScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.share),
             onPressed: () => _shareInvoice(context),
-            tooltip: 'Share Invoice PDF',
+            tooltip: context.tr('Share Invoice PDF'),
           ),
         ],
       ),
@@ -387,7 +391,7 @@ class InvoiceViewScreen extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('INVOICE',
+                  Text(context.tr('INVOICE'),
                       style: GoogleFonts.inter(
                           fontSize: 24,
                           fontWeight: FontWeight.w900,
@@ -401,7 +405,7 @@ class InvoiceViewScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: Colors.green.shade200),
                     ),
-                    child: Text('PAID',
+                    child: Text(context.tr('PAID'),
                         style: GoogleFonts.inter(
                             color: Colors.green.shade700,
                             fontWeight: FontWeight.bold,
@@ -426,7 +430,7 @@ class InvoiceViewScreen extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('BILLED TO',
+                      Text(context.tr('BILLED TO'),
                           style: GoogleFonts.inter(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
@@ -445,18 +449,21 @@ class InvoiceViewScreen extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text('VEHICLE',
+                      Text(context.tr('VEHICLE'),
                           style: GoogleFonts.inter(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
                               color: Colors.grey.shade500,
                               letterSpacing: 0.5)),
                       const SizedBox(height: 6),
-                      Text(vehicle['no'],
+                       Text(vehicle['no'],
                           style: GoogleFonts.inter(
                               fontWeight: FontWeight.w700, fontSize: 15)),
                       const SizedBox(height: 2),
-                      Text(vehicle['type'] ?? '',
+                      Text(
+                          (vehicle['vehicle_type'] != null && vehicle['vehicle_type'].toString().isNotEmpty)
+                              ? "${vehicle['vehicle_type']} - ${vehicle['type']}"
+                              : (vehicle['type'] ?? ''),
                           style: GoogleFonts.inter(
                               color: Colors.grey.shade600, fontSize: 13)),
                     ],
@@ -466,7 +473,7 @@ class InvoiceViewScreen extends StatelessWidget {
               const SizedBox(height: 28),
 
               // ── Services ─────────────────────────────────────────────────
-              Text('SERVICES',
+              Text(context.tr('SERVICES'),
                   style: GoogleFonts.inter(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
@@ -480,14 +487,14 @@ class InvoiceViewScreen extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 6),
                   child: Row(children: [
                     Expanded(
-                        child: Text('Service',
+                        child: Text(context.tr('Service'),
                             style: GoogleFonts.inter(
                                 fontSize: 11,
                                 color: Colors.grey.shade500,
                                 fontWeight: FontWeight.w600))),
                     SizedBox(
                         width: 68,
-                        child: Text('Rate',
+                        child: Text(context.tr('Rate'),
                             textAlign: TextAlign.right,
                             style: GoogleFonts.inter(
                                 fontSize: 11,
@@ -495,7 +502,7 @@ class InvoiceViewScreen extends StatelessWidget {
                                 fontWeight: FontWeight.w600))),
                     SizedBox(
                         width: 68,
-                        child: Text('Disc.',
+                        child: Text(context.tr('Disc.'),
                             textAlign: TextAlign.right,
                             style: GoogleFonts.inter(
                                 fontSize: 11,
@@ -503,7 +510,7 @@ class InvoiceViewScreen extends StatelessWidget {
                                 fontWeight: FontWeight.w600))),
                     SizedBox(
                         width: 76,
-                        child: Text('Net',
+                        child: Text(context.tr('Net'),
                             textAlign: TextAlign.right,
                             style: GoogleFonts.inter(
                                 fontSize: 11,
@@ -535,7 +542,7 @@ class InvoiceViewScreen extends StatelessWidget {
                           SizedBox(
                             width: 68,
                             child: Text(
-                              '$currencySymbol${_fmt(services[i]['rate'])}',
+                              context.tr('$currencySymbol${_fmt(services[i]['rate'])}'),
                               textAlign: TextAlign.right,
                               style: GoogleFonts.inter(
                                   fontSize: 13,
@@ -567,12 +574,12 @@ class InvoiceViewScreen extends StatelessWidget {
                           SizedBox(
                             width: 76,
                             child: Text(
-                              '$currencySymbol${_fmt(
+                              context.tr('$currencySymbol${_fmt(
                                 (services[i]['rate'] as num).toDouble() -
                                     ((services[i]['discount'] as num?)
                                             ?.toDouble() ??
                                         0),
-                              )}',
+                              )}'),
                               textAlign: TextAlign.right,
                               style: GoogleFonts.inter(
                                   fontWeight: FontWeight.w700,
@@ -590,7 +597,7 @@ class InvoiceViewScreen extends StatelessWidget {
                                     fontSize: 14,
                                     color: const Color(0xFF1e293b))),
                             Text(
-                              '$currencySymbol${_fmt(services[i]['rate'])}',
+                              context.tr('$currencySymbol${_fmt(services[i]['rate'])}'),
                               style: GoogleFonts.inter(
                                   fontWeight: FontWeight.w700,
                                   fontSize: 14,
@@ -645,10 +652,10 @@ class InvoiceViewScreen extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Total',
+                    Text(context.tr('Total'),
                         style: GoogleFonts.inter(
                             fontWeight: FontWeight.w800, fontSize: 17)),
-                    Text('$currencySymbol${invoiceData['total']}',
+                    Text(context.tr('$currencySymbol${invoiceData['total']}'),
                         style: GoogleFonts.inter(
                             fontWeight: FontWeight.w900,
                             fontSize: 20,
@@ -663,7 +670,7 @@ class InvoiceViewScreen extends StatelessWidget {
               ElevatedButton.icon(
                 onPressed: () => _shareInvoice(context),
                 icon: const Icon(Icons.picture_as_pdf_outlined),
-                label: Text('Share Invoice PDF',
+                label: Text(context.tr('Share Invoice PDF'),
                     style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF000080),
@@ -684,7 +691,7 @@ class InvoiceViewScreen extends StatelessWidget {
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
-                child: Text('Back to Dashboard',
+                child: Text(context.tr('Back to Dashboard'),
                     style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
               ),
             ],
