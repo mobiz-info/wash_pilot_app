@@ -5,7 +5,8 @@ class ApiService {
   static const String appName = "Car Wash";
   static const String appIconPath = "assets/icons/mobiz_logo_foreground.png";
   // Use 10.0.2.2 for Android Emulator, or your local IP if on a real device
-  static const String baseUrl = "http://10.54.237.238:8000/api";
+  // static const String baseUrl = "http://10.54.237.238:8000/api";
+  static const String baseUrl = "http://68.183.94.11:78/api";
 
   static final Map<String, String> _modelToTypeMap = {};
 
@@ -294,6 +295,26 @@ class ApiService {
         'Authorization': 'Bearer $token',
       },
       body: jsonEncode({'status': status}),
+    );
+    if (response.statusCode == 200 ||
+        response.statusCode == 400 ||
+        response.statusCode == 404) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to connect to the server.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> sendBookingReadyAlert(
+    String bookingId,
+    String token,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/booking/$bookingId/ready-alert/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
     );
     if (response.statusCode == 200 ||
         response.statusCode == 400 ||
@@ -664,6 +685,34 @@ class ApiService {
     branchId: branchId,
   );
 
+  static Future<Map<String, dynamic>> getDaywiseConsolidatedReport(
+    String token,
+    String type,
+    String fromDate,
+    String toDate, {
+    String? branchId,
+  }) async {
+    final params = <String, String>{
+      'type': type,
+      'from_date': fromDate,
+      'to_date': toDate,
+    };
+    if (branchId != null && branchId.isNotEmpty) {
+      params['branch_id'] = branchId;
+    }
+    final response = await http.get(
+      Uri.parse('$baseUrl/reports/daywise/').replace(queryParameters: params),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200 || response.statusCode == 401) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to load daywise report.');
+  }
+
   static Future<Map<String, dynamic>> getBookingReport(
     String token,
     String fromDate,
@@ -977,6 +1026,88 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> editExpenseHead(
+    String token,
+    String id,
+    String name,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/expenses/heads/edit/$id/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'name': name}),
+    );
+    if (response.statusCode == 200 || response.statusCode == 400) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to edit expense head.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> deleteExpenseHead(
+    String token,
+    String id,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/expenses/heads/delete/$id/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200 || response.statusCode == 400) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to delete expense head.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> editStock(
+    String token,
+    String id,
+    String itemName,
+    String unit, {
+    String? expenseHeadId,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/stock/edit/$id/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'item_name': itemName,
+        'unit': unit,
+        'expense_head_id': expenseHeadId,
+      }),
+    );
+    if (response.statusCode == 200 || response.statusCode == 400) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to edit stock item.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> deleteStock(
+    String token,
+    String id,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/stock/delete/$id/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200 || response.statusCode == 400) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to delete stock item.');
+    }
+  }
+
   static Future<Map<String, dynamic>> getExtrasList(String token) async {
     final response = await http.get(
       Uri.parse('$baseUrl/extras/list/'),
@@ -1190,6 +1321,224 @@ class ApiService {
       return jsonDecode(response.body);
     }
     throw Exception('Failed to load profit/loss report.');
+  }
+
+  // --- Booking Settings APIs ---
+
+  static Future<Map<String, dynamic>> getBookingSettings(
+    String token, {
+    String? branchId,
+  }) async {
+    String url = '$baseUrl/booking/settings/';
+    if (branchId != null && branchId.isNotEmpty) {
+      url += '?branch_id=$branchId';
+    }
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to load booking settings.');
+  }
+
+  static Future<Map<String, dynamic>> updateBookingSettings(
+    String token,
+    Map<String, dynamic> data,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/booking/settings/update/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(data),
+    );
+    if (response.statusCode == 200 || response.statusCode == 400 || response.statusCode == 403) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to update booking settings.');
+  }
+
+  // --- Holiday Calendar APIs ---
+
+  static Future<Map<String, dynamic>> getHolidays(
+    String token, {
+    String? branchId,
+  }) async {
+    String url = '$baseUrl/booking/holiday/list/';
+    if (branchId != null && branchId.isNotEmpty) {
+      url += '?branch_id=$branchId';
+    }
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to load holidays.');
+  }
+
+  static Future<Map<String, dynamic>> createHoliday(
+    String token,
+    Map<String, dynamic> data,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/booking/holiday/create/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(data),
+    );
+    if (response.statusCode == 200 || response.statusCode == 400 || response.statusCode == 403) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to create holiday.');
+  }
+
+  static Future<Map<String, dynamic>> deleteHoliday(
+    String token,
+    String id,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/booking/holiday/delete/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'id': id}),
+    );
+    if (response.statusCode == 200 || response.statusCode == 400 || response.statusCode == 404 || response.statusCode == 403) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to delete holiday.');
+  }
+
+  // --- Weekly Off Days APIs ---
+
+  static Future<Map<String, dynamic>> getWeeklyOffs(
+    String token, {
+    String? branchId,
+  }) async {
+    String url = '$baseUrl/booking/weekly-off/list/';
+    if (branchId != null && branchId.isNotEmpty) {
+      url += '?branch_id=$branchId';
+    }
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to load weekly offs.');
+  }
+
+  static Future<Map<String, dynamic>> createWeeklyOff(
+    String token,
+    Map<String, dynamic> data,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/booking/weekly-off/create/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(data),
+    );
+    if (response.statusCode == 200 || response.statusCode == 400 || response.statusCode == 403) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to create weekly off.');
+  }
+
+  static Future<Map<String, dynamic>> deleteWeeklyOff(
+    String token,
+    String id,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/booking/weekly-off/delete/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'id': id}),
+    );
+    if (response.statusCode == 200 || response.statusCode == 400 || response.statusCode == 404 || response.statusCode == 403) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to delete weekly off.');
+  }
+
+  // --- Booking Pause APIs ---
+
+  static Future<Map<String, dynamic>> getBookingPauses(
+    String token, {
+    String? branchId,
+  }) async {
+    String url = '$baseUrl/booking/pause/list/';
+    if (branchId != null && branchId.isNotEmpty) {
+      url += '?branch_id=$branchId';
+    }
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to load booking pauses.');
+  }
+
+  static Future<Map<String, dynamic>> createBookingPause(
+    String token,
+    Map<String, dynamic> data,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/booking/pause/create/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(data),
+    );
+    if (response.statusCode == 200 || response.statusCode == 400 || response.statusCode == 403) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to create booking pause.');
+  }
+
+  static Future<Map<String, dynamic>> deleteBookingPause(
+    String token,
+    String id,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/booking/pause/delete/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'id': id}),
+    );
+    if (response.statusCode == 200 || response.statusCode == 400 || response.statusCode == 404 || response.statusCode == 403) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to delete booking pause.');
   }
 }
 

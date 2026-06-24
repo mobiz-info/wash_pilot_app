@@ -317,7 +317,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
   // ── Save Invoice ─────────────────────────────────────────────────────────
   Future<void> _saveInvoice() async {
     if (_rows.isEmpty) {
-      _snack('Please select at least one service', isError: true);
+      _snack(context.tr('Please select at least one service'), isError: true);
       return;
     }
 
@@ -327,7 +327,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           row.selectedScheme!['scheme_type'] == 'Voucher' &&
           row.validatedVoucherId == null) {
         _snack(
-          'Please validate the voucher for "${row.serviceName}"',
+          '${context.tr('Please validate the voucher for')} "${context.tr(row.serviceName)}"',
           isError: true,
         );
         return;
@@ -533,7 +533,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
   // ── Service multi-select card ─────────────────────────────────────────────
   Widget _serviceSelectionCard() {
     return _card(
-      title: 'Select Services',
+      title: 'Select Service',
       badge: _rows.isEmpty ? null : '${_rows.length} selected',
       badgeColor: const Color(0xFF000080),
       child: _allServices.isEmpty
@@ -604,7 +604,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                name,
+                                context.tr(name),
                                 style: GoogleFonts.inter(
                                   fontWeight: FontWeight.w700,
                                   fontSize: 14,
@@ -615,7 +615,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                               ),
                               if (svc['service_type'] != null)
                                 Text(
-                                  svc['service_type'] as String,
+                                  context.tr(svc['service_type'] as String),
                                   style: GoogleFonts.inter(
                                     fontSize: 11,
                                     color: Colors.grey.shade500,
@@ -866,7 +866,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        scheme['name'] as String,
+                        context.tr(scheme['name'] as String),
                         style: GoogleFonts.inter(
                           fontWeight: FontWeight.w700,
                           fontSize: 13,
@@ -876,7 +876,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                         ),
                       ),
                       Text(
-                        scheme['description'] as String? ?? '',
+                        context.tr(scheme['description'] as String? ?? ''),
                         style: GoogleFonts.inter(
                           fontSize: 11,
                           color: Colors.grey.shade500,
@@ -1167,13 +1167,13 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
         children: [
           // Per-service lines
           for (final row in _rows) ...[
-            _summaryRow(row.serviceName, '$currencySymbol${row.rate.toStringAsFixed(2)}'),
+            _summaryRow(context.tr(row.serviceName), '$currencySymbol${row.rate.toStringAsFixed(2)}'),
             if (row.effectiveDiscount > 0) ...[
               const SizedBox(height: 4),
               _summaryRow(
                 row.selectedScheme != null
-                    ? '  Scheme Discount (${row.serviceName})'
-                    : '  Manual Discount (${row.serviceName})',
+                    ? '  ${context.tr('Scheme Discount')} (${context.tr(row.serviceName)})'
+                    : '  ${context.tr('Manual Discount')} (${context.tr(row.serviceName)})',
                 '-$currencySymbol${row.effectiveDiscount.toStringAsFixed(2)}',
                 valueColor: Colors.green,
               ),
@@ -1190,7 +1190,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           ],
           if (_rows.length > 1)
             _summaryRow(
-              'Services Subtotal',
+              context.tr('Services Subtotal'),
               '$currencySymbol${subtotal.toStringAsFixed(2)}',
               isBold: true,
             ),
@@ -1490,7 +1490,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               ],
               Expanded(
                 child: Text(
-                  title,
+                  context.tr(title),
                   style: GoogleFonts.inter(
                     fontWeight: FontWeight.w800,
                     fontSize: 14,

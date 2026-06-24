@@ -262,6 +262,251 @@ class _StockItemScreenState extends State<StockItemScreen> {
     }
   }
 
+  Future<void> _editStockItem(Map<String, dynamic> item) async {
+    final auth = context.read<AuthProvider>();
+    final token = auth.token;
+    if (token == null) return;
+
+    List<dynamic> expenseHeads = [];
+    try {
+      final headRes = await ApiService.getExpenseHeads(token);
+      if (headRes['success'] == true) {
+        expenseHeads = headRes['expense_heads'] ?? [];
+      }
+    } catch (_) {}
+
+    final nameController = TextEditingController(text: item['item_name']);
+    String selectedUnit = item['unit'] ?? 'Litre';
+    String? selectedExpenseHeadId = item['expense_head_id']?.toString();
+    final formKey = GlobalKey<FormState>();
+
+    final List<Map<String, String>> unitChoices = [
+      {'value': 'Litre', 'display': 'Litre (Ltr)'},
+      {'value': 'Millilitre', 'display': 'Millilitre (ml)'},
+      {'value': 'Kilogram', 'display': 'Kilogram (Kg)'},
+      {'value': 'Gram', 'display': 'Gram (g)'},
+      {'value': 'Piece', 'display': 'Piece (Pcs)'},
+      {'value': 'Box', 'display': 'Box'},
+      {'value': 'Packet', 'display': 'Packet'},
+      {'value': 'Bottle', 'display': 'Bottle'},
+      {'value': 'Can', 'display': 'Can'},
+      {'value': 'Roll', 'display': 'Roll'},
+    ];
+
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (ctx) {
+        bool isSaving = false;
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Text(
+                context.tr('Edit Stock Item'),
+                style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: const Color(0xFF000080)),
+              ),
+              content: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: nameController,
+                        autofocus: true,
+                        decoration: InputDecoration(
+                          labelText: context.tr('Item Name *'),
+                          labelStyle: GoogleFonts.inter(),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return context.tr('Please enter item name');
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        value: selectedUnit,
+                        decoration: InputDecoration(
+                          labelText: context.tr('Unit *'),
+                          labelStyle: GoogleFonts.inter(),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        items: unitChoices.map((u) {
+                          return DropdownMenuItem<String>(
+                            value: u['value'],
+                            child: Text(context.tr(u['display']!)),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            selectedUnit = val;
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        value: selectedExpenseHeadId,
+                        decoration: InputDecoration(
+                          labelText: context.tr('Expense Head'),
+                          labelStyle: GoogleFonts.inter(),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        hint: Text(context.tr('Select Expense Head')),
+                        isExpanded: true,
+                        items: [
+                          DropdownMenuItem<String>(
+                            value: null,
+                            child: Text(context.tr('None')),
+                          ),
+                          ...expenseHeads.map((h) {
+                            final head = Map<String, dynamic>.from(h as Map);
+                            return DropdownMenuItem<String>(
+                              value: head['id']?.toString(),
+                              child: Text(head['name'] ?? ''),
+                            );
+                          }).toList(),
+                        ],
+                        onChanged: (val) {
+                          setDialogState(() {
+                            selectedExpenseHeadId = val;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSaving ? null : () => Navigator.pop(context),
+                  child: Text(context.tr('Cancel'), style: GoogleFonts.inter(color: Colors.grey)),
+                ),
+                ElevatedButton(
+                  onPressed: isSaving
+                      ? null
+                      : () async {
+                          if (formKey.currentState!.validate()) {
+                            setDialogState(() => isSaving = true);
+                            try {
+                              final res = await ApiService.editStock(
+                                token,
+                                item['id'],
+                                nameController.text.trim(),
+                                selectedUnit,
+                                expenseHeadId: selectedExpenseHeadId,
+                              );
+                              if (res['success'] == true && res['stock'] != null) {
+                                Navigator.pop(context, Map<String, dynamic>.from(res['stock']));
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(res['message'] ?? context.tr('Failed to update stock item')),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                                setDialogState(() => isSaving = false);
+                              }
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+                              );
+                              setDialogState(() => isSaving = false);
+                            }
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF000080),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: isSaving
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : Text(context.tr('Save')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (result != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.tr('Stock item updated successfully!')),
+          backgroundColor: Colors.green,
+        ),
+      );
+      _fetchStocks();
+    }
+  }
+
+  Future<void> _deleteStockItem(Map<String, dynamic> item) async {
+    final auth = context.read<AuthProvider>();
+    final token = auth.token;
+    if (token == null) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(context.tr('Delete Stock Item')),
+        content: Text('${context.tr('Are you sure you want to delete')} "${item['item_name']}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(context.tr('Cancel'), style: const TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(context.tr('Delete'), style: const TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      setState(() {
+        _isLoading = true;
+      });
+      try {
+        final res = await ApiService.deleteStock(token, item['id']);
+        if (res['success'] == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(context.tr('Stock item deleted successfully!')),
+              backgroundColor: Colors.green,
+            ),
+          );
+          _fetchStocks();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(res['message'] ?? context.tr('Failed to delete stock item')),
+              backgroundColor: Colors.red,
+            ),
+          );
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        );
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -392,6 +637,38 @@ class _StockItemScreenState extends State<StockItemScreen> {
                                           ),
                                         ),
                                       ],
+                                    ],
+                                  ),
+                                  trailing: PopupMenuButton<String>(
+                                    icon: const Icon(Icons.more_vert, color: Colors.grey),
+                                    onSelected: (value) {
+                                      if (value == 'edit') {
+                                        _editStockItem(item);
+                                      } else if (value == 'delete') {
+                                        _deleteStockItem(item);
+                                      }
+                                    },
+                                    itemBuilder: (context) => [
+                                      PopupMenuItem(
+                                        value: 'edit',
+                                        child: Row(
+                                          children: [
+                                            const Icon(Icons.edit, size: 18, color: Colors.blue),
+                                            const SizedBox(width: 8),
+                                            Text(context.tr('Edit'), style: GoogleFonts.inter()),
+                                          ],
+                                        ),
+                                      ),
+                                      PopupMenuItem(
+                                        value: 'delete',
+                                        child: Row(
+                                          children: [
+                                            const Icon(Icons.delete, size: 18, color: Colors.red),
+                                            const SizedBox(width: 8),
+                                            Text(context.tr('Delete'), style: GoogleFonts.inter(color: Colors.red)),
+                                          ],
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),

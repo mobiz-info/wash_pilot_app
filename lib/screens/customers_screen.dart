@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import 'add_customer_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class CustomersScreen extends StatefulWidget {
   const CustomersScreen({super.key});
@@ -79,6 +80,32 @@ class _CustomersScreenState extends State<CustomersScreen> {
   }
 
   // ─── List & Filtering ────────────────────────────────────────
+
+  Future<void> _callCustomer(String? phone) async {
+    if (phone != null && phone.isNotEmpty) {
+      final url = Uri.parse('tel:$phone');
+      try {
+        final success = await launchUrl(url);
+        if (!success && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(context.tr('Could not launch phone dialer.')),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(context.tr('Could not launch phone dialer.')),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
 
   Future<void> _fetchCustomers() async {
     if (!mounted) return;
@@ -798,13 +825,13 @@ class _CustomersScreenState extends State<CustomersScreen> {
                           style: GoogleFonts.inter(
                               fontSize: 13, color: Colors.grey.shade600)),
                       const Spacer(),
-                      Text(
-                        dateInfo,
-                        style: GoogleFonts.inter(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: dateColor),
-                      ),
+                      // Text(
+                      //   dateInfo,
+                      //   style: GoogleFonts.inter(
+                      //       fontSize: 11,
+                      //       fontWeight: FontWeight.w600,
+                      //       color: dateColor),
+                      // ),
                     ],
                   ),
                   const SizedBox(height: 5),
@@ -829,6 +856,19 @@ class _CustomersScreenState extends State<CustomersScreen> {
                             fontSize: 12, color: Colors.grey.shade500)),
                   ]),
                 ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: () => _callCustomer(c['phone']),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.08),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.green.withOpacity(0.3), width: 1),
+                ),
+                child: const Icon(Icons.phone, size: 18, color: Colors.green),
               ),
             ),
             const SizedBox(width: 8),

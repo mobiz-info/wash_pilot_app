@@ -45,6 +45,8 @@ class _NewJobScreenState extends State<NewJobScreen> {
                     decoration: InputDecoration(
                       hintText: context.tr('Enter Mobile Number'),
                       prefixIcon: const Icon(Icons.phone_android, color: Colors.grey),
+                      prefixText: '91 ',
+                      prefixStyle: const TextStyle(color: Colors.black,fontSize: 16),
                       filled: true,
                       fillColor: Colors.white,
                       contentPadding: const EdgeInsets.symmetric(vertical: 16),
@@ -69,7 +71,11 @@ class _NewJobScreenState extends State<NewJobScreen> {
                     FocusScope.of(context).unfocus();
                     final token = context.read<AuthProvider>().token;
                     if (token != null) {
-                      context.read<CustomerProvider>().searchCustomer(_mobileController.text.trim(), token);
+                      final rawMobile = _mobileController.text.trim();
+                      if (rawMobile.isNotEmpty) {
+                        final formattedMobile = rawMobile.startsWith('91') ? rawMobile : '91$rawMobile';
+                        context.read<CustomerProvider>().searchCustomer(formattedMobile, token);
+                      }
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text(context.tr('Not authenticated. Please login again.'))),
@@ -129,13 +135,15 @@ class _NewJobScreenState extends State<NewJobScreen> {
                               style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
                             ),
                             const SizedBox(height: 16),
-                            ElevatedButton.icon(
+                             ElevatedButton.icon(
                               onPressed: () async {
+                                final rawMobile = _mobileController.text.trim();
+                                final formattedMobile = rawMobile.startsWith('91') ? rawMobile : '91$rawMobile';
                                 final result = await Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) => AddCustomerScreen(
-                                      phoneNumber: _mobileController.text.trim(),
+                                      phoneNumber: formattedMobile,
                                     ),
                                   ),
                                 );
@@ -144,7 +152,7 @@ class _NewJobScreenState extends State<NewJobScreen> {
                                   final token = context.read<AuthProvider>().token;
                                   if (token != null) {
                                     context.read<CustomerProvider>().searchCustomer(
-                                      _mobileController.text.trim(),
+                                      formattedMobile,
                                       token,
                                     );
                                   }

@@ -100,6 +100,126 @@ class ReportsScreen extends StatelessWidget {
     
   ];
 
+  static const _daywiseReports = [
+    {
+      'title': 'Daywise Income Report',
+      'subtitle': 'Day-by-day revenue summary',
+      'icon': Icons.monetization_on_outlined,
+      'color': Color(0xFF059669),
+      'bg': Color(0xFFECFDF5),
+      'type': 'daywise_income',
+    },
+    {
+      'title': 'Daywise Profit Report',
+      'subtitle': 'Day-by-day income vs expense',
+      'icon': Icons.analytics_outlined,
+      'color': Color(0xFF0F766E),
+      'bg': Color(0xFFF0FDF4),
+      'type': 'daywise_profit',
+    },
+    {
+      'title': 'Daywise Collection Report',
+      'subtitle': 'Day-by-day payment collections',
+      'icon': Icons.account_balance_wallet_outlined,
+      'color': Color(0xFF2563EB),
+      'bg': Color(0xFFEFF6FF),
+      'type': 'daywise_collection',
+    },
+    {
+      'title': 'Daywise Outstanding Report',
+      'subtitle': 'Day-by-day outstanding balances',
+      'icon': Icons.pending_actions_outlined,
+      'color': Color(0xFFDC2626),
+      'bg': Color(0xFFFEF2F2),
+      'type': 'daywise_outstanding',
+    },
+  ];
+
+  Widget _buildReportTile(BuildContext context, Map<String, dynamic> r) {
+    return GestureDetector(
+      onTap: () {
+        if (r['type'] == 'profit') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const ProfitReportScreen(),
+            ),
+          );
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ReportDetailScreen(
+                reportType: r['type'] as String,
+                title: r['title'] as String,
+              ),
+            ),
+          );
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 54,
+              height: 54,
+              decoration: BoxDecoration(
+                color: r['bg'] as Color,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(
+                r['icon'] as IconData,
+                color: r['color'] as Color,
+                size: 26,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    r['title'] as String,
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      color: const Color(0xFF1E293B),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    r['subtitle'] as String,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: Colors.grey.shade500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: Colors.grey.shade400,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -122,95 +242,35 @@ class ReportsScreen extends StatelessWidget {
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      body: ListView.builder(
+      body: ListView(
         padding: const EdgeInsets.all(20),
-        itemCount: reports.length,
-        itemBuilder: (context, i) {
-          final r = reports[i];
-          return GestureDetector(
-            onTap: () {
-              if (r['type'] == 'profit') {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const ProfitReportScreen(),
-                  ),
-                );
-              } else {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ReportDetailScreen(
-                      reportType: r['type'] as String,
-                      title: r['title'] as String,
-                    ),
-                  ),
-                );
-              }
-            },
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 14),
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 54,
-                    height: 54,
-                    decoration: BoxDecoration(
-                      color: r['bg'] as Color,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(
-                      r['icon'] as IconData,
-                      color: r['color'] as Color,
-                      size: 26,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          r['title'] as String,
-                          style: GoogleFonts.inter(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                            color: const Color(0xFF1E293B),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          r['subtitle'] as String,
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            color: Colors.grey.shade500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    Icons.arrow_forward_ios,
-                    size: 16,
-                    color: Colors.grey.shade400,
-                  ),
-                ],
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text(
+              context.tr('General Reports'),
+              style: GoogleFonts.inter(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF000080),
               ),
             ),
-          );
-        },
+          ),
+          ...reports.map((r) => _buildReportTile(context, r)),
+          const SizedBox(height: 20),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text(
+              context.tr('Daywise Consolidated Reports'),
+              style: GoogleFonts.inter(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF000080),
+              ),
+            ),
+          ),
+          ..._daywiseReports.map((r) => _buildReportTile(context, r)),
+        ],
       ),
     );
   }
@@ -267,81 +327,92 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
     if (token == null) return;
     try {
       Map<String, dynamic> res;
-      switch (widget.reportType) {
-        case 'job':
-          res = await ApiService.getJobReport(
-            token,
-            _fromStr,
-            _toStr,
-            branchId: _selectedBranchId,
-          );
-          break;
-        case 'scheme':
-          res = await ApiService.getSchemeBeneficiaryReport(
-            token,
-            _fromStr,
-            _toStr,
-            branchId: _selectedBranchId,
-          );
-          break;
-        case 'collection':
-          res = await ApiService.getCollectionReport(
-            token,
-            _fromStr,
-            _toStr,
-            branchId: _selectedBranchId,
-          );
-          break;
-        case 'outstanding':
-          res = await ApiService.getOutstandingReport(
-            token,
-            _fromStr,
-            _toStr,
-            branchId: _selectedBranchId,
-          );
-          break;
-        case 'booking':
-          res = await ApiService.getBookingReport(
-            token,
-            _fromStr,
-            _toStr,
-            branchId: _selectedBranchId,
-          );
-          break;
-        case 'cancellation':
-          res = await ApiService.getCancellationReport(
-            token,
-            _fromStr,
-            _toStr,
-            branchId: _selectedBranchId,
-          );
-          break;
-        case 'expense_head':
-          res = await ApiService.getExpenseHeadWiseReport(
-            token,
-            _fromStr,
-            _toStr,
-            branchId: _selectedBranchId,
-          );
-          break;
-        case 'leave':
-          res = await ApiService.getLeaveReport(
-            token,
-            _fromStr,
-            _toStr,
-            branchId: _selectedBranchId,
-          );
-          break;
-        case 'income':
-          res = await ApiService.getServiceTypeReport(
-            token,
-            _fromStr,
-            _toStr,
-            branchId: _selectedBranchId,
-          );
-          break;
-        default:
-          res = {'success': false, 'message': 'Unknown report'};
+      if (widget.reportType.startsWith('daywise_')) {
+        final subType = widget.reportType.substring(8); // 'income', 'profit', 'collection', 'outstanding'
+        res = await ApiService.getDaywiseConsolidatedReport(
+          token,
+          subType,
+          _fromStr,
+          _toStr,
+          branchId: _selectedBranchId,
+        );
+      } else {
+        switch (widget.reportType) {
+          case 'job':
+            res = await ApiService.getJobReport(
+              token,
+              _fromStr,
+              _toStr,
+              branchId: _selectedBranchId,
+            );
+            break;
+          case 'scheme':
+            res = await ApiService.getSchemeBeneficiaryReport(
+              token,
+              _fromStr,
+              _toStr,
+              branchId: _selectedBranchId,
+            );
+            break;
+          case 'collection':
+            res = await ApiService.getCollectionReport(
+              token,
+              _fromStr,
+              _toStr,
+              branchId: _selectedBranchId,
+            );
+            break;
+          case 'outstanding':
+            res = await ApiService.getOutstandingReport(
+              token,
+              _fromStr,
+              _toStr,
+              branchId: _selectedBranchId,
+            );
+            break;
+          case 'booking':
+            res = await ApiService.getBookingReport(
+              token,
+              _fromStr,
+              _toStr,
+              branchId: _selectedBranchId,
+            );
+            break;
+          case 'cancellation':
+            res = await ApiService.getCancellationReport(
+              token,
+              _fromStr,
+              _toStr,
+              branchId: _selectedBranchId,
+            );
+            break;
+          case 'expense_head':
+            res = await ApiService.getExpenseHeadWiseReport(
+              token,
+              _fromStr,
+              _toStr,
+              branchId: _selectedBranchId,
+            );
+            break;
+          case 'leave':
+            res = await ApiService.getLeaveReport(
+              token,
+              _fromStr,
+              _toStr,
+              branchId: _selectedBranchId,
+            );
+            break;
+          case 'income':
+            res = await ApiService.getServiceTypeReport(
+              token,
+              _fromStr,
+              _toStr,
+              branchId: _selectedBranchId,
+            );
+            break;
+          default:
+            res = {'success': false, 'message': 'Unknown report'};
+        }
       }
 
       if (res['success'] == true) {
@@ -550,6 +621,34 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
           _pdfSummaryItem('Total Income', 'Rs. ${_fmt(d['total_revenue'])}'),
         ];
         break;
+      case 'daywise_income':
+        items = [
+          _pdfSummaryItem('Jobs', '${d['total_jobs']}'),
+          _pdfSummaryItem('Revenue', 'Rs. ${_fmt(d['total_income'])}'),
+          _pdfSummaryItem('Collected', 'Rs. ${_fmt(d['total_collected'])}'),
+        ];
+        break;
+      case 'daywise_profit':
+        items = [
+          _pdfSummaryItem('Income', 'Rs. ${_fmt(d['total_income'])}'),
+          _pdfSummaryItem('Expense', 'Rs. ${_fmt(d['total_expense'])}'),
+          _pdfSummaryItem('Net Profit', 'Rs. ${_fmt(d['total_profit'])}'),
+        ];
+        break;
+      case 'daywise_collection':
+        items = [
+          _pdfSummaryItem('Cash', 'Rs. ${_fmt(d['total_cash'])}'),
+          _pdfSummaryItem('Cheque', 'Rs. ${_fmt(d['total_cheque'])}'),
+          _pdfSummaryItem('Online', 'Rs. ${_fmt(d['total_online'])}'),
+          _pdfSummaryItem('Total Collected', 'Rs. ${_fmt(d['total_collected'])}'),
+        ];
+        break;
+      case 'daywise_outstanding':
+        items = [
+          _pdfSummaryItem('Invoices', '${d['total_invoices']}'),
+          _pdfSummaryItem('Total Outstanding', 'Rs. ${_fmt(d['total_outstanding'])}'),
+        ];
+        break;
     }
 
     return pw.Row(
@@ -718,6 +817,50 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
           ]);
         }
         break;
+      case 'daywise_income':
+        headers = ['Date', 'Job Count', 'Revenue', 'Collected'];
+        for (var r in rows) {
+          data.add([
+            r['date'] ?? '',
+            (r['count'] ?? 0).toString(),
+            _fmt(r['income']),
+            _fmt(r['collected']),
+          ]);
+        }
+        break;
+      case 'daywise_profit':
+        headers = ['Date', 'Income', 'Expense', 'Net Profit'];
+        for (var r in rows) {
+          data.add([
+            r['date'] ?? '',
+            _fmt(r['income']),
+            _fmt(r['expense']),
+            _fmt(r['profit']),
+          ]);
+        }
+        break;
+      case 'daywise_collection':
+        headers = ['Date', 'Cash', 'Cheque', 'Online', 'Total'];
+        for (var r in rows) {
+          data.add([
+            r['date'] ?? '',
+            _fmt(r['cash']),
+            _fmt(r['cheque']),
+            _fmt(r['online']),
+            _fmt(r['total']),
+          ]);
+        }
+        break;
+      case 'daywise_outstanding':
+        headers = ['Date', 'Unpaid Invoices', 'Outstanding Balance'];
+        for (var r in rows) {
+          data.add([
+            r['date'] ?? '',
+            (r['count'] ?? 0).toString(),
+            _fmt(r['outstanding']),
+          ]);
+        }
+        break;
     }
 
     return pw.TableHelper.fromTextArray(
@@ -733,8 +876,10 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
         for (int i = 0; i < headers.length; i++)
           i: (widget.reportType == 'expense_head' && i == 2) ||
                   (widget.reportType == 'income' && i == 2) ||
+                  (widget.reportType.startsWith('daywise_') && i >= 1) ||
                   (widget.reportType != 'expense_head' &&
                       widget.reportType != 'income' &&
+                      !widget.reportType.startsWith('daywise_') &&
                       widget.reportType != 'leave' &&
                       i >= headers.length - 2 &&
                       widget.reportType != 'scheme' &&
@@ -1004,6 +1149,9 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                   itemCount: rows.length,
                   itemBuilder: (ctx, i) {
                     final row = rows[i];
+                    if (widget.reportType.startsWith('daywise_')) {
+                      return _buildDaywiseRow(row);
+                    }
                     if (widget.reportType == 'expense_head') {
                       return _buildExpenseHeadRow(row);
                     }
@@ -1022,6 +1170,200 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
         ),
       ],
     );
+  }
+
+  Widget _buildDaywiseRow(Map<String, dynamic> row) {
+    final currencySymbol = context.read<AuthProvider>().currencySymbol;
+
+    if (widget.reportType == 'daywise_income') {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  row['date'] ?? '',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14, color: const Color(0xFF000080)),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    context.tr('Jobs: ${row['count'] ?? 0}'),
+                    style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFF2563EB)),
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _chip('Revenue', '$currencySymbol${_fmt(row['income'])}', Colors.grey.shade100, Colors.grey.shade800),
+                _chip('Collected', '$currencySymbol${_fmt(row['collected'])}', const Color(0xFFECFDF5), const Color(0xFF059669)),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (widget.reportType == 'daywise_profit') {
+      final profitVal = double.tryParse(row['profit']?.toString() ?? '0') ?? 0;
+      return Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              row['date'] ?? '',
+              style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14, color: const Color(0xFF000080)),
+            ),
+            const Divider(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _chip('Income', '$currencySymbol${_fmt(row['income'])}', const Color(0xFFECFDF5), const Color(0xFF059669)),
+                _chip('Expense', '$currencySymbol${_fmt(row['expense'])}', const Color(0xFFFEF2F2), const Color(0xFFDC2626)),
+                _chip(
+                  'Profit',
+                  '$currencySymbol${_fmt(row['profit'])}',
+                  profitVal >= 0 ? const Color(0xFFF0FDF4) : const Color(0xFFFFF1F2),
+                  profitVal >= 0 ? const Color(0xFF0F766E) : const Color(0xFFDC2626),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (widget.reportType == 'daywise_collection') {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  row['date'] ?? '',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14, color: const Color(0xFF000080)),
+                ),
+                Text(
+                  '$currencySymbol${_fmt(row['total'])}',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 15, color: const Color(0xFF059669)),
+                ),
+              ],
+            ),
+            const Divider(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _chip('Cash', '$currencySymbol${_fmt(row['cash'])}', Colors.grey.shade100, Colors.grey.shade800),
+                _chip('Cheque', '$currencySymbol${_fmt(row['cheque'])}', const Color(0xFFFEF3C7), const Color(0xFFD97706)),
+                _chip('Online', '$currencySymbol${_fmt(row['online'])}', const Color(0xFFEFF6FF), const Color(0xFF2563EB)),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (widget.reportType == 'daywise_outstanding') {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  row['date'] ?? '',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14, color: const Color(0xFF000080)),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF2F2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    context.tr('Unpaid Invoices: ${row['count'] ?? 0}'),
+                    style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFFDC2626)),
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                _chip('Outstanding Balance', '$currencySymbol${_fmt(row['outstanding'])}', const Color(0xFFFEF2F2), const Color(0xFFDC2626)),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    return const SizedBox();
   }
 
   // ─── Summary bar ─────────────────────────────────────────────
@@ -1180,6 +1522,83 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
             'label': context.tr('Total Income'),
             'value': '$currencySymbol${_fmt(d['total_revenue'])}',
             'color': const Color(0xFF059669),
+          },
+        ];
+        break;
+      case 'daywise_income':
+        items = [
+          {
+            'label': 'Jobs',
+            'value': '${d['total_jobs']}',
+            'color': const Color(0xFF2563EB),
+          },
+          {
+            'label': 'Revenue',
+            'value': '$currencySymbol${_fmt(d['total_income'])}',
+            'color': const Color(0xFF059669),
+          },
+          {
+            'label': 'Collected',
+            'value': '$currencySymbol${_fmt(d['total_collected'])}',
+            'color': const Color(0xFF7C3AED),
+          },
+        ];
+        break;
+      case 'daywise_profit':
+        final profitVal = double.tryParse(d['total_profit']?.toString() ?? '0') ?? 0;
+        items = [
+          {
+            'label': 'Income',
+            'value': '$currencySymbol${_fmt(d['total_income'])}',
+            'color': const Color(0xFF059669),
+          },
+          {
+            'label': 'Expense',
+            'value': '$currencySymbol${_fmt(d['total_expense'])}',
+            'color': const Color(0xFFDC2626),
+          },
+          {
+            'label': 'Net Profit',
+            'value': '$currencySymbol${_fmt(d['total_profit'])}',
+            'color': profitVal >= 0 ? const Color(0xFF0F766E) : const Color(0xFFDC2626),
+          },
+        ];
+        break;
+      case 'daywise_collection':
+        items = [
+          {
+            'label': 'Cash',
+            'value': '$currencySymbol${_fmt(d['total_cash'])}',
+            'color': const Color(0xFF1E293B),
+          },
+          {
+            'label': 'Cheque',
+            'value': '$currencySymbol${_fmt(d['total_cheque'])}',
+            'color': const Color(0xFFD97706),
+          },
+          {
+            'label': 'Online',
+            'value': '$currencySymbol${_fmt(d['total_online'])}',
+            'color': const Color(0xFF2563EB),
+          },
+          {
+            'label': 'Total',
+            'value': '$currencySymbol${_fmt(d['total_collected'])}',
+            'color': const Color(0xFF059669),
+          },
+        ];
+        break;
+      case 'daywise_outstanding':
+        items = [
+          {
+            'label': 'Invoices',
+            'value': '${d['total_invoices']}',
+            'color': const Color(0xFFDC2626),
+          },
+          {
+            'label': 'Total Outstanding',
+            'value': '$currencySymbol${_fmt(d['total_outstanding'])}',
+            'color': const Color(0xFFDC2626),
           },
         ];
         break;

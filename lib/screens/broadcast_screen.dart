@@ -99,7 +99,7 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
   void _startBroadcast() {
     if (_messageController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('Please enter a message to broadcast.')), backgroundColor: Colors.orange),
+        SnackBar(content: Text(context.tr('Please enter a message to send.')), backgroundColor: Colors.orange),
       );
       return;
     }
@@ -149,8 +149,8 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
         showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: Text(context.tr('🎉 Broadcast Complete!')),
-            content: Text(context.tr('You have reached the end of the broadcast list.')),
+            title: Text(context.tr('🎉 Sending Complete!')),
+            content: Text(context.tr('You have reached the end of the notification list.')),
             actions: [
               TextButton(
                 onPressed: () {
@@ -205,7 +205,7 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
       appBar: AppBar(
-        title: Text(context.tr('New Broadcast'), style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+        title: Text(context.tr('New Notification'), style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
         backgroundColor: const Color(0xFF000080),
         foregroundColor: Colors.white,
       ),
@@ -333,7 +333,7 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                           child: Text(
-                            context.tr('Start Broadcasting to ${_selectedCustomerIds.length}'),
+                            '${context.tr('Start Sending to')} ${_selectedCustomerIds.length}',
                             style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold),
                           ),
                         ),
@@ -354,7 +354,7 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
       appBar: AppBar(
-        title: Text(context.tr('Broadcasting...'), style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+        title: Text(context.tr('Sending Notifications...'), style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
         backgroundColor: const Color(0xFF000080),
         foregroundColor: Colors.white,
         leading: IconButton(

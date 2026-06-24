@@ -25,6 +25,7 @@ import 'purchase_request_screen.dart';
 import 'expense_head_screen.dart';
 import 'stock_item_screen.dart';
 import 'extras_screen.dart';
+import 'booking_settings_screen.dart';
 import '../services/api_service.dart';
 
 class MenuScreen extends StatefulWidget {
@@ -106,8 +107,13 @@ class _MenuScreenState extends State<MenuScreen> {
       'color': Color(0xFFF43F5E),
     },
     {
-      'title': 'Broadcasts',
-      'icon': Icons.campaign,
+      'title': 'Booking Settings',
+      'icon': Icons.settings_applications,
+      'color': Color(0xFF000080),
+    },
+    {
+      'title': 'Notifications',
+      'icon': Icons.notifications_outlined,
       'color': Color(0xFF00BFFF),
     },
     {
@@ -124,6 +130,7 @@ class _MenuScreenState extends State<MenuScreen> {
       'color': Color(0xFFEC4899),
     },
     {'title': 'Reports', 'icon': Icons.bar_chart, 'color': Color(0xFF14B8A6)},
+    {'title': 'Bookings', 'icon': Icons.event_note, 'color': Color(0xFF8B5CF6)},
     {
       'title': 'Outstanding',
       'icon': Icons.account_balance_wallet_outlined,
@@ -176,8 +183,13 @@ class _MenuScreenState extends State<MenuScreen> {
       'color': Color(0xFFF43F5E),
     },
     {
-      'title': 'Broadcasts',
-      'icon': Icons.campaign,
+      'title': 'Booking Settings',
+      'icon': Icons.settings_applications,
+      'color': Color(0xFF000080),
+    },
+    {
+      'title': 'Notifications',
+      'icon': Icons.notifications_outlined,
       'color': Color(0xFF00BFFF),
     },
     {
@@ -200,7 +212,7 @@ class _MenuScreenState extends State<MenuScreen> {
       'Customers': const CustomersScreen(),
       'Reports': const ReportsScreen(),
       'Schemes': const SchemesScreen(),
-      'Broadcasts': const BroadcastScreen(),
+      'Notifications': const BroadcastScreen(),
       'Complaints': const ComplaintsScreen(),
       'Language': const LanguageScreen(),
       'Expense': const ExpenseScreen(),
@@ -209,6 +221,7 @@ class _MenuScreenState extends State<MenuScreen> {
       'Expense Heads': const ExpenseHeadScreen(),
       'Stock Items': const StockItemScreen(),
       'Extras': const ExtrasScreen(),
+      'Booking Settings': const BookingSettingsScreen(),
     };
     final screen = routes[title];
     if (screen != null) {
@@ -309,16 +322,16 @@ class _MenuScreenState extends State<MenuScreen> {
                           MaterialPageRoute(builder: (_) => const BillsScreen()),
                         );
                       }),
-                      _drawerItem(Icons.calendar_today_outlined, 'Bookings', () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const BookingsListScreen(),
-                          ),
-                        );
-                      }),
                     ],
+                    _drawerItem(Icons.calendar_today_outlined, 'Bookings', () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const BookingsListScreen(),
+                        ),
+                      );
+                    }),
                     _drawerItem(
                       Icons.account_balance_wallet_outlined,
                       'Outstanding',
@@ -513,7 +526,7 @@ class _MenuScreenState extends State<MenuScreen> {
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Text(
-                  context.tr('v1.0.6'),
+                  context.tr('v1.0.9'),
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     color: Colors.grey.shade400,
@@ -681,7 +694,7 @@ class _MenuScreenState extends State<MenuScreen> {
         if (title.isEmpty) {
           return const SizedBox.shrink();
         }
-        final isBroadcast = title == 'Broadcasts';
+        final isBroadcast = title == 'Notifications';
         final isEnabled = !isBroadcast || auth.canBroadcast;
         final color = isEnabled ? (item['color'] as Color) : Colors.grey;
         

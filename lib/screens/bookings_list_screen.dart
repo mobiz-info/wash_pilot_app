@@ -197,27 +197,104 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
   }
 
   Future<void> _sendReadyAlert(Map<String, dynamic> booking) async {
-    final customer = booking['customer'];
-    final vehicle = booking['vehicle'];
-    final name = customer['name'] ?? 'Customer';
-    final vehicleNumber = vehicle['number'] ?? 'your vehicle';
-    
-    String phone = customer['phone'] ?? '';
-    phone = phone.replaceAll(RegExp(r'[^\d]'), '');
-    if (phone.length == 10) {
-      phone = '91$phone'; // Assuming default country code +91
-    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.notifications_active_outlined, color: Colors.green),
+            const SizedBox(width: 8),
+            Text(context.tr('Send Ready Alert'),
+                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16)),
+          ],
+        ),
+        content: Text(
+          context.tr('Send the automated WhatsApp ready alert notification to this customer?'),
+          style: GoogleFonts.inter(fontSize: 14, color: Colors.grey.shade700),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(context.tr('Cancel'), style: GoogleFonts.inter(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: Text(context.tr('Send'), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
 
-    final message = Uri.encodeComponent('Hello $name, your vehicle ($vehicleNumber) is ready for pickup! Thank you for choosing our service.');
-    final url = Uri.parse('https://wa.me/$phone?text=$message');
+    if (confirmed != true) return;
 
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    } else {
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final res = await ApiService.sendBookingReadyAlert(booking['id'] as String, token);
+      if (!mounted) return;
+
+      if (res['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.tr('✅ WhatsApp Ready Alert sent successfully!')),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(res['message'] ?? context.tr('Failed to send Ready Alert.')),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.tr('Could not open WhatsApp.')), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: Colors.red,
+          ),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _makeCall(Map<String, dynamic> booking) async {
+    final customer = booking['customer'];
+    final phone = customer['phone'] ?? '';
+    if (phone.isNotEmpty) {
+      final url = Uri.parse('tel:$phone');
+      try {
+        final success = await launchUrl(url);
+        if (!success && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(context.tr('Could not launch phone dialer.')), backgroundColor: Colors.red),
+          );
+        }
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(context.tr('Could not launch phone dialer.')), backgroundColor: Colors.red),
+          );
+        }
       }
     }
   }
@@ -457,59 +534,107 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
               const SizedBox(height: 14),
               const Divider(height: 1),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  if (isPending)
-                    Expanded(
-                      child: _actionBtn(
-                        label: 'Start',
-                        icon: Icons.play_circle_outline,
-                        color: Colors.green,
-                        onTap: () => _confirmAction(booking, 'confirmed'),
-                      ),
-                    ),
-                  if (isConfirmed)
-                    Expanded(
-                      child: _actionBtn(
-                        label: 'Create Invoice',
-                        icon: Icons.receipt_long,
-                        color: const Color(0xFF000080),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => InvoiceCreateScreen(
-                                customer: Map<String, dynamic>.from(booking['customer'] as Map),
-                                vehicle: Map<String, dynamic>.from(booking['vehicle'] as Map),
-                                bookingId: booking['id'] as String,
-                              ),
+              if (isConfirmed) ...[
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _actionBtn(
+                      label: 'Create Invoice',
+                      icon: Icons.receipt_long,
+                      color: const Color(0xFF000080),
+                      isFilled: true,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => InvoiceCreateScreen(
+                              customer: Map<String, dynamic>.from(booking['customer'] as Map),
+                              vehicle: Map<String, dynamic>.from(booking['vehicle'] as Map),
+                              bookingId: booking['id'] as String,
                             ),
-                          );
-                        },
-                      ),
+                          ),
+                        );
+                      },
                     ),
-                  if (isCompleted)
-                    Expanded(
-                      child: _actionButton(
-                        label: 'Ready Alert',
-                        icon: Icons.check_circle_outline,
-                        color: Colors.green,
-                  // onTap: () => _showAlertDialog('ready'),
-                        onTap: () => _sendReadyAlert(booking),
-                      ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _actionBtn(
+                            label: 'Ready Alert',
+                            icon: Icons.notifications_active_outlined,
+                            color: Colors.green,
+                            onTap: () => _sendReadyAlert(booking),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _actionBtn(
+                            label: 'Call',
+                            icon: Icons.phone_outlined,
+                            color: Colors.blue,
+                            onTap: () => _makeCall(booking),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _actionBtn(
+                            label: 'Cancel',
+                            icon: Icons.cancel_outlined,
+                            color: Colors.red,
+                            onTap: () => _confirmAction(booking, 'cancelled'),
+                          ),
+                        ),
+                      ],
                     ),
-                  if (isPending || isConfirmed) const SizedBox(width: 12),
-                  if (isPending || isConfirmed)
-                    Expanded(
-                      child: _actionBtn(
-                        label: 'Cancel',
-                        icon: Icons.cancel_outlined,
-                        color: Colors.red,
-                        onTap: () => _confirmAction(booking, 'cancelled'),
+                  ],
+                ),
+              ] else ...[
+                Row(
+                  children: [
+                    if (isPending) ...[
+                      Expanded(
+                        child: _actionBtn(
+                          label: 'Start',
+                          icon: Icons.play_circle_outline,
+                          color: Colors.green,
+                          isFilled: true,
+                          onTap: () => _confirmAction(booking, 'confirmed'),
+                        ),
                       ),
-                    ),
-                ],
-              ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _actionBtn(
+                          label: 'Cancel',
+                          icon: Icons.cancel_outlined,
+                          color: Colors.red,
+                          onTap: () => _confirmAction(booking, 'cancelled'),
+                        ),
+                      ),
+                    ],
+                    if (isCompleted) ...[
+                      Expanded(
+                        child: _actionBtn(
+                          label: 'Ready Alert',
+                          icon: Icons.check_circle_outline,
+                          color: Colors.green,
+                          isFilled: true,
+                          onTap: () => _sendReadyAlert(booking),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _actionBtn(
+                          label: 'Call',
+                          icon: Icons.phone_outlined,
+                          color: Colors.blue,
+                          onTap: () => _makeCall(booking),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
             ],
           ],
         ),
@@ -517,45 +642,44 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
     );
   }
 
-   Widget _actionButton({required String label, required IconData icon, required Color color, required VoidCallback onTap}) {
+  Widget _actionBtn({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+    bool isFilled = false,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 15),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [BoxShadow(color: color.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))],
-        ),
-        child: Column(
-          children: [
-            // Icon(icon, color: Colors.white, size: 23),
-            const SizedBox(height: 3),
-            Text(label, style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  
-
-  Widget _actionBtn({required String label, required IconData icon, required Color color, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withOpacity(0.3)),
+          color: isFilled ? color : color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: isFilled ? null : Border.all(color: color.withOpacity(0.3), width: 1.2),
+          boxShadow: isFilled
+              ? [
+                  BoxShadow(
+                    color: color.withOpacity(0.25),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  )
+                ]
+              : [],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 18, color: color),
+            Icon(icon, size: 18, color: isFilled ? Colors.white : color),
             const SizedBox(width: 6),
-            Text(label, style: GoogleFonts.inter(color: color, fontWeight: FontWeight.bold, fontSize: 14)),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                color: isFilled ? Colors.white : color,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
+            ),
           ],
         ),
       ),

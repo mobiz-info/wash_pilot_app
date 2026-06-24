@@ -42,6 +42,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     super.initState();
     if (widget.phoneNumber != null) {
       _phoneController.text = widget.phoneNumber!;
+      _whatsappController.text = widget.phoneNumber!;
     }
     _fetchFormData();
     _addVehicleRow(); // Start with one empty vehicle row
@@ -212,9 +213,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                           _buildTextField(_nameController, 'Full Name *', Icons.badge_outlined),
                           const SizedBox(height: 14),
                           // Phone (read-only if pre-filled, otherwise editable)
-                          (widget.phoneNumber != null && widget.phoneNumber!.isNotEmpty)
-                              ? _buildReadOnlyField('Phone Number *', widget.phoneNumber!, Icons.phone_outlined)
-                              : _buildTextField(_phoneController, 'Phone Number *', Icons.phone_outlined, keyboardType: TextInputType.phone),
+                           _buildTextField(_phoneController, 'Phone Number *', Icons.phone_outlined, keyboardType: TextInputType.phone),
                           const SizedBox(height: 14),
                           _buildTextField(_whatsappController, 'WhatsApp Number', Icons.chat_outlined, keyboardType: TextInputType.phone),
                           const SizedBox(height: 14),
