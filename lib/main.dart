@@ -115,7 +115,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _checkSubscriptionStatus();
+      Future.delayed(const Duration(milliseconds: 1000), () {
+        _checkSubscriptionStatus();
+      });
     }
   }
 
