@@ -95,6 +95,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   int _currentIndex = 0;
+  bool _checkingSubscription = false;
 
   final List<Widget> _pages = [const DashboardScreen(), const MenuScreen()];
 
@@ -120,9 +121,13 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   Future<void> _checkSubscriptionStatus() async {
     if (!mounted) return;
+    setState(() => _checkingSubscription = true);
     final auth = context.read<AuthProvider>();
     final token = auth.token;
-    if (token == null) return;
+    if (token == null) {
+      if (mounted) setState(() => _checkingSubscription = false);
+      return;
+    }
     try {
       final res = await ApiService.getDashboardStats(token);
       if (mounted && res['success'] == true) {
@@ -132,7 +137,15 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           endDate: res['subscription_end_date'],
         );
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.tr('Failed to connect to server. Please check your internet.'))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _checkingSubscription = false);
+    }
   }
 
   Future<bool> _confirmExit() async {
@@ -213,18 +226,42 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 32),
-                  ElevatedButton.icon(
-                    onPressed: () async {
-                      await auth.logout();
-                    },
-                    icon: const Icon(Icons.logout),
-                    label: Text(context.tr('Logout')),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    ),
-                  ),
+                  _checkingSubscription
+                      ? const CircularProgressIndicator()
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: _checkSubscriptionStatus,
+                              icon: const Icon(Icons.refresh),
+                              label: Text(context.tr('Refresh')),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF000080),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            ElevatedButton.icon(
+                              onPressed: () async {
+                                await auth.logout();
+                              },
+                              icon: const Icon(Icons.logout),
+                              label: Text(context.tr('Logout')),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                 ],
               ),
             ),
