@@ -27,11 +27,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _loadStats() async {
     if (!mounted) return;
     setState(() => _statsLoading = true);
-    final token = context.read<AuthProvider>().token;
+    final auth = context.read<AuthProvider>();
+    final token = auth.token;
     if (token == null) return;
     try {
       final res = await ApiService.getDashboardStats(token);
       if (mounted && res['success'] == true) {
+        auth.updateSubscriptionStatus(
+          active: res['subscription_active'] ?? true,
+          daysLeft: res['subscription_days_left'] ?? 999,
+          endDate: res['subscription_end_date'],
+        );
         setState(() {
           _totalJobs = res['today_jobs'] ?? 0;
           _todayRevenue = res['today_revenue'] ?? '0';
@@ -90,6 +96,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
         padding: const EdgeInsets.symmetric(vertical: 27,horizontal: 20),
         child: Column(
           children: [
+            if (context.watch<AuthProvider>().subscriptionActive &&
+                context.watch<AuthProvider>().subscriptionDaysLeft <= 5)
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade50,
+                  border: Border.all(color: Colors.amber.shade300),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded, color: Colors.amber.shade800),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        context.read<AuthProvider>().subscriptionDaysLeft == 0
+                            ? context.tr('Subscription ends today. Please renew to avoid service disruption.')
+                            : context.read<AuthProvider>().subscriptionDaysLeft == 1
+                                ? context.tr('Subscription ends tomorrow. Please renew to avoid service disruption.')
+                                : context.tr('Subscription ending in ${context.read<AuthProvider>().subscriptionDaysLeft} days. Please renew to avoid service disruption.'),
+                        style: GoogleFonts.inter(
+                          color: Colors.amber.shade900,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             // ── Today's Stats ───────────────────────────────────────────
             buildSectionTitle(context.tr("Today's Summary"), Icons.today_outlined),
             const SizedBox(height: 10),

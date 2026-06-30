@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -92,10 +93,47 @@ class MainScreen extends StatefulWidget {
   State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   int _currentIndex = 0;
 
   final List<Widget> _pages = [const DashboardScreen(), const MenuScreen()];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _checkSubscriptionStatus();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkSubscriptionStatus();
+    }
+  }
+
+  Future<void> _checkSubscriptionStatus() async {
+    if (!mounted) return;
+    final auth = context.read<AuthProvider>();
+    final token = auth.token;
+    if (token == null) return;
+    try {
+      final res = await ApiService.getDashboardStats(token);
+      if (mounted && res['success'] == true) {
+        auth.updateSubscriptionStatus(
+          active: res['subscription_active'] ?? true,
+          daysLeft: res['subscription_days_left'] ?? 999,
+          endDate: res['subscription_end_date'],
+        );
+      }
+    } catch (_) {}
+  }
 
   Future<bool> _confirmExit() async {
     final shouldExit = await showDialog<bool>(
@@ -126,6 +164,75 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    final isSubActive = auth.subscriptionActive;
+
+    if (!isSubActive) {
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) {
+          if (!didPop) {
+            SystemChannels.platform.invokeMethod('SystemNavigator.pop');
+          }
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            title: Text(
+              context.tr('Subscription Ended'),
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.error_outline,
+                    color: Colors.red,
+                    size: 80,
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    context.tr('Subscription Ended'),
+                    style: GoogleFonts.inter(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red.shade700,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    context.tr('Your company subscription has expired. Please contact superadmin to renew.'),
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 32),
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      await auth.logout();
+                    },
+                    icon: const Icon(Icons.logout),
+                    label: Text(context.tr('Logout')),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return WillPopScope(
       onWillPop: _confirmExit,
       child: Scaffold(
