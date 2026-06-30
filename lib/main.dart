@@ -290,6 +290,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
               setState(() {
                 _currentIndex = index;
               });
+              _checkSubscriptionStatus();
             },
             backgroundColor: Colors.white,
             elevation: 0,
