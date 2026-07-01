@@ -31,6 +31,24 @@ class LanguageScreen extends StatelessWidget {
         'flag': '🇮🇳',
       },
       {
+        'code': 'ta',
+        'name': 'Tamil',
+        'nativeName': 'தமிழ்',
+        'flag': '🇮🇳',
+      },
+      {
+        'code': 'kn',
+        'name': 'Kannada',
+        'nativeName': 'ಕನ್ನಡ',
+        'flag': '🇮🇳',
+      },
+      {
+        'code': 'or',
+        'name': 'Odia',
+        'nativeName': 'ଓଡ଼ିଆ',
+        'flag': '🇮🇳',
+      },
+      {
         'code': 'ar',
         'name': 'Arabic',
         'nativeName': 'العربية',
@@ -78,7 +96,7 @@ class LanguageScreen extends StatelessWidget {
                 ),
                 elevation: isSelected ? 4 : 1,
                 shadowColor: isSelected
-                    ? const Color(0xFF000080).withOpacity(0.3)
+                    ? const Color(0xFF000080).withValues(alpha: 0.3)
                     : Colors.black12,
                 child: InkWell(
                   onTap: languageProvider.isLoading
@@ -147,7 +165,7 @@ class LanguageScreen extends StatelessWidget {
           if (languageProvider.isLoading)
             Positioned.fill(
               child: Container(
-                color: Colors.black.withOpacity(0.35),
+                color: Colors.black.withValues(alpha: 0.35),
                 child: Center(
                   child: Container(
                     padding: const EdgeInsets.all(24),

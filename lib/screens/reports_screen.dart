@@ -3694,6 +3694,7 @@ class _ProfitReportScreenState extends State<ProfitReportScreen> {
       final double totalIncome = double.tryParse(_data!['total_income']?.toString() ?? '0') ?? 0;
       final double totalExpense = double.tryParse(_data!['total_expense']?.toString() ?? '0') ?? 0;
       final double netProfit = double.tryParse(_data!['net_profit']?.toString() ?? '0') ?? 0;
+      final double totalOutstanding = double.tryParse(_data!['total_outstanding']?.toString() ?? '0') ?? 0;
       final bool isProfit = netProfit >= 0;
 
       pdf.addPage(
@@ -3790,6 +3791,8 @@ class _ProfitReportScreenState extends State<ProfitReportScreen> {
                       pw.Text('Total Income: Rs. ${_fmt(totalIncome)}', style: const pw.TextStyle(fontSize: 13)),
                       pw.SizedBox(height: 4),
                       pw.Text('Total Expense: Rs. ${_fmt(totalExpense)}', style: const pw.TextStyle(fontSize: 13)),
+                      pw.SizedBox(height: 4),
+                      pw.Text('Receivables: Rs. ${_fmt(totalOutstanding)}', style: const pw.TextStyle(fontSize: 13)),
                     ],
                   ),
                   pw.Container(
@@ -3841,6 +3844,7 @@ class _ProfitReportScreenState extends State<ProfitReportScreen> {
     final double totalIncome = double.tryParse(_data?['total_income']?.toString() ?? '0') ?? 0;
     final double totalExpense = double.tryParse(_data?['total_expense']?.toString() ?? '0') ?? 0;
     final double netProfit = double.tryParse(_data?['net_profit']?.toString() ?? '0') ?? 0;
+    final double totalOutstanding = double.tryParse(_data?['total_outstanding']?.toString() ?? '0') ?? 0;
     final bool isProfit = netProfit >= 0;
 
     return Scaffold(
@@ -4080,7 +4084,7 @@ class _ProfitReportScreenState extends State<ProfitReportScreen> {
                                   color: isProfit ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
-                                    color: isProfit ? const Color(0xFF10B981).withOpacity(0.3) : const Color(0xFFEF4444).withOpacity(0.3),
+                                    color: isProfit ? const Color(0xFF10B981).withValues(alpha: 0.3) : const Color(0xFFEF4444).withValues(alpha: 0.3),
                                   ),
                                 ),
                                 child: Column(
@@ -4098,6 +4102,14 @@ class _ProfitReportScreenState extends State<ProfitReportScreen> {
                                       children: [
                                         Text(context.tr('Total Expense'), style: GoogleFonts.inter(fontSize: 13, color: Colors.grey.shade600)),
                                         Text('$currencySymbol${_fmt(totalExpense)}', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(context.tr('Receivables (Outstanding)'), style: GoogleFonts.inter(fontSize: 13, color: Colors.grey.shade600)),
+                                        Text('$currencySymbol${_fmt(totalOutstanding)}', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFFEA580C))),
                                       ],
                                     ),
                                     const Divider(height: 20),
