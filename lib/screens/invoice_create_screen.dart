@@ -463,8 +463,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     _taxSelectionSection(),
                     const SizedBox(height: 16),
                   ],
-                   const SizedBox(height: 16),
-                  _extrasCard(),
+                  if (_availableExtras.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    _extrasCard(),
+                  ],
                   if (_rows.isNotEmpty) ...[
                     _billSummary(),
                     const SizedBox(height: 16),
