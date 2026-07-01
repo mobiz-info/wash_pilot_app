@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:intl_phone_field/intl_phone_field.dart';
+import 'dart:async';
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/language_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -17,9 +21,123 @@ class NewJobScreen extends StatefulWidget {
 
 class _NewJobScreenState extends State<NewJobScreen> {
   final _mobileController = TextEditingController();
+  String _selectedCountryCode = '+91';
+  String _selectedCountryIso = 'IN';
+  Timer? _debounce;
+  List<dynamic> _customerSuggestions = [];
+  bool _isSearchingSuggestions = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _mobileController.addListener(_onMobileChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<CustomerProvider>().clearData();
+    });
+  }
+
+  void _onMobileChanged() {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    final text = _mobileController.text.trim();
+    if (text.length >= 3) {
+      _debounce = Timer(const Duration(milliseconds: 300), () {
+        _fetchCustomerSuggestions(text);
+      });
+    } else {
+      setState(() {
+        _customerSuggestions = [];
+      });
+      if (text.isEmpty) {
+        context.read<CustomerProvider>().clearData();
+      }
+    }
+  }
+
+  Future<void> _fetchCustomerSuggestions(String query) async {
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
+
+    setState(() {
+      _isSearchingSuggestions = true;
+    });
+
+    try {
+      final res = await ApiService.searchCustomerList(query, token);
+      if (res['success'] == true) {
+        setState(() {
+          _customerSuggestions = res['customers'] as List<dynamic>;
+          _isSearchingSuggestions = false;
+        });
+      } else {
+        setState(() {
+          _customerSuggestions = [];
+          _isSearchingSuggestions = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _customerSuggestions = [];
+        _isSearchingSuggestions = false;
+      });
+    }
+  }
+
+  void _selectCustomerFromSuggestion(Map<String, dynamic> suggestion) {
+    setState(() {
+      _customerSuggestions = [];
+    });
+    String rawPhone = suggestion['phone'] ?? '';
+    String phoneCode = '+91';
+    String countryIso = 'IN';
+    for (final code in ['971', '966', '965', '968', '974', '973', '91']) {
+      if (rawPhone.startsWith(code)) {
+        phoneCode = '+$code';
+        rawPhone = rawPhone.substring(code.length);
+        countryIso = _isoFromDialCode(phoneCode);
+        break;
+      }
+    }
+    setState(() {
+      _selectedCountryCode = phoneCode;
+      _selectedCountryIso = countryIso;
+      _mobileController.text = rawPhone;
+    });
+
+    _searchCustomer(unfocus: true);
+  }
+
+  String _isoFromDialCode(String dialCode) {
+    switch (dialCode) {
+      case '+971': return 'AE';
+      case '+966': return 'SA';
+      case '+965': return 'KW';
+      case '+968': return 'OM';
+      case '+974': return 'QA';
+      case '+973': return 'BH';
+      case '+91':  return 'IN';
+      default:     return 'IN';
+    }
+  }
+
+  void _searchCustomer({bool unfocus = true}) {
+    if (unfocus) {
+      FocusScope.of(context).unfocus();
+    }
+    final token = context.read<AuthProvider>().token;
+    if (token != null) {
+      final rawMobile = _mobileController.text.trim();
+      if (rawMobile.isNotEmpty) {
+        final cleanCode = _selectedCountryCode.replaceAll('+', '');
+        final formattedMobile = rawMobile.startsWith(cleanCode) ? rawMobile : '$cleanCode$rawMobile';
+        context.read<CustomerProvider>().searchCustomer(formattedMobile, token);
+      }
+    }
+  }
 
   @override
   void dispose() {
+    _debounce?.cancel();
+    _mobileController.removeListener(_onMobileChanged);
     _mobileController.dispose();
     super.dispose();
   }
@@ -39,14 +157,21 @@ class _NewJobScreenState extends State<NewJobScreen> {
             Row(
               children: [
                 Expanded(
-                  child: TextField(
+                  child: IntlPhoneField(
                     controller: _mobileController,
                     keyboardType: TextInputType.phone,
+                    initialCountryCode: 'IN',
+                    dropdownTextStyle: GoogleFonts.inter(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 14),
+                    style: GoogleFonts.inter(fontWeight: FontWeight.w500),
+                    disableLengthCheck: true,
+                    onCountryChanged: (country) {
+                      setState(() {
+                        _selectedCountryCode = '+' + country.dialCode;
+                        _selectedCountryIso = country.code;
+                      });
+                    },
                     decoration: InputDecoration(
                       hintText: context.tr('Enter Mobile Number'),
-                      prefixIcon: const Icon(Icons.phone_android, color: Colors.grey),
-                      prefixText: '91 ',
-                      prefixStyle: const TextStyle(color: Colors.black,fontSize: 16),
                       filled: true,
                       fillColor: Colors.white,
                       contentPadding: const EdgeInsets.symmetric(vertical: 16),
@@ -68,19 +193,8 @@ class _NewJobScreenState extends State<NewJobScreen> {
                 const SizedBox(width: 12),
                 InkWell(
                   onTap: () {
-                    FocusScope.of(context).unfocus();
-                    final token = context.read<AuthProvider>().token;
-                    if (token != null) {
-                      final rawMobile = _mobileController.text.trim();
-                      if (rawMobile.isNotEmpty) {
-                        final formattedMobile = rawMobile.startsWith('91') ? rawMobile : '91$rawMobile';
-                        context.read<CustomerProvider>().searchCustomer(formattedMobile, token);
-                      }
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(context.tr('Not authenticated. Please login again.'))),
-                      );
-                    }
+                    if (_debounce?.isActive ?? false) _debounce!.cancel();
+                    _searchCustomer(unfocus: true);
                   },
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
@@ -138,12 +252,14 @@ class _NewJobScreenState extends State<NewJobScreen> {
                              ElevatedButton.icon(
                               onPressed: () async {
                                 final rawMobile = _mobileController.text.trim();
-                                final formattedMobile = rawMobile.startsWith('91') ? rawMobile : '91$rawMobile';
+                                final cleanCode = _selectedCountryCode.replaceAll('+', '');
+                                final formattedMobile = rawMobile.startsWith(cleanCode) ? rawMobile : '$cleanCode$rawMobile';
                                 final result = await Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) => AddCustomerScreen(
                                       phoneNumber: formattedMobile,
+                                      initialCountryIso: _selectedCountryIso,
                                     ),
                                   ),
                                 );
@@ -271,96 +387,108 @@ class _NewJobScreenState extends State<NewJobScreen> {
                                     borderRadius: BorderRadius.circular(16),
                                     border: Border.all(color: Colors.grey.shade200),
                                   ),
-                                child: Column(
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          v['no'],
-                                          style: const TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.w800,
-                                            letterSpacing: 1,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Text(
+                                                v['no'],
+                                                style: const TextStyle(
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.w800,
+                                                  letterSpacing: 1,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              const Icon(Icons.arrow_circle_right_outlined, size: 18, color: Color(0xFF000080)),
+                                            ],
                                           ),
-                                        ),
-                                        Container(
-                                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                           decoration: BoxDecoration(
-                                             color: const Color(0xFF000080).withOpacity(0.08),
-                                             borderRadius: BorderRadius.circular(8),
-                                           ),
-                                           child: Text(
-                                             (v['vehicle_type'] != null && v['vehicle_type'].toString().isNotEmpty)
-                                                 ? "${v['vehicle_type']} - ${v['type']}"
-                                                 : v['type'],
-                                             style: const TextStyle(
-                                               fontWeight: FontWeight.bold,
-                                               color: Color(0xFF000080),
-                                               fontSize: 12,
-                                             ),
-                                           ),
-                                         ),
-                                      ],
-                                    ),
-                                    const Padding(
-                                      padding: EdgeInsets.symmetric(vertical: 12.0),
-                                      child: Divider(height: 1),
-                                    ),
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              context.tr('No. of visits: ${v['visits'] ?? 0}'),
-                                              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFF000080).withOpacity(0.08),
+                                              borderRadius: BorderRadius.circular(8),
                                             ),
-                                            const SizedBox(height: 4),
-                                            // if (v['scheme_name'] != null)
-                                            //   Text(
-                                            //     'Scheme: ${v['scheme_name']}',
-                                            //     style: const TextStyle(color: Color(0xFF000080), fontSize: 13, fontWeight: FontWeight.w600),
-                                            //   )
-                                            // else
-                                            //   Text(
-                                            //     'Scheme: Not Available',
-                                            //     style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
-                                            //   ),
-                                          ],
-                                        ),
-                                        // if (v['scheme_name'] != null && v['is_eligible'] == true)
-                                        //   ElevatedButton(
-                                        //     onPressed: () {},
-                                        //     style: ElevatedButton.styleFrom(
-                                        //       backgroundColor: Colors.green,
-                                        //       foregroundColor: Colors.white,
-                                        //       shape: RoundedRectangleBorder(
-                                        //         borderRadius: BorderRadius.circular(8),
-                                        //       ),
-                                        //       elevation: 0,
-                                        //     ),
-                                        //     child: Text(context.tr('Eligible'), style: TextStyle(fontWeight: FontWeight.bold)),
-                                        //   )
-                                        // else if (v['scheme_name'] != null)
-                                        //   Container(
-                                        //     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                        //     decoration: BoxDecoration(
-                                        //       color: Colors.grey.shade200,
-                                        //       borderRadius: BorderRadius.circular(8),
-                                        //     ),
-                                        //     child: Text(
-                                        //       'Not Eligible',
-                                        //       style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.bold),
-                                        //     ),
-                                        //   )
-                                      ],
-                                    )
-                                  ],
+                                            child: Text(
+                                              (v['vehicle_type'] != null && v['vehicle_type'].toString().isNotEmpty)
+                                                  ? "${v['vehicle_type']} - ${v['type']}"
+                                                  : v['type'],
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                color: Color(0xFF000080),
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const Padding(
+                                        padding: EdgeInsets.symmetric(vertical: 12.0),
+                                        child: Divider(height: 1),
+                                      ),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            context.tr('No. of visits: ${v['visits'] ?? 0}'),
+                                            style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                                          ),
+                                          Text(
+                                            context.tr('Tap to select'),
+                                            style: const TextStyle(
+                                              color: Color(0xFF000080),
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const Padding(
+                                        padding: EdgeInsets.symmetric(vertical: 12.0),
+                                        child: Divider(height: 1),
+                                      ),
+                                      Row(
+                                        children: [
+                                          _msgButton(
+                                            label: context.tr('Welcome'),
+                                            icon: Icons.chat_bubble_outline,
+                                            color: Colors.blue.shade700,
+                                            onPressed: () => _sendGenericMessage(
+                                              type: 'welcome',
+                                              customer: data,
+                                              vehicle: v,
+                                            ),
+                                          ),
+                                          _msgButton(
+                                            label: context.tr('Ready Alert'),
+                                            icon: Icons.notifications_none,
+                                            color: Colors.orange.shade700,
+                                            onPressed: () => _sendGenericMessage(
+                                              type: 'ready',
+                                              customer: data,
+                                              vehicle: v,
+                                            ),
+                                          ),
+                                          _msgButton(
+                                            label: context.tr('Thank You'),
+                                            icon: Icons.favorite_border,
+                                            color: Colors.green.shade700,
+                                            onPressed: () => _sendGenericMessage(
+                                              type: 'thanks',
+                                              customer: data,
+                                              vehicle: v,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            );
+                              );
                           },
                           )
                         ],
@@ -368,7 +496,15 @@ class _NewJobScreenState extends State<NewJobScreen> {
                     );
                   }
 
-                  // Default empty state
+                  // Default empty state or suggestions list
+                  if (_customerSuggestions.isNotEmpty) {
+                    return _buildCustomerSuggestionsList();
+                  }
+
+                  if (_isSearchingSuggestions) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -391,6 +527,70 @@ class _NewJobScreenState extends State<NewJobScreen> {
       ),
     );
   }
+
+  Widget _buildCustomerSuggestionsList() {
+    return ListView.builder(
+      padding: const EdgeInsets.only(top: 8),
+      itemCount: _customerSuggestions.length,
+      itemBuilder: (context, index) {
+        final c = _customerSuggestions[index];
+        return Card(
+          color: Colors.white,
+          elevation: 0,
+          margin: const EdgeInsets.only(bottom: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: Colors.grey.shade200, width: 1),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => _selectCustomerFromSuggestion(c),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: const Color(0xFF000080).withOpacity(0.08),
+                    child: const Icon(Icons.person, color: Color(0xFF000080), size: 20),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          c['name'] ?? '',
+                          style: GoogleFonts.inter(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF1E293B),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${c['phone']} · ${c['customer_type']}',
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.chevron_right,
+                    color: Colors.grey,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
 
   void _showAddVehicleDialog(BuildContext context, Map<String, dynamic> customerData) async {
     final token = context.read<AuthProvider>().token;
@@ -415,6 +615,126 @@ class _NewJobScreenState extends State<NewJobScreen> {
       context.read<CustomerProvider>().searchCustomer(
         customerData['phone'],
         token,
+      );
+    }
+  }
+
+  Widget _msgButton({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4.0),
+        child: ElevatedButton.icon(
+          onPressed: onPressed,
+          icon: Icon(icon, size: 12, color: color),
+          label: Text(
+            label,
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: color.withOpacity(0.08),
+            foregroundColor: color,
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(color: color.withOpacity(0.2), width: 1),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _sendGenericMessage({
+    required String type,
+    required Map<String, dynamic> customer,
+    required Map<String, dynamic> vehicle,
+  }) async {
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
+
+    final phone = customer['phone']?.toString() ?? '';
+    final customerName = customer['name']?.toString() ?? 'Customer';
+    final vehicleNumber = vehicle['no']?.toString() ?? '';
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      Map<String, dynamic> res;
+      if (type == 'welcome') {
+        res = await ApiService.sendVehicleWelcomeMessageGeneric(
+          phone: phone,
+          vehicleNumber: vehicleNumber,
+          customerName: customerName,
+          token: token,
+        );
+      } else if (type == 'ready') {
+        res = await ApiService.sendVehicleReadyAlertGeneric(
+          phone: phone,
+          vehicleNumber: vehicleNumber,
+          customerName: customerName,
+          token: token,
+        );
+      } else {
+        res = await ApiService.sendVehicleThanksMessageGeneric(
+          phone: phone,
+          vehicleNumber: vehicleNumber,
+          customerName: customerName,
+          token: token,
+        );
+      }
+
+      if (!mounted) return;
+      Navigator.pop(context); // Dismiss loading dialog
+
+      final isAuto = res['action'] == 'auto';
+      if (isAuto && res['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.tr(res['message'] ?? 'Message sent successfully!')),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        // WhatsApp API not configured -> manual fallback via WhatsApp chat with pre-filled message
+        String messageText = '';
+        if (type == 'welcome') {
+          messageText = "Hello $customerName, welcome to our service! We are delighted to have you and your vehicle ($vehicleNumber) with us.";
+        } else if (type == 'ready') {
+          messageText = "Hello $customerName, your vehicle ($vehicleNumber) is ready for pickup! Thank you for choosing our service.";
+        } else {
+          messageText = "Hello $customerName, thank you for choosing our service! We look forward to serving you again. Have a great day!";
+        }
+
+        String cleanedPhone = phone.replaceAll(RegExp(r'\D'), '');
+        if (cleanedPhone.length == 10) {
+          cleanedPhone = '91$cleanedPhone';
+        }
+
+        final whatsappUrl = Uri.parse(
+          "https://wa.me/$cleanedPhone?text=${Uri.encodeComponent(messageText)}"
+        );
+
+        await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      if (mounted) Navigator.pop(context); // Dismiss loading dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${context.tr('Error sending message')}: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -551,7 +871,19 @@ class _AddVehicleDialogState extends State<_AddVehicleDialog> {
 
   List<DropdownMenuItem<Map<String, dynamic>>> _buildGroupedDropdownItems() {
     final items = <DropdownMenuItem<Map<String, dynamic>>>[];
-    _vehicleModelsByType.forEach((type, models) {
+    final keys = _vehicleModelsByType.keys.toList();
+    keys.sort((a, b) {
+      final aLower = a.toLowerCase();
+      final bLower = b.toLowerCase();
+      if (aLower == 'bike/scooter') return -1;
+      if (bLower == 'bike/scooter') return 1;
+      if (aLower == 'car/jeep') return -1;
+      if (bLower == 'car/jeep') return 1;
+      return aLower.compareTo(bLower);
+    });
+
+    for (final type in keys) {
+      final models = _vehicleModelsByType[type]!;
       items.add(DropdownMenuItem<Map<String, dynamic>>(
         enabled: false,
         value: null,
@@ -574,7 +906,7 @@ class _AddVehicleDialogState extends State<_AddVehicleDialog> {
           ),
         ));
       }
-    });
+    }
     return items;
   }
 

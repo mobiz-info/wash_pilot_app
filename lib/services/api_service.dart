@@ -451,6 +451,60 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> sendVehicleWelcomeMessageGeneric({
+    required String phone,
+    required String vehicleNumber,
+    required String customerName,
+    required String token,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/booking/welcome-msg/generic/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'phone': phone,
+        'vehicle_number': vehicleNumber,
+        'customer_name': customerName,
+      }),
+    );
+    if (response.statusCode == 200 ||
+        response.statusCode == 400 ||
+        response.statusCode == 404) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to connect to the server.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> sendVehicleThanksMessageGeneric({
+    required String phone,
+    required String vehicleNumber,
+    required String customerName,
+    required String token,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/booking/thanks-msg/generic/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'phone': phone,
+        'vehicle_number': vehicleNumber,
+        'customer_name': customerName,
+      }),
+    );
+    if (response.statusCode == 200 ||
+        response.statusCode == 400 ||
+        response.statusCode == 404) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to connect to the server.');
+    }
+  }
+
   static Future<Map<String, dynamic>> getBranchSchemes(String token) async {
     final response = await http.get(
       Uri.parse('$baseUrl/schemes/branch/'),
