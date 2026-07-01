@@ -110,6 +110,24 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> searchCustomerList(
+    String query,
+    String token,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/customer/search-list/?q=$query'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200 || response.statusCode == 401) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to connect to the server.');
+    }
+  }
+
   static Future<Map<String, dynamic>> getInvoiceServices(
     String customerId,
     String vehicleId,
@@ -215,6 +233,70 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> getInactiveCustomers(
+    String token, {
+    int days = 60,
+  }) async {
+    final url = '$baseUrl/customer/inactive/?days=$days';
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200 || response.statusCode == 401) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load inactive customers.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getWhatsAppTemplates(String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/whatsapp/templates/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200 || response.statusCode == 401) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load WhatsApp templates.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> sendWhatsAppBroadcast(
+    String token, {
+    required String recipientType,
+    required String message,
+    String var2 = '',
+    List<String> customerIds = const [],
+    int inactiveDays = 60,
+  }) async {
+    final body = jsonEncode({
+      'recipient_type': recipientType,
+      'message': message,
+      'var_2': var2,
+      'customer_ids': customerIds,
+      'inactive_days': inactiveDays,
+    });
+    final response = await http.post(
+      Uri.parse('$baseUrl/whatsapp/broadcast/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: body,
+    );
+    if (response.statusCode == 200 || response.statusCode == 400) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to send broadcast.');
+    }
+  }
+
   static Future<Map<String, dynamic>> searchVehicle(
     String vehicleNumber,
     String token,
@@ -231,6 +313,23 @@ class ApiService {
         response.statusCode == 404 ||
         response.statusCode == 401) {
       return _mapVehicleTypesInResponse(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to connect to the server.');
+    }
+  }
+  static Future<Map<String, dynamic>> searchVehicleList(
+    String query,
+    String token,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/vehicle/search-list/?q=$query'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200 || response.statusCode == 401) {
+      return jsonDecode(response.body);
     } else {
       throw Exception('Failed to connect to the server.');
     }
@@ -325,6 +424,33 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> sendVehicleReadyAlertGeneric({
+    required String phone,
+    required String vehicleNumber,
+    required String customerName,
+    required String token,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/booking/ready-alert/generic/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'phone': phone,
+        'vehicle_number': vehicleNumber,
+        'customer_name': customerName,
+      }),
+    );
+    if (response.statusCode == 200 ||
+        response.statusCode == 400 ||
+        response.statusCode == 404) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to connect to the server.');
+    }
+  }
+
   static Future<Map<String, dynamic>> getBranchSchemes(String token) async {
     final response = await http.get(
       Uri.parse('$baseUrl/schemes/branch/'),
@@ -398,11 +524,13 @@ class ApiService {
     String token, {
     String? fromDate,
     String? toDate,
+    String? paymentMode,
   }) async {
     String url = '$baseUrl/invoice/list/';
     final params = <String, String>{};
     if (fromDate != null) params['from_date'] = fromDate;
     if (toDate != null) params['to_date'] = toDate;
+    if (paymentMode != null && paymentMode.isNotEmpty) params['payment_mode'] = paymentMode;
     if (params.isNotEmpty) {
       url += '?' + params.entries.map((e) => '${e.key}=${e.value}').join('&');
     }
@@ -516,18 +644,19 @@ class ApiService {
     }
   }
 
-  /// Receipts created from outstanding collections
   static Future<Map<String, dynamic>> getReceiptList(
     String token, {
     String? fromDate,
     String? toDate,
     String? branchId,
+    String? paymentMode,
   }) async {
     String url = '$baseUrl/receipt/list/';
     final params = <String, String>{};
     if (fromDate != null) params['from_date'] = fromDate;
     if (toDate != null) params['to_date'] = toDate;
     if (branchId != null && branchId.isNotEmpty) params['branch_id'] = branchId;
+    if (paymentMode != null && paymentMode.isNotEmpty) params['payment_mode'] = paymentMode;
     if (params.isNotEmpty) {
       url += '?${params.entries.map((e) => '${e.key}=${e.value}').join('&')}';
     }
@@ -620,10 +749,14 @@ class ApiService {
     String fromDate,
     String toDate, {
     String? branchId,
+    String? paymentMode,
   }) async {
     final params = <String, String>{'from_date': fromDate, 'to_date': toDate};
     if (branchId != null && branchId.isNotEmpty) {
       params['branch_id'] = branchId;
+    }
+    if (paymentMode != null && paymentMode.isNotEmpty) {
+      params['payment_mode'] = paymentMode;
     }
     final response = await http.get(
       Uri.parse('$baseUrl/$path').replace(queryParameters: params),
@@ -664,12 +797,14 @@ class ApiService {
     String fromDate,
     String toDate, {
     String? branchId,
+    String? paymentMode,
   }) => _reportGet(
     'reports/collection/',
     token,
     fromDate,
     toDate,
     branchId: branchId,
+    paymentMode: paymentMode,
   );
 
   static Future<Map<String, dynamic>> getOutstandingReport(

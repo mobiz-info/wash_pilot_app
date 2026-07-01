@@ -8,6 +8,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../providers/auth_provider.dart';
@@ -35,6 +36,7 @@ class _BillsScreenState extends State<BillsScreen> {
 
   DateTime? _fromDate;
   DateTime? _toDate;
+  String? _selectedPaymentMode;
 
   @override
   void initState() {
@@ -63,6 +65,13 @@ class _BillsScreenState extends State<BillsScreen> {
     }
   }
 
+  String _fmt(dynamic value) {
+    final d = (value is num)
+        ? value.toDouble()
+        : double.tryParse(value.toString()) ?? 0.0;
+    return d.toStringAsFixed(2);
+  }
+
   Future<void> _fetchInvoices() async {
     setState(() {
       _isLoading = true;
@@ -76,6 +85,7 @@ class _BillsScreenState extends State<BillsScreen> {
         token,
         fromDate: _fromDate != null ? _formatDate(_fromDate!) : null,
         toDate: _toDate != null ? _formatDate(_toDate!) : null,
+        paymentMode: _selectedPaymentMode,
       );
       setState(() {
         _isLoading = false;
@@ -205,13 +215,113 @@ class _BillsScreenState extends State<BillsScreen> {
     return pdf;
   }
 
-  Future<void> _shareInvoice(Map<String, dynamic> inv) async {
+  String _getCleanedWhatsAppNumber(Map<String, dynamic> customer) {
+    String phone = (customer['whatsapp_number']?.toString().isNotEmpty == true)
+        ? customer['whatsapp_number'].toString()
+        : (customer['phone']?.toString() ?? '');
+    
+    String cleaned = phone.replaceAll(RegExp(r'\D'), '');
+    if (cleaned.length == 10) {
+      cleaned = '91$cleaned';
+    }
+    return cleaned;
+  }
+
+  void _shareInvoice(Map<String, dynamic> inv) {
+    _showShareOptions(context, inv);
+  }
+
+  Future<void> _shareViaWhatsApp(Map<String, dynamic> inv) async {
     try {
+      final customer = inv['customer'] as Map<String, dynamic>? ?? {};
+      final vehicle = inv['vehicle'] as Map<String, dynamic>? ?? {};
+      final services = inv['services'] as List<dynamic>? ?? [];
+      final subtotal = _fmt(inv['subtotal']);
+      final discount = _fmt(inv['discount']);
+      final taxAmount = _fmt(inv['tax_amount']);
+      final total = _fmt(inv['total']);
+      final collected = _fmt(inv['amount_collected']);
+      final invoiceNumber = inv['invoice_number'] as String? ?? '';
+
+      final servicesStr = services.map((s) => "- ${s['name']}: $currencySymbol${_fmt(s['rate'])}").join("\n");
+
+      final cleanInvoiceNo = invoiceNumber.replaceAll('/', '_');
+      final pdfUrl = "http://68.183.94.11:78/media/invoices/invoice-$cleanInvoiceNo.pdf";
+
+      final messageText = 
+          "*INVOICE*\n"
+          "*Invoice No:* $invoiceNumber\n"
+          "*Customer:* ${customer['name']}\n"
+          "*Vehicle:* ${vehicle['number'] ?? vehicle['no'] ?? ''}\n\n"
+          "*Services:*\n$servicesStr\n\n"
+          "*Subtotal:* $currencySymbol$subtotal\n"
+          "*Discount:* $currencySymbol$discount\n"
+          "*Tax:* $currencySymbol$taxAmount\n"
+          "*Total:* $currencySymbol$total\n"
+          "*Paid:* $currencySymbol$collected\n\n"
+          "📄 *PDF Invoice Link:*\n"
+          "$pdfUrl\n\n"
+          "Thank you for choosing us!";
+
+      final cleanedPhone = _getCleanedWhatsAppNumber(customer);
+      if (cleanedPhone.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(context.tr('No phone number available for this customer')),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      final whatsappUrl = Uri.parse(
+        "https://wa.me/$cleanedPhone?text=${Uri.encodeComponent(messageText)}"
+      );
+
+      await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.tr('Error launching WhatsApp: $e')), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _sharePdfFile(Map<String, dynamic> inv) async {
+    try {
+      final customer = inv['customer'] as Map<String, dynamic>? ?? {};
+      final vehicle = inv['vehicle'] as Map<String, dynamic>? ?? {};
+      final services = inv['services'] as List<dynamic>? ?? [];
+      final subtotal = _fmt(inv['subtotal']);
+      final discount = _fmt(inv['discount']);
+      final taxAmount = _fmt(inv['tax_amount']);
+      final total = _fmt(inv['total']);
+      final collected = _fmt(inv['amount_collected']);
+      final invoiceNumber = inv['invoice_number'] as String? ?? '';
+
+      final servicesStr = services.map((s) => "- ${s['name']}: $currencySymbol${_fmt(s['rate'])}").join("\n");
+
+      final messageText = 
+          "*INVOICE*\n"
+          "*Invoice No:* $invoiceNumber\n"
+          "*Customer:* ${customer['name']}\n"
+          "*Vehicle:* ${vehicle['number'] ?? vehicle['no'] ?? ''}\n\n"
+          "*Services:*\n$servicesStr\n\n"
+          "*Subtotal:* $currencySymbol$subtotal\n"
+          "*Discount:* $currencySymbol$discount\n"
+          "*Tax:* $currencySymbol$taxAmount\n"
+          "*Total:* $currencySymbol$total\n"
+          "*Paid:* $currencySymbol$collected\n\n"
+          "Thank you for choosing us!";
+
       final pdf = await _generateInvoicePdf(inv);
       final dir = await getTemporaryDirectory();
       final file = File('${dir.path}/${inv['invoice_number'].replaceAll('/', '_')}.pdf');
       await file.writeAsBytes(await pdf.save());
-      await Share.shareXFiles([XFile(file.path)], text: 'Invoice ${inv['invoice_number']}');
+      await Share.shareXFiles([XFile(file.path)], text: messageText);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -219,6 +329,74 @@ class _BillsScreenState extends State<BillsScreen> {
         );
       }
     }
+  }
+
+  void _showShareOptions(BuildContext context, Map<String, dynamic> inv) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext bc) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16.0),
+            child: Wrap(
+              children: <Widget>[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+                  child: Text(
+                    context.tr('Share Invoice'),
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: const Color(0xFF000080),
+                    ),
+                  ),
+                ),
+                ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.green.shade50,
+                    child: const Icon(Icons.chat_bubble_outline, color: Colors.green),
+                  ),
+                  title: Text(
+                    context.tr('Share via WhatsApp (Direct Chat)'),
+                    style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(
+                    context.tr('Opens chat with pre-filled summary'),
+                    style: GoogleFonts.inter(fontSize: 12),
+                  ),
+                  onTap: () {
+                    Navigator.pop(bc);
+                    _shareViaWhatsApp(inv);
+                  },
+                ),
+                ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.red.shade50,
+                    child: const Icon(Icons.picture_as_pdf_outlined, color: Colors.red),
+                  ),
+                  title: Text(
+                    context.tr('Share PDF Document'),
+                    style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(
+                    context.tr('Generates PDF and opens sharing menu'),
+                    style: GoogleFonts.inter(fontSize: 12),
+                  ),
+                  onTap: () {
+                    Navigator.pop(bc);
+                    _sharePdfFile(inv);
+                  },
+                ),
+                const SizedBox(height: 12),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _downloadInvoice(Map<String, dynamic> inv) async {
@@ -304,20 +482,26 @@ class _BillsScreenState extends State<BillsScreen> {
           Container(
             color: const Color(0xFF000080),
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
-            child: Row(
+            child: Column(
               children: [
-                Expanded(child: _datePicker(label: 'From', date: _fromDate, isFrom: true)),
-                const SizedBox(width: 12),
-                Expanded(child: _datePicker(label: 'To', date: _toDate, isFrom: false)),
-                const SizedBox(width: 12),
-                GestureDetector(
-                  onTap: _fetchInvoices,
-                  child: Container(
-                    height: 48, width: 48,
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
-                    child: const Icon(Icons.search, color: Color(0xFF000080)),
-                  ),
+                Row(
+                  children: [
+                    Expanded(child: _datePicker(label: 'From', date: _fromDate, isFrom: true)),
+                    const SizedBox(width: 12),
+                    Expanded(child: _datePicker(label: 'To', date: _toDate, isFrom: false)),
+                    const SizedBox(width: 12),
+                    GestureDetector(
+                      onTap: _fetchInvoices,
+                      child: Container(
+                        height: 48, width: 48,
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
+                        child: const Icon(Icons.search, color: Color(0xFF000080)),
+                      ),
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 12),
+                _paymentModeDropdown(),
               ],
             ),
           ),
@@ -396,7 +580,7 @@ class _BillsScreenState extends State<BillsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 3))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 3))],
       ),
       child: Column(
         children: [
@@ -404,7 +588,7 @@ class _BillsScreenState extends State<BillsScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFF000080).withOpacity(0.04),
+              color: const Color(0xFF000080).withValues(alpha: 0.04),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
             ),
             child: Row(
@@ -595,5 +779,40 @@ class _BillsScreenState extends State<BillsScreen> {
       const SizedBox(height: 16),
       Text(context.tr(_errorMessage), textAlign: TextAlign.center, style: GoogleFonts.inter(color: Colors.red, fontSize: 14)),
     ]));
+  }
+
+  Widget _paymentModeDropdown() {
+    return DropdownButtonFormField<String>(
+      value: _selectedPaymentMode,
+      isExpanded: true,
+      menuMaxHeight: 350,
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide.none,
+        ),
+      ),
+      hint: Text(context.tr('All payment modes')),
+      items: [
+        DropdownMenuItem<String>(value: '', child: Text(context.tr('All payment modes'))),
+        DropdownMenuItem<String>(value: 'cash', child: Text(context.tr('Cash'))),
+        DropdownMenuItem<String>(value: 'card', child: Text(context.tr('Card'))),
+        DropdownMenuItem<String>(value: 'digital_payments', child: Text(context.tr('Digital payments'))),
+        DropdownMenuItem<String>(value: 'cheque', child: Text(context.tr('Cheque'))),
+        DropdownMenuItem<String>(value: 'online', child: Text(context.tr('Online'))),
+      ],
+      onChanged: (value) {
+        setState(() {
+          _selectedPaymentMode = value == null || value.isEmpty ? null : value;
+        });
+        _fetchInvoices();
+      },
+    );
   }
 }

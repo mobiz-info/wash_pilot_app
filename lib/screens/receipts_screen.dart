@@ -29,6 +29,7 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
   DateTime? _toDate;
   List<dynamic> _branches = [];
   String? _selectedBranchId;
+  String? _selectedPaymentMode;
 
   @override
   void initState() {
@@ -114,6 +115,7 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
         fromDate: _fromDate != null ? _formatApiDate(_fromDate!) : null,
         toDate: _toDate != null ? _formatApiDate(_toDate!) : null,
         branchId: _selectedBranchId,
+        paymentMode: _selectedPaymentMode,
       );
       if (!mounted) return;
       setState(() {
@@ -448,6 +450,8 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
                   const SizedBox(height: 12),
                   _branchDropdown(),
                 ],
+                const SizedBox(height: 12),
+                _paymentModeDropdown(),
               ],
             ),
           ),
@@ -619,6 +623,41 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
     );
   }
 
+  Widget _paymentModeDropdown() {
+    return DropdownButtonFormField<String>(
+      value: _selectedPaymentMode,
+      isExpanded: true,
+      menuMaxHeight: 350,
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide.none,
+        ),
+      ),
+      hint: Text(context.tr('All payment modes')),
+      items: [
+        DropdownMenuItem<String>(value: '', child: Text(context.tr('All payment modes'))),
+        DropdownMenuItem<String>(value: 'cash', child: Text(context.tr('Cash'))),
+        DropdownMenuItem<String>(value: 'card', child: Text(context.tr('Card'))),
+        DropdownMenuItem<String>(value: 'digital_payments', child: Text(context.tr('Digital payments'))),
+        DropdownMenuItem<String>(value: 'cheque', child: Text(context.tr('Cheque'))),
+        DropdownMenuItem<String>(value: 'online', child: Text(context.tr('Online'))),
+      ],
+      onChanged: (value) {
+        setState(() {
+          _selectedPaymentMode = value == null || value.isEmpty ? null : value;
+        });
+        _fetchReceipts();
+      },
+    );
+  }
+
   Widget _datePicker({
     required String label,
     required DateTime? date,
@@ -685,7 +724,7 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),

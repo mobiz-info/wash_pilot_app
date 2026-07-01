@@ -225,7 +225,14 @@ class ReportsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.read<AuthProvider>();
     final reports = _reports.where((r) {
-      if (r['type'] == 'expense_head') {
+      if (r['type'] == 'expense_head' || r['type'] == 'profit') {
+        return auth.isCompanyAdmin;
+      }
+      return true;
+    }).toList();
+
+    final daywiseReports = _daywiseReports.where((r) {
+      if (r['type'] == 'daywise_profit') {
         return auth.isCompanyAdmin;
       }
       return true;
@@ -269,7 +276,7 @@ class ReportsScreen extends StatelessWidget {
               ),
             ),
           ),
-          ..._daywiseReports.map((r) => _buildReportTile(context, r)),
+          ...daywiseReports.map((r) => _buildReportTile(context, r)),
         ],
       ),
     );
@@ -307,6 +314,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
   String _error = '';
   List<dynamic> _branches = [];
   String? _selectedBranchId;
+  String? _selectedPaymentMode;
 
   @override
   void initState() {
@@ -360,6 +368,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               _fromStr,
               _toStr,
               branchId: _selectedBranchId,
+              paymentMode: _selectedPaymentMode,
             );
             break;
           case 'outstanding':
@@ -971,6 +980,10 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                   const SizedBox(height: 12),
                   _branchDropdown(),
                 ],
+                if (widget.reportType == 'collection') ...[
+                  const SizedBox(height: 12),
+                  _paymentModeDropdown(),
+                ],
               ],
             ),
           ),
@@ -1063,6 +1076,49 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
       onChanged: (value) {
         setState(() {
           _selectedBranchId = value == null || value.isEmpty ? null : value;
+        });
+        _load();
+      },
+    );
+  }
+
+  Widget _paymentModeDropdown() {
+    return DropdownButtonFormField<String>(
+      value: _selectedPaymentMode,
+      isExpanded: true,
+      menuMaxHeight: 350,
+      decoration: InputDecoration(
+        labelText: context.tr('Payment Mode'),
+        filled: true,
+        fillColor: const Color(0xFFF8FAFF),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(
+            color: const Color(0xFF000080).withOpacity(0.2),
+          ),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(
+            color: const Color(0xFF000080).withOpacity(0.2),
+          ),
+        ),
+      ),
+      items: [
+        DropdownMenuItem<String>(value: '', child: Text(context.tr('All payment modes'))),
+        DropdownMenuItem<String>(value: 'cash', child: Text(context.tr('Cash'))),
+        DropdownMenuItem<String>(value: 'card', child: Text(context.tr('Card'))),
+        DropdownMenuItem<String>(value: 'digital_payments', child: Text(context.tr('Digital payments'))),
+        DropdownMenuItem<String>(value: 'cheque', child: Text(context.tr('Cheque'))),
+        DropdownMenuItem<String>(value: 'online', child: Text(context.tr('Online'))),
+      ],
+      onChanged: (value) {
+        setState(() {
+          _selectedPaymentMode = value == null || value.isEmpty ? null : value;
         });
         _load();
       },

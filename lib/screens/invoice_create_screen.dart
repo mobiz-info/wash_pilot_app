@@ -94,6 +94,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
   // Amount collected
   final _amountCollectedController = TextEditingController(text: '0.00');
 
+  // Payment mode selection state
+  String _selectedPaymentMode = 'cash';
+
   // ── Computed totals ──────────────────────────────────────────────────────
   double get totalServicesAmount => _rows.fold(0.0, (s, r) => s + r.rate);
   double get totalExtrasAmount => _selectedExtras.fold(
@@ -369,6 +372,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
         'total': total,
         'amount_collected':
             double.tryParse(_amountCollectedController.text) ?? 0.0,
+        'payment_mode': _selectedPaymentMode,
         'services': services,
         if (widget.bookingId != null) 'booking_id': widget.bookingId,
         if (primarySchemeId != null) 'scheme_id': primarySchemeId,
@@ -465,6 +469,8 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     _billSummary(),
                     const SizedBox(height: 16),
                     _amountCollectedField(),
+                    const SizedBox(height: 16),
+                    _paymentModeField(),
                     const SizedBox(height: 24),
                     _saveBtn(),
                     const SizedBox(height: 24),
@@ -532,11 +538,13 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
 
   // ── Service multi-select card ─────────────────────────────────────────────
   Widget _serviceSelectionCard() {
+    final pricedServices = _allServices.where((svc) => svc['has_price'] == true).toList();
+
     return _card(
       title: 'Select Service',
       badge: _rows.isEmpty ? null : '${_rows.length} selected',
       badgeColor: const Color(0xFF000080),
-      child: _allServices.isEmpty
+      child: pricedServices.isEmpty
           ? Center(
               child: Text(
                 context.tr('No services available'),
@@ -544,7 +552,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               ),
             )
           : Column(
-              children: _allServices.map((svc) {
+              children: pricedServices.map((svc) {
                 final id = svc['id'] as String;
                 final name = svc['name'] as String;
                 final rate = (svc['rate'] as num).toDouble();
@@ -1274,6 +1282,74 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ── Payment Mode selector ──────────────────────────────────────────────────
+  Widget _paymentModeField() {
+    return _card(
+      title: 'Payment Mode',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _paymentModeOption('cash', 'Cash', Icons.money),
+              _paymentModeOption('card', 'Card', Icons.credit_card),
+              _paymentModeOption('digital_payments', 'Digital payments', Icons.qr_code_scanner),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _paymentModeOption(String mode, String label, IconData icon) {
+    final isSelected = _selectedPaymentMode == mode;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _selectedPaymentMode = mode;
+          });
+        },
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? const Color(0xFF000080).withValues(alpha: 0.08)
+                : Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isSelected
+                  ? const Color(0xFF000080)
+                  : Colors.grey.shade200,
+              width: isSelected ? 2 : 1,
+            ),
+          ),
+          child: Column(
+            children: [
+              Icon(
+                icon,
+                color: isSelected ? const Color(0xFF000080) : Colors.grey.shade600,
+                size: 20,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                context.tr(label),
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  color: isSelected ? const Color(0xFF000080) : Colors.grey.shade700,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
