@@ -1469,18 +1469,39 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
         ];
         break;
       case 'collection':
-        items = [
-          {
-            'label': 'Total Collected',
-            'value': '$currencySymbol${_fmt(d['total_collected'])}',
-            'color': const Color(0xFF059669),
-          },
-          {
-            'label': 'Count',
-            'value': '${d['count']}',
-            'color': const Color(0xFF1E293B),
-          },
-        ];
+        final summaryList = d['summary'] as List<dynamic>? ?? [];
+        items = summaryList.map<Map<String, dynamic>>((item) {
+          final Map<String, dynamic> itemMap = Map<String, dynamic>.from(item as Map);
+          final mode = itemMap['payment_mode'] as String? ?? '';
+          final display = itemMap['payment_mode_display'] as String? ?? '';
+          final totalAmt = double.tryParse((itemMap['total_amount'] ?? '0').toString()) ?? 0.0;
+          
+          Color cardColor;
+          if (mode == 'cash') {
+            cardColor = const Color(0xFF059669);
+          } else if (mode == 'card') {
+            cardColor = const Color(0xFF2563EB);
+          } else if (mode == 'digital_payments') {
+            cardColor = const Color(0xFF7C3AED);
+          } else if (mode == 'cheque') {
+            cardColor = const Color(0xFFD97706);
+          } else if (mode == 'online') {
+            cardColor = const Color(0xFFEC4899);
+          } else {
+            cardColor = const Color(0xFF475569);
+          }
+
+          return <String, dynamic>{
+            'label': display,
+            'value': '$currencySymbol${_fmt(totalAmt)}',
+            'color': cardColor,
+          };
+        }).toList();
+        items.insert(0, <String, dynamic>{
+          'label': 'Total Collected',
+          'value': '$currencySymbol${_fmt(d['total_collected'])}',
+          'color': const Color(0xFF059669),
+        });
         break;
       case 'outstanding':
         items = [
