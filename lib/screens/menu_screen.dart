@@ -26,6 +26,7 @@ import 'expense_head_screen.dart';
 import 'stock_item_screen.dart';
 import 'extras_screen.dart';
 import 'booking_settings_screen.dart';
+import 'customer_collection_screen.dart';
 import '../services/api_service.dart';
 
 class MenuScreen extends StatefulWidget {
@@ -65,6 +66,11 @@ class _MenuScreenState extends State<MenuScreen> {
       'color': Color(0xFFDC2626),
     },
     {
+      'title': 'Collection',
+      'icon': Icons.monetization_on_outlined,
+      'color': Color(0xFF10B981),
+    },
+    {
       'title': 'Receipt',
       'icon': Icons.receipt_outlined,
       'color': Color(0xFF0F766E),
@@ -91,11 +97,6 @@ class _MenuScreenState extends State<MenuScreen> {
       'color': Color(0xFFF59E0B),
     },
     {
-      'title': 'Staff Leaves',
-      'icon': Icons.calendar_month_outlined,
-      'color': Color(0xFF10B981),
-    },
-    {
       'title': 'Purchase',
       'icon': Icons.shopping_cart_outlined,
       'color': Color(0xFF6366F1),
@@ -107,16 +108,6 @@ class _MenuScreenState extends State<MenuScreen> {
       'color': Color(0xFFF43F5E),
     },
     {
-      'title': 'Booking Settings',
-      'icon': Icons.settings_applications,
-      'color': Color(0xFF000080),
-    },
-    {
-      'title': 'Notifications',
-      'icon': Icons.notifications_outlined,
-      'color': Color(0xFF00BFFF),
-    },
-    {
       'title': 'Language',
       'icon': Icons.language,
       'color': Color(0xFF92400E),
@@ -125,16 +116,32 @@ class _MenuScreenState extends State<MenuScreen> {
 
   final List<Map<String, dynamic>> _companyMenuItems = [
     {
+      'title': 'New Job',
+      'icon': Icons.add_circle_outline,
+      'color': Color(0xFF3B82F6),
+    },
+    {
+      'title': 'Book Now',
+      'icon': Icons.calendar_today,
+      'color': Color(0xFFF97316),
+    },
+    {
       'title': 'Schemes',
       'icon': Icons.card_giftcard,
       'color': Color(0xFFEC4899),
     },
     {'title': 'Reports', 'icon': Icons.bar_chart, 'color': Color(0xFF14B8A6)},
     {'title': 'Bookings', 'icon': Icons.event_note, 'color': Color(0xFF8B5CF6)},
+    {'title': 'Bill', 'icon': Icons.receipt_long, 'color': Color(0xFF22C55E)},
     {
       'title': 'Outstanding',
       'icon': Icons.account_balance_wallet_outlined,
       'color': Color(0xFFDC2626),
+    },
+    {
+      'title': 'Collection',
+      'icon': Icons.monetization_on_outlined,
+      'color': Color(0xFF10B981),
     },
     {
       'title': 'Receipt',
@@ -145,6 +152,11 @@ class _MenuScreenState extends State<MenuScreen> {
       'title': 'Customers',
       'icon': Icons.people_outline,
       'color': Color(0xFFA855F7),
+    },
+    {
+      'title': 'Vehicle',
+      'icon': Icons.directions_car,
+      'color': const Color(0xFF6366F1),
     },
     {
       'title': 'Expense',
@@ -206,6 +218,7 @@ class _MenuScreenState extends State<MenuScreen> {
       'Bookings': const BookingsListScreen(),
       'Bill': const BillsScreen(),
       'Outstanding': const CollectionScreen(),
+      'Collection': const CustomerCollectionScreen(),
       'Receipt': const ReceiptsScreen(),
       'Vehicle': const VehicleSearchScreen(),
       'Edit Customer': const EditCustomerScreen(),
@@ -378,13 +391,14 @@ class _MenuScreenState extends State<MenuScreen> {
                         MaterialPageRoute(builder: (_) => const ExpenseScreen()),
                       );
                     }),
-                    _drawerItem(Icons.calendar_month_outlined, 'Staff Leaves', () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const StaffLeaveScreen()),
-                      );
-                    }),
+                    if (isCompany)
+                      _drawerItem(Icons.calendar_month_outlined, 'Staff Leaves', () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const StaffLeaveScreen()),
+                        );
+                      }),
                     if (isCompany) ...[
                       _drawerItem(Icons.label_outline, 'Expense Heads', () {
                         Navigator.pop(context);
@@ -408,20 +422,19 @@ class _MenuScreenState extends State<MenuScreen> {
                         );
                       }),
                     ],
-                    if (!isCompany)
-                      _drawerItem(
-                        Icons.directions_car_outlined,
-                        'Vehicle Search',
-                        () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const VehicleSearchScreen(),
-                            ),
-                          );
-                        },
-                      ),
+                    _drawerItem(
+                      Icons.directions_car_outlined,
+                      'Vehicle Search',
+                      () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const VehicleSearchScreen(),
+                          ),
+                        );
+                      },
+                    ),
                     _drawerItem(
                       Icons.assignment_late_outlined,
                       'Complaints',
@@ -526,7 +539,7 @@ class _MenuScreenState extends State<MenuScreen> {
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Text(
-                  context.tr('v1.0.9'),
+                  context.tr('v1.3.1'),
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     color: Colors.grey.shade400,

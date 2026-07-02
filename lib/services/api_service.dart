@@ -751,6 +751,63 @@ class ApiService {
     }
   }
 
+  /// Fetch customer outstanding list (customer-wise totals)
+  static Future<Map<String, dynamic>> getCustomerOutstandingList(
+    String token, {
+    String? fromDate,
+    String? toDate,
+    String? branchId,
+  }) async {
+    String url = '$baseUrl/outstanding/customer-list/';
+    final params = <String, String>{};
+    if (fromDate != null) params['from_date'] = fromDate;
+    if (toDate != null) params['to_date'] = toDate;
+    if (branchId != null && branchId.isNotEmpty) params['branch_id'] = branchId;
+    if (params.isNotEmpty) {
+      url += '?${params.entries.map((e) => '${e.key}=${e.value}').join('&')}';
+    }
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200 || response.statusCode == 401) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load customer outstanding list.');
+    }
+  }
+
+  /// Collect bulk payment sequentially for customer's outstanding invoices
+  static Future<Map<String, dynamic>> collectCustomerOutstanding({
+    required String customerId,
+    required double amount,
+    required String paymentMode,
+    required String token,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/outstanding/customer-collect/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'customer_id': customerId,
+        'amount': amount,
+        'payment_mode': paymentMode,
+      }),
+    );
+    if (response.statusCode == 200 ||
+        response.statusCode == 400 ||
+        response.statusCode == 404) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to collect customer payment.');
+    }
+  }
+
   /// Fetch full customer details for editing
   static Future<Map<String, dynamic>> getCustomer(
     String customerId,
