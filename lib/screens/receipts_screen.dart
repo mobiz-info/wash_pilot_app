@@ -646,8 +646,6 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
         DropdownMenuItem<String>(value: 'cash', child: Text(context.tr('Cash'))),
         DropdownMenuItem<String>(value: 'card', child: Text(context.tr('Card'))),
         DropdownMenuItem<String>(value: 'digital_payments', child: Text(context.tr('Digital payments'))),
-        DropdownMenuItem<String>(value: 'cheque', child: Text(context.tr('Cheque'))),
-        DropdownMenuItem<String>(value: 'online', child: Text(context.tr('Online'))),
       ],
       onChanged: (value) {
         setState(() {
