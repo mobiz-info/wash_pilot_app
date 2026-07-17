@@ -78,6 +78,19 @@ class InvoiceViewScreen extends StatelessWidget {
   }
 
   // ── PDF generation ────────────────────────────────────────────────────────
+  Future<Uint8List> _getInvoicePdfBytes(BuildContext context) async {
+    final cleanInvoiceNo = invoiceNumber.replaceAll('/', '_');
+    final pdfUrl = "http://68.183.94.11:78/media/invoices/invoice-$cleanInvoiceNo.pdf";
+    try {
+      final response = await http.get(Uri.parse(pdfUrl));
+      if (response.statusCode == 200) {
+        return response.bodyBytes;
+      }
+    } catch (_) {}
+    final localPdf = await _generateInvoicePdf(context);
+    return localPdf.save();
+  }
+
   Future<pw.Document> _generateInvoicePdf(BuildContext context) async {
     final currencySymbol = context.read<AuthProvider>().currencySymbol;
 
@@ -131,6 +144,13 @@ class InvoiceViewScreen extends StatelessWidget {
             ? invoiceBranch 
             : (authBranch.isNotEmpty ? authBranch : 'our service'));
 
+    final companyName = context.read<AuthProvider>().companyName ?? 'Wash Pilot';
+    final branchAddress = invoiceData['branch_address']?.toString() ?? '';
+    final branchPhone = invoiceData['branch_phone']?.toString() ?? '';
+    final branchEmail = invoiceData['branch_email']?.toString() ?? '';
+    final branchGst = invoiceData['branch_gst']?.toString() ?? '';
+    final dateStr = invoiceData['date']?.toString() ?? '';
+
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
@@ -144,37 +164,52 @@ class InvoiceViewScreen extends StatelessWidget {
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.Row(
-                    crossAxisAlignment: pw.CrossAxisAlignment.center,
-                    children: [
-                      if (logoImage != null) ...[
-                        pw.Image(logoImage, width: 45, height: 45),
-                        pw.SizedBox(width: 10),
-                      ],
-                      pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
-                        children: [
-                          pw.Text('INVOICE',
-                              style: pw.TextStyle(
-                                  fontSize: 26,
-                                  fontWeight: pw.FontWeight.bold,
-                                  color: PdfColors.indigo900)),
-                          pw.SizedBox(height: 4),
-                          pw.Text(
-                              invoiceData['invoice_type'] == 'creditinvoice' ? 'Credit Invoice' : 'Cash Invoice',
-                              style: pw.TextStyle(
-                                  fontSize: 10,
-                                  color: PdfColors.grey700,
-                                  fontWeight: pw.FontWeight.bold)),
+                  pw.Expanded(
+                    child: pw.Row(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        if (logoImage != null) ...[
+                          pw.Image(logoImage, width: 55, height: 55, fit: pw.BoxFit.contain),
+                          pw.SizedBox(width: 12),
                         ],
-                      ),
+                        pw.Expanded(
+                          child: pw.Column(
+                            crossAxisAlignment: pw.CrossAxisAlignment.start,
+                            children: [
+                              pw.Text(companyName.toUpperCase(),
+                                  style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
+                              pw.Text(branchName,
+                                  style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.grey900)),
+                              if (branchAddress.isNotEmpty)
+                                pw.Text(branchAddress, style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+                              if (branchPhone.isNotEmpty)
+                                pw.Text("Phone: $branchPhone", style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+                              if (branchEmail.isNotEmpty)
+                                pw.Text("Email: $branchEmail", style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+                              if (branchGst.isNotEmpty)
+                                pw.Text("GSTIN: $branchGst", style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  pw.SizedBox(width: 20),
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      pw.Text('INVOICE',
+                          style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
+                      pw.SizedBox(height: 4),
+                      pw.Text(invoiceNumber,
+                          style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.grey900)),
+                      pw.Text(
+                          invoiceData['invoice_type'] == 'creditinvoice' ? 'Credit Invoice' : 'Cash Invoice',
+                          style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
+                      if (dateStr.isNotEmpty)
+                        pw.Text(dateStr, style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
                     ],
                   ),
-                  pw.Text(invoiceNumber,
-                      style: pw.TextStyle(
-                          fontSize: 14,
-                          color: PdfColors.grey700,
-                          fontWeight: pw.FontWeight.bold)),
                 ],
               ),
               pw.SizedBox(height: 4),
@@ -508,10 +543,10 @@ class InvoiceViewScreen extends StatelessWidget {
           "Thank you for choosing $branchName!\n"
           "Powered by Mobiz Technologies$logoSuffix";
 
-      final pdf = await _generateInvoicePdf(context);
+      final pdfBytes = await _getInvoicePdfBytes(context);
       final output = await getTemporaryDirectory();
       final file = File('${output.path}/$cleanInvoiceNo.pdf');
-      await file.writeAsBytes(await pdf.save());
+      await file.writeAsBytes(pdfBytes);
       final xFile = XFile(file.path);
       await Share.shareXFiles([xFile], text: messageText);
     } catch (e) {

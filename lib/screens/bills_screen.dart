@@ -133,6 +133,20 @@ class _BillsScreenState extends State<BillsScreen> {
   }
 
   // ── PDF Generation & Share/Download/Print ──────────────────────────
+  Future<Uint8List> _getInvoicePdfBytes(Map<String, dynamic> inv) async {
+    final invoiceNumber = inv['invoice_number'] as String? ?? '';
+    final cleanInvoiceNo = invoiceNumber.replaceAll('/', '_');
+    final pdfUrl = "http://68.183.94.11:78/media/invoices/invoice-$cleanInvoiceNo.pdf";
+    try {
+      final response = await http.get(Uri.parse(pdfUrl));
+      if (response.statusCode == 200) {
+        return response.bodyBytes;
+      }
+    } catch (_) {}
+    final localPdf = await _generateInvoicePdf(inv);
+    return localPdf.save();
+  }
+
   Future<pw.Document> _generateInvoicePdf(Map<String, dynamic> inv) async {
     final fontData = await rootBundle.load('assets/fonts/NotoSans-Regular.ttf');
     final notoFont = pw.Font.ttf(fontData);
@@ -170,6 +184,13 @@ class _BillsScreenState extends State<BillsScreen> {
         ? invBranch
         : (authBranch.isNotEmpty ? authBranch : 'our service');
 
+    final companyName = context.read<AuthProvider>().companyName ?? 'Wash Pilot';
+    final branchAddress = inv['branch_address']?.toString() ?? '';
+    final branchPhone = inv['branch_phone']?.toString() ?? '';
+    final branchEmail = inv['branch_email']?.toString() ?? '';
+    final branchGst = inv['branch_gst']?.toString() ?? '';
+    final dateStr = inv['date']?.toString() ?? '';
+
     pdf.addPage(pw.Page(
       pageFormat: PdfPageFormat.a4,
       build: (pw.Context ctx) => pw.Column(
@@ -180,31 +201,51 @@ class _BillsScreenState extends State<BillsScreen> {
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              pw.Row(
-                crossAxisAlignment: pw.CrossAxisAlignment.center,
-                children: [
-                  if (logoImage != null) ...[
-                    pw.Image(logoImage, width: 45, height: 45),
-                    pw.SizedBox(width: 10),
-                  ],
-                  pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text('INVOICE',
-                          style: pw.TextStyle(fontSize: 26, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
-                      pw.SizedBox(height: 4),
-                      pw.Text(inv['invoice_type'] == 'creditinvoice' ? 'Credit Invoice' : 'Cash Invoice',
-                          style: pw.TextStyle(fontSize: 10, color: PdfColors.grey700, fontWeight: pw.FontWeight.bold)),
+              pw.Expanded(
+                child: pw.Row(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    if (logoImage != null) ...[
+                      pw.Image(logoImage, width: 55, height: 55, fit: pw.BoxFit.contain),
+                      pw.SizedBox(width: 12),
                     ],
-                  ),
+                    pw.Expanded(
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text(companyName.toUpperCase(),
+                              style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
+                          pw.Text(branchName,
+                              style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.grey900)),
+                          if (branchAddress.isNotEmpty)
+                            pw.Text(branchAddress, style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+                          if (branchPhone.isNotEmpty)
+                            pw.Text("Phone: $branchPhone", style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+                          if (branchEmail.isNotEmpty)
+                            pw.Text("Email: $branchEmail", style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+                          if (branchGst.isNotEmpty)
+                            pw.Text("GSTIN: $branchGst", style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              pw.SizedBox(width: 20),
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.end,
+                children: [
+                  pw.Text('INVOICE',
+                      style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
+                  pw.SizedBox(height: 4),
+                  pw.Text(inv['invoice_number'],
+                      style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.grey900)),
+                  pw.Text(inv['invoice_type'] == 'creditinvoice' ? 'Credit Invoice' : 'Cash Invoice',
+                      style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
+                  if (dateStr.isNotEmpty)
+                    pw.Text(_formatDisplayDate(dateStr), style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
                 ],
               ),
-              pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
-                pw.Text(inv['invoice_number'],
-                    style: pw.TextStyle(fontSize: 14, color: PdfColors.grey700, fontWeight: pw.FontWeight.bold)),
-                pw.Text(_formatDisplayDate(inv['date']),
-                    style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey600)),
-              ]),
             ],
           ),
           pw.Divider(height: 30),
@@ -332,16 +373,12 @@ class _BillsScreenState extends State<BillsScreen> {
       final customer = inv['customer'] as Map<String, dynamic>? ?? {};
       final vehicle = inv['vehicle'] as Map<String, dynamic>? ?? {};
       final services = inv['services'] as List<dynamic>? ?? [];
-      final subtotal = _fmt(inv['subtotal']);
-      final discount = _fmt(inv['discount']);
-      final taxAmount = _fmt(inv['tax_amount']);
       final total = _fmt(inv['total']);
       final collected = _fmt(inv['amount_collected']);
       final invoiceNumber = inv['invoice_number'] as String? ?? '';
 
       final servicesStr = services.map((s) => "- ${s['name']}: $currencySymbol${_fmt(s['rate'])}").join("\n");
 
-      final typeStr = inv['invoice_type'] == 'creditinvoice' ? 'Credit Invoice' : 'Cash Invoice';
       final cleanInvoiceNo = invoiceNumber.replaceAll('/', '_');
       final pdfUrl = "http://68.183.94.11:78/media/invoices/invoice-$cleanInvoiceNo.pdf";
 
@@ -400,13 +437,11 @@ class _BillsScreenState extends State<BillsScreen> {
       final customer = inv['customer'] as Map<String, dynamic>? ?? {};
       final vehicle = inv['vehicle'] as Map<String, dynamic>? ?? {};
       final services = inv['services'] as List<dynamic>? ?? [];
-      final subtotal = _fmt(inv['subtotal']);
-      final discount = _fmt(inv['discount']);
-      final taxAmount = _fmt(inv['tax_amount']);
       final total = _fmt(inv['total']);
       final collected = _fmt(inv['amount_collected']);
       final invoiceNumber = inv['invoice_number'] as String? ?? '';
 
+      final servicesStr = services.map((s) => "- ${s['name']}: $currencySymbol${_fmt(s['rate'])}").join("\n");
       final cleanInvoiceNo = invoiceNumber.replaceAll('/', '_');
       final pdfUrl = "http://68.183.94.11:78/media/invoices/invoice-$cleanInvoiceNo.pdf";
 
@@ -433,10 +468,10 @@ class _BillsScreenState extends State<BillsScreen> {
           "Thank you for choosing $branchName!\n"
           "Powered by Mobiz Technologies$logoSuffix";
 
-      final pdf = await _generateInvoicePdf(inv);
+      final pdfBytes = await _getInvoicePdfBytes(inv);
       final dir = await getTemporaryDirectory();
       final file = File('${dir.path}/${inv['invoice_number'].replaceAll('/', '_')}.pdf');
-      await file.writeAsBytes(await pdf.save());
+      await file.writeAsBytes(pdfBytes);
       await Share.shareXFiles([XFile(file.path)], text: messageText);
     } catch (e) {
       if (mounted) {
@@ -517,7 +552,7 @@ class _BillsScreenState extends State<BillsScreen> {
 
   Future<void> _downloadInvoice(Map<String, dynamic> inv) async {
     try {
-      final pdf = await _generateInvoicePdf(inv);
+      final pdfBytes = await _getInvoicePdfBytes(inv);
       Directory? dir;
       if (Platform.isAndroid) {
         dir = Directory('/storage/emulated/0/Download');
@@ -534,7 +569,7 @@ class _BillsScreenState extends State<BillsScreen> {
 
       final filename = '${inv['invoice_number'].replaceAll('/', '_')}.pdf';
       final file = File('${dir.path}/$filename');
-      await file.writeAsBytes(await pdf.save());
+      await file.writeAsBytes(pdfBytes);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -558,9 +593,9 @@ class _BillsScreenState extends State<BillsScreen> {
 
   Future<void> _printInvoice(Map<String, dynamic> inv) async {
     try {
-      final pdf = await _generateInvoicePdf(inv);
+      final pdfBytes = await _getInvoicePdfBytes(inv);
       await Printing.layoutPdf(
-        onLayout: (PdfPageFormat format) async => pdf.save(),
+        onLayout: (PdfPageFormat format) async => pdfBytes,
         name: '${inv['invoice_number'].replaceAll('/', '_')}.pdf',
       );
     } catch (e) {
