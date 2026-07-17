@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 import 'dart:async';
 import 'package:url_launcher/url_launcher.dart';
+import '../config/country_config.dart';
 import '../providers/language_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -21,11 +22,16 @@ class NewJobScreen extends StatefulWidget {
 
 class _NewJobScreenState extends State<NewJobScreen> {
   final _mobileController = TextEditingController();
-  String _selectedCountryCode = '+91';
-  String _selectedCountryIso = 'IN';
+  String _selectedCountryCode = CountryConfig.phoneDialCode;
+  String _selectedCountryIso = CountryConfig.phoneIsoCode;
+  String _searchType = 'number';
   Timer? _debounce;
   List<dynamic> _customerSuggestions = [];
   bool _isSearchingSuggestions = false;
+
+  List<dynamic> _branches = [];
+  String? _selectedBranchId;
+  bool _isLoadingBranches = false;
 
   @override
   void initState() {
@@ -33,13 +39,45 @@ class _NewJobScreenState extends State<NewJobScreen> {
     _mobileController.addListener(_onMobileChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CustomerProvider>().clearData();
+      _loadBranches();
     });
+  }
+
+  Future<void> _loadBranches() async {
+    final auth = context.read<AuthProvider>();
+    if (!auth.isCompanyAdmin) return;
+    
+    setState(() {
+      _isLoadingBranches = true;
+    });
+    
+    try {
+      final token = auth.token;
+      if (token != null) {
+        final res = await ApiService.getCompanyBranches(token);
+        if (res['success'] == true && mounted) {
+          setState(() {
+            _branches = res['branches'] as List<dynamic>;
+            if (_branches.isNotEmpty) {
+              _selectedBranchId = _branches[0]['id']?.toString();
+            }
+            _isLoadingBranches = false;
+          });
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isLoadingBranches = false;
+        });
+      }
+    }
   }
 
   void _onMobileChanged() {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     final text = _mobileController.text.trim();
-    if (text.length >= 3) {
+    if (text.length >= 2) {
       _debounce = Timer(const Duration(milliseconds: 300), () {
         _fetchCustomerSuggestions(text);
       });
@@ -62,23 +100,29 @@ class _NewJobScreenState extends State<NewJobScreen> {
     });
 
     try {
-      final res = await ApiService.searchCustomerList(query, token);
-      if (res['success'] == true) {
+      final res = _searchType == 'vehicle'
+          ? await ApiService.searchVehicleList(query, token)
+          : await ApiService.searchCustomerList(query, token, branchId: _selectedBranchId);
+      if (res['success'] == true && mounted) {
         setState(() {
-          _customerSuggestions = res['customers'] as List<dynamic>;
+          _customerSuggestions = (_searchType == 'vehicle' ? res['vehicles'] : res['customers']) as List<dynamic>;
           _isSearchingSuggestions = false;
         });
       } else {
+        if (mounted) {
+          setState(() {
+            _customerSuggestions = [];
+            _isSearchingSuggestions = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
         setState(() {
           _customerSuggestions = [];
           _isSearchingSuggestions = false;
         });
       }
-    } catch (e) {
-      setState(() {
-        _customerSuggestions = [];
-        _isSearchingSuggestions = false;
-      });
     }
   }
 
@@ -106,6 +150,14 @@ class _NewJobScreenState extends State<NewJobScreen> {
     _searchCustomer(unfocus: true);
   }
 
+  void _selectCustomerFromVehicleSuggestion(Map<String, dynamic> suggestion) {
+    setState(() {
+      _customerSuggestions = [];
+      _mobileController.text = suggestion['vehicle_number'] ?? '';
+    });
+    _searchCustomer(unfocus: true);
+  }
+
   String _isoFromDialCode(String dialCode) {
     switch (dialCode) {
       case '+971': return 'AE';
@@ -125,11 +177,25 @@ class _NewJobScreenState extends State<NewJobScreen> {
     }
     final token = context.read<AuthProvider>().token;
     if (token != null) {
-      final rawMobile = _mobileController.text.trim();
-      if (rawMobile.isNotEmpty) {
-        final cleanCode = _selectedCountryCode.replaceAll('+', '');
-        final formattedMobile = rawMobile.startsWith(cleanCode) ? rawMobile : '$cleanCode$rawMobile';
-        context.read<CustomerProvider>().searchCustomer(formattedMobile, token);
+      final queryText = _mobileController.text.trim();
+      if (queryText.isNotEmpty) {
+        if (_searchType == 'vehicle') {
+          context.read<CustomerProvider>().searchCustomer(
+            queryText,
+            token,
+            branchId: _selectedBranchId,
+            isVehicle: true,
+          );
+        } else {
+          final cleanCode = _selectedCountryCode.replaceAll('+', '');
+          final formattedMobile = queryText.startsWith(cleanCode) ? queryText : '$cleanCode$queryText';
+          context.read<CustomerProvider>().searchCustomer(
+            formattedMobile,
+            token,
+            branchId: _selectedBranchId,
+            isVehicle: false,
+          );
+        }
       }
     }
   }
@@ -153,42 +219,181 @@ class _NewJobScreenState extends State<NewJobScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (_isLoadingBranches)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: 16.0),
+                  child: CircularProgressIndicator(),
+                ),
+              )
+            else if (context.read<AuthProvider>().isCompanyAdmin && _branches.isNotEmpty) ...[
+              DropdownButtonFormField<String>(
+                value: _selectedBranchId,
+                decoration: InputDecoration(
+                  labelText: context.tr('Select Branch'),
+                  labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, color: const Color(0xFF000080)),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade200),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade200),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF000080)),
+                  ),
+                ),
+                items: _branches.map((b) {
+                  return DropdownMenuItem<String>(
+                    value: b['id']?.toString(),
+                    child: Text(b['name'] ?? ''),
+                  );
+                }).toList(),
+                onChanged: (val) {
+                  setState(() {
+                    _selectedBranchId = val;
+                    _customerSuggestions = [];
+                    context.read<CustomerProvider>().clearData();
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+            // Search Type Radios
+            Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                Radio<String>(
+                  value: 'number',
+                  groupValue: _searchType,
+                  activeColor: const Color(0xFF000080),
+                  onChanged: (val) {
+                    setState(() {
+                      _searchType = val!;
+                      _mobileController.clear();
+                      _customerSuggestions = [];
+                      context.read<CustomerProvider>().clearData();
+                    });
+                  },
+                ),
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _searchType = 'number';
+                      _mobileController.clear();
+                      _customerSuggestions = [];
+                      context.read<CustomerProvider>().clearData();
+                    });
+                  },
+                  child: Text(
+                    context.tr('Search by Number'),
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: _searchType == 'number' ? const Color(0xFF000080) : Colors.grey.shade600,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 20),
+                Radio<String>(
+                  value: 'vehicle',
+                  groupValue: _searchType,
+                  activeColor: const Color(0xFF000080),
+                  onChanged: (val) {
+                    setState(() {
+                      _searchType = val!;
+                      _mobileController.clear();
+                      _customerSuggestions = [];
+                      context.read<CustomerProvider>().clearData();
+                    });
+                  },
+                ),
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _searchType = 'vehicle';
+                      _mobileController.clear();
+                      _customerSuggestions = [];
+                      context.read<CustomerProvider>().clearData();
+                    });
+                  },
+                  child: Text(
+                    context.tr('Search by Vehicle'),
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: _searchType == 'vehicle' ? const Color(0xFF000080) : Colors.grey.shade600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
             // Search Section
             Row(
               children: [
                 Expanded(
-                  child: IntlPhoneField(
-                    controller: _mobileController,
-                    keyboardType: TextInputType.phone,
-                    initialCountryCode: 'IN',
-                    dropdownTextStyle: GoogleFonts.inter(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 14),
-                    style: GoogleFonts.inter(fontWeight: FontWeight.w500),
-                    disableLengthCheck: true,
-                    onCountryChanged: (country) {
-                      setState(() {
-                        _selectedCountryCode = '+' + country.dialCode;
-                        _selectedCountryIso = country.code;
-                      });
-                    },
-                    decoration: InputDecoration(
-                      hintText: context.tr('Enter Mobile Number'),
-                      filled: true,
-                      fillColor: Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 16),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade200),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFF000080)),
-                      ),
-                    ),
-                  ),
+                  child: _searchType == 'vehicle'
+                      ? TextField(
+                          controller: _mobileController,
+                          textCapitalization: TextCapitalization.characters,
+                          style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                          decoration: InputDecoration(
+                            hintText: context.tr('Enter Vehicle Number'),
+                            filled: true,
+                            fillColor: Colors.white,
+                            prefixIcon: const Icon(Icons.directions_car, color: Color(0xFF000080)),
+                            contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: Colors.grey.shade200),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: Color(0xFF000080)),
+                            ),
+                          ),
+                        )
+                      : IntlPhoneField(
+                          controller: _mobileController,
+                          keyboardType: TextInputType.phone,
+                          initialCountryCode: CountryConfig.phoneIsoCode,
+                          dropdownTextStyle: GoogleFonts.inter(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 14),
+                          style: GoogleFonts.inter(fontWeight: FontWeight.w500),
+                          disableLengthCheck: true,
+                          onCountryChanged: (country) {
+                            setState(() {
+                              _selectedCountryCode = '+' + country.dialCode;
+                              _selectedCountryIso = country.code;
+                            });
+                          },
+                          decoration: InputDecoration(
+                            hintText: context.tr('Enter Mobile Number'),
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: Colors.grey.shade200),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: Color(0xFF000080)),
+                            ),
+                          ),
+                        ),
                 ),
                 const SizedBox(width: 12),
                 InkWell(
@@ -260,6 +465,7 @@ class _NewJobScreenState extends State<NewJobScreen> {
                                     builder: (context) => AddCustomerScreen(
                                       phoneNumber: formattedMobile,
                                       initialCountryIso: _selectedCountryIso,
+                                      branchId: _selectedBranchId,
                                     ),
                                   ),
                                 );
@@ -270,6 +476,7 @@ class _NewJobScreenState extends State<NewJobScreen> {
                                     context.read<CustomerProvider>().searchCustomer(
                                       formattedMobile,
                                       token,
+                                      branchId: _selectedBranchId,
                                     );
                                   }
                                 }
@@ -309,7 +516,7 @@ class _NewJobScreenState extends State<NewJobScreen> {
                               children: [
                                 CircleAvatar(
                                   radius: 24,
-                                  backgroundColor: const Color(0xFF000080).withOpacity(0.1),
+                                  backgroundColor: const Color(0xFF000080).withValues(alpha: 0.1),
                                   child: const Icon(Icons.person, color: Color(0xFF000080)),
                                 ),
                                 const SizedBox(width: 16),
@@ -332,6 +539,17 @@ class _NewJobScreenState extends State<NewJobScreen> {
                                           fontSize: 14,
                                         ),
                                       ),
+                                      if (data['branch'] != null && data['branch'].toString().isNotEmpty) ...[
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '${context.tr("Branch")}: ${data['branch']}',
+                                          style: const TextStyle(
+                                            color: Color(0xFF000080),
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ],
                                     ],
                                   ),
                                 ),
@@ -347,12 +565,22 @@ class _NewJobScreenState extends State<NewJobScreen> {
                                 context.tr('Customer Vehicles'),
                                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                               ),
-                              TextButton.icon(
+                              ElevatedButton.icon(
                                 onPressed: () => _showAddVehicleDialog(context, data),
-                                icon: const Icon(Icons.add, size: 18),
-                                label: Text(context.tr('Add Vehicle')),
-                                style: TextButton.styleFrom(
+                                icon: const Icon(Icons.add_circle_outline, size: 16),
+                                label: Text(
+                                  context.tr('Add Vehicle'),
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF000080).withValues(alpha: 0.08),
                                   foregroundColor: const Color(0xFF000080),
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    side: const BorderSide(color: Color(0xFF000080), width: 1.2),
+                                  ),
                                 ),
                               ),
                             ],
@@ -379,13 +607,24 @@ class _NewJobScreenState extends State<NewJobScreen> {
                                     ),
                                   );
                                 },
-                                borderRadius: BorderRadius.circular(16),
+                                borderRadius: BorderRadius.circular(20),
                                 child: Container(
-                                  padding: const EdgeInsets.all(16),
+                                  padding: const EdgeInsets.all(18),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: Colors.grey.shade200),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: const Color(0xFF000080).withValues(alpha: 0.15),
+                                      width: 1.7,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(0xFF000080).withValues(alpha: 0.04),
+                                        blurRadius: 16,
+                                        spreadRadius: 2,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
                                   ),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -397,30 +636,35 @@ class _NewJobScreenState extends State<NewJobScreen> {
                                             children: [
                                               Text(
                                                 v['no'],
-                                                style: const TextStyle(
-                                                  fontSize: 18,
-                                                  fontWeight: FontWeight.w800,
-                                                  letterSpacing: 1,
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 19,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: const Color(0xFF000080),
+                                                  letterSpacing: 0.5,
                                                 ),
                                               ),
                                               const SizedBox(width: 8),
-                                              const Icon(Icons.arrow_circle_right_outlined, size: 18, color: Color(0xFF000080)),
+                                              const Icon(Icons.arrow_circle_right, size: 18, color: Color(0xFF000080)),
                                             ],
                                           ),
                                           Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                             decoration: BoxDecoration(
-                                              color: const Color(0xFF000080).withOpacity(0.08),
+                                              color: const Color(0xFF000080).withValues(alpha: 0.08),
                                               borderRadius: BorderRadius.circular(8),
+                                              border: Border.all(
+                                                color: const Color(0xFF000080).withValues(alpha: 0.15),
+                                                width: 1,
+                                              ),
                                             ),
                                             child: Text(
                                               (v['vehicle_type'] != null && v['vehicle_type'].toString().isNotEmpty)
                                                   ? "${v['vehicle_type']} - ${v['type']}"
                                                   : v['type'],
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                color: Color(0xFF000080),
-                                                fontSize: 12,
+                                              style: GoogleFonts.inter(
+                                                fontWeight: FontWeight.w500,
+                                                color: const Color(0xFF000080),
+                                                fontSize: 11,
                                               ),
                                             ),
                                           ),
@@ -428,28 +672,39 @@ class _NewJobScreenState extends State<NewJobScreen> {
                                       ),
                                       const Padding(
                                         padding: EdgeInsets.symmetric(vertical: 12.0),
-                                        child: Divider(height: 1),
+                                        child: Divider(height: 1, color: Color(0xFFE2E8F0)),
                                       ),
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
-                                          Text(
-                                            context.tr('No. of visits: ${v['visits'] ?? 0}'),
-                                            style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-                                          ),
-                                          Text(
-                                            context.tr('Tap to select'),
-                                            style: const TextStyle(
-                                              color: Color(0xFF000080),
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.bold,
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey.shade50,
+                                              borderRadius: BorderRadius.circular(8),
+                                              border: Border.all(color: Colors.grey.shade200),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Icon(Icons.directions_car_outlined, size: 14, color: Colors.grey.shade600),
+                                                const SizedBox(width: 6),
+                                                Text(
+                                                  context.tr('No. of visits: ${v['visits'] ?? 0}'),
+                                                  style: GoogleFonts.inter(
+                                                    color: Colors.grey.shade700,
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ),
+                                        
                                         ],
                                       ),
                                       const Padding(
                                         padding: EdgeInsets.symmetric(vertical: 12.0),
-                                        child: Divider(height: 1),
+                                        child: Divider(height: 1, color: Color(0xFFE2E8F0)),
                                       ),
                                       Row(
                                         children: [
@@ -534,6 +789,16 @@ class _NewJobScreenState extends State<NewJobScreen> {
       itemCount: _customerSuggestions.length,
       itemBuilder: (context, index) {
         final c = _customerSuggestions[index];
+        final isVehicleSuggestion = _searchType == 'vehicle';
+        
+        final String name = isVehicleSuggestion 
+            ? (c['customer_name'] ?? '') 
+            : (c['name'] ?? '');
+            
+        final String subtitle = isVehicleSuggestion
+            ? '${c['vehicle_number']} · ${c['vehicle_model']} · ${c['customer_phone']}'
+            : '${c['phone']} · ${c['customer_type']}${(c['branch_name'] != null && c['branch_name'].toString().isNotEmpty) ? ' · ${c['branch_name']}' : ''}';
+            
         return Card(
           color: Colors.white,
           elevation: 0,
@@ -544,15 +809,25 @@ class _NewJobScreenState extends State<NewJobScreen> {
           ),
           child: InkWell(
             borderRadius: BorderRadius.circular(12),
-            onTap: () => _selectCustomerFromSuggestion(c),
+            onTap: () {
+              if (isVehicleSuggestion) {
+                _selectCustomerFromVehicleSuggestion(c);
+              } else {
+                _selectCustomerFromSuggestion(c);
+              }
+            },
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
                   CircleAvatar(
                     radius: 20,
-                    backgroundColor: const Color(0xFF000080).withOpacity(0.08),
-                    child: const Icon(Icons.person, color: Color(0xFF000080), size: 20),
+                    backgroundColor: const Color(0xFF000080).withValues(alpha: 0.08),
+                    child: Icon(
+                      isVehicleSuggestion ? Icons.directions_car : Icons.person,
+                      color: const Color(0xFF000080),
+                      size: 20,
+                    ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -560,7 +835,7 @@ class _NewJobScreenState extends State<NewJobScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          c['name'] ?? '',
+                          name,
                           style: GoogleFonts.inter(
                             fontSize: 15,
                             fontWeight: FontWeight.bold,
@@ -569,7 +844,7 @@ class _NewJobScreenState extends State<NewJobScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '${c['phone']} · ${c['customer_type']}',
+                          subtitle,
                           style: GoogleFonts.inter(
                             fontSize: 13,
                             color: Colors.grey.shade600,
@@ -628,23 +903,37 @@ class _NewJobScreenState extends State<NewJobScreen> {
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4.0),
-        child: ElevatedButton.icon(
-          onPressed: onPressed,
-          icon: Icon(icon, size: 12, color: color),
-          label: Text(
-            label,
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: color.withOpacity(0.08),
-            foregroundColor: color,
-            elevation: 0,
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-              side: BorderSide(color: color.withOpacity(0.2), width: 1),
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.07),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: color.withValues(alpha: 0.2),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 13, color: color),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    label,
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -707,15 +996,8 @@ class _NewJobScreenState extends State<NewJobScreen> {
           ),
         );
       } else {
-        // WhatsApp API not configured -> manual fallback via WhatsApp chat with pre-filled message
-        String messageText = '';
-        if (type == 'welcome') {
-          messageText = "Hello $customerName, welcome to our service! We are delighted to have you and your vehicle ($vehicleNumber) with us.";
-        } else if (type == 'ready') {
-          messageText = "Hello $customerName, your vehicle ($vehicleNumber) is ready for pickup! Thank you for choosing our service.";
-        } else {
-          messageText = "Hello $customerName, thank you for choosing our service! We look forward to serving you again. Have a great day!";
-        }
+        // WhatsApp API not configured → use server-provided branch-custom prefill message
+        final String messageText = res['message_text']?.toString() ?? '';
 
         String cleanedPhone = phone.replaceAll(RegExp(r'\D'), '');
         if (cleanedPhone.length == 10) {
@@ -757,11 +1039,22 @@ class _AddVehicleDialogState extends State<_AddVehicleDialog> {
   bool _isLoading = true;
   bool _isSaving = false;
   String _errorMessage = '';
-  
+
   Map<String, dynamic>? _fullCustomerData;
-  List<dynamic> _vehicleModels = [];
-  Map<String, List<dynamic>> _vehicleModelsByType = {};
-  Map<String, dynamic>? _selectedModel;
+
+  // 4-level hierarchy
+  List<dynamic> _vehicleTypes = [];
+  List<dynamic> _vehicleTypeModels = [];
+  List<dynamic> _makes = [];
+  List<dynamic> _brandModels = [];
+  List<dynamic> _colors = [];
+
+  Map<String, dynamic>? _selectedType;
+  Map<String, dynamic>? _selectedSegment;
+  Map<String, dynamic>? _selectedMake;
+  Map<String, dynamic>? _selectedBrand;
+  Map<String, dynamic>? _selectedColor;
+
   final _numberController = TextEditingController();
 
   @override
@@ -787,20 +1080,21 @@ class _AddVehicleDialogState extends State<_AddVehicleDialog> {
       final formDataRes = results[1];
 
       if (customerRes['success'] == true && formDataRes['success'] == true) {
-        final models = formDataRes['vehicle_models'] as List<dynamic>;
-        final Map<String, List<dynamic>> grouped = {};
-        for (final m in models) {
-          final type = m['vehicle_type'] as String;
-          grouped.putIfAbsent(type, () => []).add(m);
-        }
+        final vehicleTypes = formDataRes['vehicle_types'] as List<dynamic>? ?? [];
+        final vehicleTypeModels = formDataRes['vehicle_type_models'] as List<dynamic>?
+            ?? formDataRes['vehicle_models'] as List<dynamic>? ?? [];
+        final makes = formDataRes['makes'] as List<dynamic>? ?? [];
+        final brandModels = formDataRes['brand_models'] as List<dynamic>? ?? [];
+        final colors = formDataRes['colors'] as List<dynamic>? ?? [];
 
         setState(() {
           _fullCustomerData = customerRes['customer'];
-          _vehicleModels = models;
-          _vehicleModelsByType = grouped;
-          if (models.isNotEmpty) {
-            _selectedModel = models.first;
-          }
+          _vehicleTypes = vehicleTypes;
+          _vehicleTypeModels = vehicleTypeModels;
+          _makes = makes;
+          _brandModels = brandModels;
+          _colors = colors;
+          if (vehicleTypes.isNotEmpty) _selectedType = vehicleTypes.first;
           _isLoading = false;
         });
       } else {
@@ -817,6 +1111,27 @@ class _AddVehicleDialogState extends State<_AddVehicleDialog> {
     }
   }
 
+  List<dynamic> _segmentsForType(String? vehicleTypeId) {
+    if (vehicleTypeId == null) return [];
+    return _vehicleTypeModels.where((m) => m['vehicle_type_id'] == vehicleTypeId).toList();
+  }
+
+  List<dynamic> _makesForSegment(String? segmentId) {
+    if (segmentId == null) return [];
+    final brandModelsInSegment = _brandModels.where((b) => b['vehicle_type_model_id'] == segmentId);
+    final makeIds = brandModelsInSegment.map((b) => b['make_id']?.toString()).where((id) => id != null && id!.isNotEmpty).toSet();
+    return _makes.where((m) => makeIds.contains(m['id'].toString())).toList();
+  }
+
+  List<dynamic> _brandModelsForSegmentAndMake(String? segmentId, String? makeId) {
+    if (segmentId == null) return [];
+    final brandModelsInSegment = _brandModels.where((b) => b['vehicle_type_model_id'] == segmentId);
+    if (makeId != null && makeId.isNotEmpty) {
+      return brandModelsInSegment.where((b) => b['make_id']?.toString() == makeId).toList();
+    }
+    return brandModelsInSegment.toList();
+  }
+
   Future<void> _save() async {
     final number = _numberController.text.trim().toUpperCase();
     if (number.isEmpty) {
@@ -825,9 +1140,9 @@ class _AddVehicleDialogState extends State<_AddVehicleDialog> {
       );
       return;
     }
-    if (_selectedModel == null) {
+    if (_selectedSegment == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('Please select a vehicle model'))),
+        SnackBar(content: Text(context.tr('Please select a vehicle type and segment'))),
       );
       return;
     }
@@ -835,6 +1150,14 @@ class _AddVehicleDialogState extends State<_AddVehicleDialog> {
     setState(() => _isSaving = true);
 
     try {
+      final vehicleData = <String, dynamic>{
+        'vehicle_number': number,
+        'vehicle_model_id': _selectedSegment!['id'],
+      };
+      if (_selectedMake != null) vehicleData['make_id'] = _selectedMake!['id'];
+      if (_selectedBrand != null) vehicleData['brand_model_id'] = _selectedBrand!['id'];
+      if (_selectedColor != null) vehicleData['color_id'] = _selectedColor!['id'];
+
       final response = await ApiService.editCustomer({
         'customer_id': _fullCustomerData!['id'],
         'name': _fullCustomerData!['name'],
@@ -843,12 +1166,7 @@ class _AddVehicleDialogState extends State<_AddVehicleDialog> {
         'email': _fullCustomerData!['email'] ?? '',
         'address': _fullCustomerData!['address'] ?? '',
         'customer_type_id': _fullCustomerData!['customer_type_id'],
-        'new_vehicles': [
-          {
-            'vehicle_number': number,
-            'vehicle_model_id': _selectedModel!['id'],
-          }
-        ],
+        'new_vehicles': [vehicleData],
       }, widget.token);
 
       if (response['success'] == true) {
@@ -869,49 +1187,52 @@ class _AddVehicleDialogState extends State<_AddVehicleDialog> {
     }
   }
 
-  List<DropdownMenuItem<Map<String, dynamic>>> _buildGroupedDropdownItems() {
-    final items = <DropdownMenuItem<Map<String, dynamic>>>[];
-    final keys = _vehicleModelsByType.keys.toList();
-    keys.sort((a, b) {
-      final aLower = a.toLowerCase();
-      final bLower = b.toLowerCase();
-      if (aLower == 'bike/scooter') return -1;
-      if (bLower == 'bike/scooter') return 1;
-      if (aLower == 'car/jeep') return -1;
-      if (bLower == 'car/jeep') return 1;
-      return aLower.compareTo(bLower);
-    });
-
-    for (final type in keys) {
-      final models = _vehicleModelsByType[type]!;
-      items.add(DropdownMenuItem<Map<String, dynamic>>(
-        enabled: false,
-        value: null,
-        child: Text(
-          type.toUpperCase(),
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-            color: Colors.grey.shade500,
-            letterSpacing: 0.5,
+  Widget _buildDropdown<T>({
+    required String label,
+    required T? value,
+    required List<T> items,
+    required String Function(T) labelBuilder,
+    void Function(T?)? onChanged,
+    String? hint,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+        const SizedBox(height: 6),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<T>(
+              isExpanded: true,
+              menuMaxHeight: 300,
+              value: value,
+              hint: Text(hint ?? 'Select...', style: TextStyle(color: Colors.grey.shade500, fontSize: 14)),
+              items: items.map((item) {
+                return DropdownMenuItem<T>(
+                  value: item,
+                  child: Text(labelBuilder(item), style: const TextStyle(fontSize: 14)),
+                );
+              }).toList(),
+              onChanged: onChanged,
+            ),
           ),
         ),
-      ));
-      for (final m in models) {
-        items.add(DropdownMenuItem<Map<String, dynamic>>(
-          value: m,
-          child: Padding(
-            padding: const EdgeInsets.only(left: 8),
-            child: Text(m['name']),
-          ),
-        ));
-      }
-    }
-    return items;
+      ],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final segments = _segmentsForType(_selectedType?['id']);
+    final makes = _makesForSegment(_selectedSegment?['id']);
+    final brands = _brandModelsForSegmentAndMake(_selectedSegment?['id'], _selectedMake?['id']);
+
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Text(
@@ -932,48 +1253,105 @@ class _AddVehicleDialogState extends State<_AddVehicleDialog> {
                     Text(_errorMessage, style: const TextStyle(color: Colors.red)),
                     const SizedBox(height: 12),
                   ],
-                  Text(
-                    context.tr('Vehicle Model'),
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey.shade700,
-                    ),
+
+                  // Level 1 — Vehicle Type
+                  _buildDropdown<Map<String, dynamic>>(
+                    label: context.tr('Vehicle Type *'),
+                    value: _selectedType,
+                    items: _vehicleTypes.cast<Map<String, dynamic>>(),
+                    labelBuilder: (vt) => vt['name'],
+                    hint: 'Select vehicle type',
+                    onChanged: (val) {
+                      setState(() {
+                        _selectedType = val;
+                        _selectedSegment = null;
+                        _selectedMake = null;
+                        _selectedBrand = null;
+                      });
+                    },
                   ),
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.grey.shade300),
+                  const SizedBox(height: 14),
+
+                  // Level 2 — Segment
+                  if (_selectedType != null) ...[
+                    _buildDropdown<Map<String, dynamic>>(
+                      label: context.tr('Segment *'),
+                      value: _selectedSegment,
+                      items: segments.cast<Map<String, dynamic>>(),
+                      labelBuilder: (m) => m['name'],
+                      hint: segments.isEmpty ? 'No segments available' : 'Select segment',
+                      onChanged: segments.isEmpty ? null : (val) {
+                        setState(() {
+                          _selectedSegment = val;
+                          _selectedMake = null;
+                          _selectedBrand = null;
+                        });
+                      },
                     ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<Map<String, dynamic>>(
-                        isExpanded: true,
-                        menuMaxHeight: 350,
-                        value: _selectedModel,
-                        hint: Text(context.tr('Select model...')),
-                        items: _buildGroupedDropdownItems(),
-                        onChanged: (val) => setState(() => _selectedModel = val),
-                      ),
+                    const SizedBox(height: 14),
+                  ],
+
+                  // Level 3 — Vehicle Make (Optional)
+                  if (_selectedSegment != null) ...[
+                    _buildDropdown<Map<String, dynamic>>(
+                      label: context.tr('Vehicle Make'),
+                      value: _selectedMake,
+                      items: makes.cast<Map<String, dynamic>>(),
+                      labelBuilder: (b) => b['name'],
+                      hint: makes.isEmpty ? 'No makes available' : 'Select make',
+                      onChanged: makes.isEmpty ? null : (val) {
+                        setState(() {
+                          _selectedMake = val;
+                          _selectedBrand = null;
+                        });
+                      },
                     ),
-                  ),
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 14),
+                  ],
+
+                  // Level 4 — Brand Model (Optional, only show after Make is selected)
+                  if (_selectedSegment != null && _selectedMake != null) ...[
+                    _buildDropdown<Map<String, dynamic>>(
+                      label: context.tr('Brand'),
+                      value: _selectedBrand,
+                      items: brands.cast<Map<String, dynamic>>(),
+                      labelBuilder: (b) => b['name'],
+                      hint: brands.isEmpty ? 'No brands available' : 'Select brand',
+                      onChanged: brands.isEmpty ? null : (val) {
+                        setState(() => _selectedBrand = val);
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                  ],
+
+                  // Color (optional)
+                  if (_selectedType != null) ...[
+                    _buildDropdown<Map<String, dynamic>>(
+                      label: context.tr('Color (Optional)'),
+                      value: _selectedColor,
+                      items: [{'id': '', 'name': 'None'}, ..._colors.cast<Map<String, dynamic>>()],
+                      labelBuilder: (c) => c['name'],
+                      hint: 'Select color',
+                      onChanged: (val) {
+                        setState(() {
+                          _selectedColor = (val?['id'] == '') ? null : val;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                  ],
+
+                  // Vehicle Number
                   Text(
-                    context.tr('Vehicle Number'),
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey.shade700,
-                    ),
+                    context.tr('Vehicle Number *'),
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
                   ),
                   const SizedBox(height: 6),
                   TextField(
                     controller: _numberController,
                     textCapitalization: TextCapitalization.characters,
                     decoration: InputDecoration(
-                      hintText: context.tr('e.g. KL 01 AB 1234'),
+                      hintText: context.tr('Enter Vehicle Number'),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                         borderSide: BorderSide(color: Colors.grey.shade300),
@@ -1016,3 +1394,5 @@ class _AddVehicleDialogState extends State<_AddVehicleDialog> {
     );
   }
 }
+
+

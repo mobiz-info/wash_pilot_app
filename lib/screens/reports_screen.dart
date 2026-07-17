@@ -8,6 +8,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 import '../providers/auth_provider.dart';
+import '../config/country_config.dart';
 import '../services/api_service.dart';
 
 // ─── Entry screen ──────────────────────────────────────────────────────────────
@@ -302,7 +303,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
     try {
       return context.read<AuthProvider>().currencySymbol;
     } catch (_) {
-      return '₹';
+      return CountryConfig.currencySymbol;
     }
   }
 
@@ -2448,7 +2449,7 @@ class _ExpenseHeadDetailScreenState extends State<ExpenseHeadDetailScreen> {
     try {
       return context.read<AuthProvider>().currencySymbol;
     } catch (_) {
-      return '₹';
+      return CountryConfig.currencySymbol;
     }
   }
 
@@ -2807,7 +2808,7 @@ class _IncomeDetailScreenState extends State<IncomeDetailScreen> {
     try {
       return context.read<AuthProvider>().currencySymbol;
     } catch (_) {
-      return '₹';
+      return CountryConfig.currencySymbol;
     }
   }
 
@@ -3176,7 +3177,7 @@ class _IncomeVehicleBreakdownScreenState extends State<IncomeVehicleBreakdownScr
     try {
       return context.read<AuthProvider>().currencySymbol;
     } catch (_) {
-      return '₹';
+      return CountryConfig.currencySymbol;
     }
   }
 
@@ -3602,7 +3603,7 @@ class _ProfitReportScreenState extends State<ProfitReportScreen> {
     try {
       return context.read<AuthProvider>().currencySymbol;
     } catch (_) {
-      return '₹';
+      return CountryConfig.currencySymbol;
     }
   }
 
@@ -3714,6 +3715,7 @@ class _ProfitReportScreenState extends State<ProfitReportScreen> {
       final double totalExpense = double.tryParse(_data!['total_expense']?.toString() ?? '0') ?? 0;
       final double netProfit = double.tryParse(_data!['net_profit']?.toString() ?? '0') ?? 0;
       final double totalOutstanding = double.tryParse(_data!['total_outstanding']?.toString() ?? '0') ?? 0;
+      final double totalPayables = double.tryParse(_data!['total_payables']?.toString() ?? '0') ?? 0;
       final bool isProfit = netProfit >= 0;
 
       pdf.addPage(
@@ -3812,6 +3814,8 @@ class _ProfitReportScreenState extends State<ProfitReportScreen> {
                       pw.Text('Total Expense: Rs. ${_fmt(totalExpense)}', style: const pw.TextStyle(fontSize: 13)),
                       pw.SizedBox(height: 4),
                       pw.Text('Receivables: Rs. ${_fmt(totalOutstanding)}', style: const pw.TextStyle(fontSize: 13)),
+                      pw.SizedBox(height: 4),
+                      pw.Text('Payables: Rs. ${_fmt(totalPayables)}', style: const pw.TextStyle(fontSize: 13)),
                     ],
                   ),
                   pw.Container(
@@ -3864,6 +3868,7 @@ class _ProfitReportScreenState extends State<ProfitReportScreen> {
     final double totalExpense = double.tryParse(_data?['total_expense']?.toString() ?? '0') ?? 0;
     final double netProfit = double.tryParse(_data?['net_profit']?.toString() ?? '0') ?? 0;
     final double totalOutstanding = double.tryParse(_data?['total_outstanding']?.toString() ?? '0') ?? 0;
+    final double totalPayables = double.tryParse(_data?['total_payables']?.toString() ?? '0') ?? 0;
     final bool isProfit = netProfit >= 0;
 
     return Scaffold(
@@ -4129,6 +4134,14 @@ class _ProfitReportScreenState extends State<ProfitReportScreen> {
                                       children: [
                                         Text(context.tr('Receivables (Outstanding)'), style: GoogleFonts.inter(fontSize: 13, color: Colors.grey.shade600)),
                                         Text('$currencySymbol${_fmt(totalOutstanding)}', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFFEA580C))),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(context.tr('Payables'), style: GoogleFonts.inter(fontSize: 13, color: Colors.grey.shade600)),
+                                        Text('$currencySymbol${_fmt(totalPayables)}', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFFEA580C))),
                                       ],
                                     ),
                                     const Divider(height: 20),

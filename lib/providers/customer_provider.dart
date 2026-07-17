@@ -29,9 +29,9 @@ class CustomerProvider with ChangeNotifier {
     }
   }
 
-  Future<void> searchCustomer(String mobile, String token) async {
-    if (mobile.isEmpty) {
-      _errorMessage = 'Please enter a mobile number';
+  Future<void> searchCustomer(String query, String token, {String? branchId, bool isVehicle = false}) async {
+    if (query.isEmpty) {
+      _errorMessage = isVehicle ? 'Please enter a vehicle number' : 'Please enter a mobile number';
       _customerData = null;
       notifyListeners();
       return;
@@ -46,7 +46,7 @@ class CustomerProvider with ChangeNotifier {
       // Ensure we have loaded the model to type mapping
       await _ensureModelToTypeMap(token);
 
-      final data = await ApiService.searchCustomer(mobile, token);
+      final data = await ApiService.searchCustomer(query, token, branchId: branchId, isVehicle: isVehicle);
       
       if (data['success'] == true) {
         final customer = Map<String, dynamic>.from(data['customer']);

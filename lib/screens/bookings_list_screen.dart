@@ -245,12 +245,42 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
       if (!mounted) return;
 
       if (res['success'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(context.tr('✅ WhatsApp Ready Alert sent successfully!')),
-            backgroundColor: Colors.green,
-          ),
-        );
+        if (res['action'] == 'auto') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(context.tr('✅ WhatsApp Ready Alert sent successfully!')),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          // Manual WhatsApp chat fallback
+          final customer = booking['customer'] ?? {};
+          final name = customer['name'] ?? 'Customer';
+          final vehicleNumber = booking['vehicle']?['number'] ?? 'your vehicle';
+          final message = "Hello $name, your vehicle ($vehicleNumber) is ready for pickup! Thank you for choosing our service.";
+          
+          String phone = (customer['whatsapp_number']?.toString().isNotEmpty == true)
+              ? customer['whatsapp_number'].toString()
+              : (customer['phone']?.toString() ?? '');
+          String cleanedPhone = phone.replaceAll(RegExp(r'\D'), '');
+          if (cleanedPhone.length == 10) {
+            cleanedPhone = '91$cleanedPhone';
+          }
+          
+          if (cleanedPhone.isNotEmpty) {
+            final whatsappUrl = Uri.parse(
+              "https://wa.me/$cleanedPhone?text=${Uri.encodeComponent(message)}"
+            );
+            await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(context.tr('No phone number available for this customer')),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -530,7 +560,7 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
             ],
 
             // Action buttons
-            if (isPending || isConfirmed || isCompleted) ...[
+            if (isPending || isConfirmed || isCompleted || isCancelled) ...[
               const SizedBox(height: 14),
               const Divider(height: 1),
               const SizedBox(height: 12),
@@ -589,50 +619,70 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
                     ),
                   ],
                 ),
-              ] else ...[
+              ] else if (isPending) ...[
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _actionBtn(
+                      label: 'Start',
+                      icon: Icons.play_circle_outline,
+                      color: Colors.green,
+                      isFilled: true,
+                      onTap: () => _confirmAction(booking, 'confirmed'),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _actionBtn(
+                            label: 'Call',
+                            icon: Icons.phone_outlined,
+                            color: Colors.blue,
+                            onTap: () => _makeCall(booking),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _actionBtn(
+                            label: 'Cancel',
+                            icon: Icons.cancel_outlined,
+                            color: Colors.red,
+                            onTap: () => _confirmAction(booking, 'cancelled'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ] else if (isCompleted) ...[
                 Row(
                   children: [
-                    if (isPending) ...[
-                      Expanded(
-                        child: _actionBtn(
-                          label: 'Start',
-                          icon: Icons.play_circle_outline,
-                          color: Colors.green,
-                          isFilled: true,
-                          onTap: () => _confirmAction(booking, 'confirmed'),
-                        ),
+                    Expanded(
+                      child: _actionBtn(
+                        label: 'Ready Alert',
+                        icon: Icons.check_circle_outline,
+                        color: Colors.green,
+                        isFilled: true,
+                        onTap: () => _sendReadyAlert(booking),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _actionBtn(
-                          label: 'Cancel',
-                          icon: Icons.cancel_outlined,
-                          color: Colors.red,
-                          onTap: () => _confirmAction(booking, 'cancelled'),
-                        ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _actionBtn(
+                        label: 'Call',
+                        icon: Icons.phone_outlined,
+                        color: Colors.blue,
+                        onTap: () => _makeCall(booking),
                       ),
-                    ],
-                    if (isCompleted) ...[
-                      Expanded(
-                        child: _actionBtn(
-                          label: 'Ready Alert',
-                          icon: Icons.check_circle_outline,
-                          color: Colors.green,
-                          isFilled: true,
-                          onTap: () => _sendReadyAlert(booking),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _actionBtn(
-                          label: 'Call',
-                          icon: Icons.phone_outlined,
-                          color: Colors.blue,
-                          onTap: () => _makeCall(booking),
-                        ),
-                      ),
-                    ],
+                    ),
                   ],
+                ),
+              ] else if (isCancelled) ...[
+                _actionBtn(
+                  label: 'Call',
+                  icon: Icons.phone_outlined,
+                  color: Colors.blue,
+                  onTap: () => _makeCall(booking),
                 ),
               ],
             ],

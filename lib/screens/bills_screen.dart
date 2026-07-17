@@ -12,7 +12,9 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../providers/auth_provider.dart';
+import '../config/country_config.dart';
 import '../services/api_service.dart';
+import 'package:http/http.dart' as http;
 
 class BillsScreen extends StatefulWidget {
   const BillsScreen({super.key});
@@ -30,7 +32,7 @@ class _BillsScreenState extends State<BillsScreen> {
     try {
       return context.read<AuthProvider>().currencySymbol;
     } catch (_) {
-      return '₹';
+      return CountryConfig.currencySymbol;
     }
   }
 
@@ -136,6 +138,7 @@ class _BillsScreenState extends State<BillsScreen> {
     final notoFont = pw.Font.ttf(fontData);
 
     final pdf = pw.Document(
+      title: inv['invoice_number']?.toString() ?? 'Invoice',
       theme: pw.ThemeData.withFont(
         base: notoFont,
         bold: notoFont,
@@ -143,22 +146,67 @@ class _BillsScreenState extends State<BillsScreen> {
     );
     final services = inv['services'] as List<dynamic>? ?? [];
 
+    pw.ImageProvider? logoImage;
+    try {
+      final logoUrl = inv['company_logo'] as String? ?? '';
+      if (logoUrl.isNotEmpty) {
+        final response = await http.get(Uri.parse(logoUrl));
+        if (response.statusCode == 200) {
+          logoImage = pw.MemoryImage(response.bodyBytes);
+        }
+      }
+    } catch (_) {}
+
+    if (logoImage == null) {
+      try {
+        final logoData = await rootBundle.load('assets/icons/Wash-Pilot_Blue-Icon.png');
+        logoImage = pw.MemoryImage(logoData.buffer.asUint8List());
+      } catch (_) {}
+    }
+
+    final String invBranch = inv['branch']?.toString() ?? '';
+    final String authBranch = context.read<AuthProvider>().branchName ?? '';
+    final String branchName = invBranch.isNotEmpty
+        ? invBranch
+        : (authBranch.isNotEmpty ? authBranch : 'our service');
+
     pdf.addPage(pw.Page(
       pageFormat: PdfPageFormat.a4,
       build: (pw.Context ctx) => pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
           // Header
-          pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-            pw.Text('INVOICE',
-                style: pw.TextStyle(fontSize: 26, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
-            pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
-              pw.Text(inv['invoice_number'],
-                  style: pw.TextStyle(fontSize: 14, color: PdfColors.grey700, fontWeight: pw.FontWeight.bold)),
-              pw.Text(_formatDisplayDate(inv['date']),
-                  style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey600)),
-            ]),
-          ]),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Row(
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
+                children: [
+                  if (logoImage != null) ...[
+                    pw.Image(logoImage, width: 45, height: 45),
+                    pw.SizedBox(width: 10),
+                  ],
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text('INVOICE',
+                          style: pw.TextStyle(fontSize: 26, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
+                      pw.SizedBox(height: 4),
+                      pw.Text(inv['invoice_type'] == 'creditinvoice' ? 'Credit Invoice' : 'Cash Invoice',
+                          style: pw.TextStyle(fontSize: 10, color: PdfColors.grey700, fontWeight: pw.FontWeight.bold)),
+                    ],
+                  ),
+                ],
+              ),
+              pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
+                pw.Text(inv['invoice_number'],
+                    style: pw.TextStyle(fontSize: 14, color: PdfColors.grey700, fontWeight: pw.FontWeight.bold)),
+                pw.Text(_formatDisplayDate(inv['date']),
+                    style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey600)),
+              ]),
+            ],
+          ),
           pw.Divider(height: 30),
 
           // Customer & Vehicle
@@ -207,8 +255,17 @@ class _BillsScreenState extends State<BillsScreen> {
             ]),
           ),
           pw.Spacer(),
-          pw.Center(child: pw.Text('Thank you for choosing us!',
-              style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey600))),
+          pw.Center(
+            child: pw.Column(
+              children: [
+                pw.Text('Thanks for choosing $branchName',
+                    style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
+                pw.SizedBox(height: 4),
+                pw.Text('Powered by Mobiz Technologies',
+                    style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey500)),
+              ],
+            ),
+          ),
         ],
       ),
     ));
@@ -233,6 +290,45 @@ class _BillsScreenState extends State<BillsScreen> {
 
   Future<void> _shareViaWhatsApp(Map<String, dynamic> inv) async {
     try {
+      final token = context.read<AuthProvider>().token;
+      final invoiceId = inv['id']?.toString() ?? '';
+
+      if (token != null && invoiceId.isNotEmpty) {
+        // Show loading progress
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => const Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF000080)),
+            ),
+          ),
+        );
+
+        try {
+          final res = await ApiService.sendInvoiceWhatsApp(invoiceId, token);
+          if (Navigator.canPop(context)) {
+            Navigator.pop(context); // Dismiss loading dialog
+          }
+
+          if (res['success'] == true && res['action'] == 'auto') {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(context.tr('Invoice sent automatically via WhatsApp API')),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            }
+            return; // Finished!
+          }
+        } catch (_) {
+          if (Navigator.canPop(context)) {
+            Navigator.pop(context); // Dismiss loading dialog
+          }
+        }
+      }
+
       final customer = inv['customer'] as Map<String, dynamic>? ?? {};
       final vehicle = inv['vehicle'] as Map<String, dynamic>? ?? {};
       final services = inv['services'] as List<dynamic>? ?? [];
@@ -245,23 +341,32 @@ class _BillsScreenState extends State<BillsScreen> {
 
       final servicesStr = services.map((s) => "- ${s['name']}: $currencySymbol${_fmt(s['rate'])}").join("\n");
 
+      final typeStr = inv['invoice_type'] == 'creditinvoice' ? 'Credit Invoice' : 'Cash Invoice';
       final cleanInvoiceNo = invoiceNumber.replaceAll('/', '_');
       final pdfUrl = "http://68.183.94.11:78/media/invoices/invoice-$cleanInvoiceNo.pdf";
 
+      final branchName = inv['branch']?.toString() ?? context.read<AuthProvider>().branchName ?? 'our branch';
+      final companyName = context.read<AuthProvider>().companyName ?? 'Wash Pilot';
+      final companyLogo = context.read<AuthProvider>().companyLogo ?? '';
+      final logoSuffix = companyLogo.isNotEmpty ? "\n\nCompany Logo: $companyLogo" : "";
+
+      final doubleTot = double.tryParse(total.toString()) ?? 0.0;
+      final doubleColl = double.tryParse(collected.toString()) ?? 0.0;
+      final balanceVal = doubleTot - doubleColl;
+
       final messageText = 
-          "*INVOICE*\n"
-          "*Invoice No:* $invoiceNumber\n"
-          "*Customer:* ${customer['name']}\n"
-          "*Vehicle:* ${vehicle['number'] ?? vehicle['no'] ?? ''}\n\n"
-          "*Services:*\n$servicesStr\n\n"
-          "*Subtotal:* $currencySymbol$subtotal\n"
-          "*Discount:* $currencySymbol$discount\n"
-          "*Tax:* $currencySymbol$taxAmount\n"
-          "*Total:* $currencySymbol$total\n"
-          "*Paid:* $currencySymbol$collected\n\n"
-          "📄 *PDF Invoice Link:*\n"
+          "Dear ${customer['name']},\n\n"
+          "Your invoice *$invoiceNumber* has been generated successfully at $companyName.\n\n"
+          "*Invoice Details:*\n"
+          "Vehicle: ${vehicle['number'] ?? vehicle['no'] ?? ''}\n"
+          "Services:\n$servicesStr\n"
+          "Total: $currencySymbol$total\n"
+          "Paid: $currencySymbol$collected\n"
+          "Balance: $currencySymbol${_fmt(balanceVal)}\n\n"
+          "Please find the attached PDF invoice for your reference:\n"
           "$pdfUrl\n\n"
-          "Thank you for choosing us!";
+          "Thank you for choosing $branchName!\n"
+          "Powered by Mobiz Technologies$logoSuffix";
 
       final cleanedPhone = _getCleanedWhatsAppNumber(customer);
       if (cleanedPhone.isEmpty) {
@@ -302,20 +407,31 @@ class _BillsScreenState extends State<BillsScreen> {
       final collected = _fmt(inv['amount_collected']);
       final invoiceNumber = inv['invoice_number'] as String? ?? '';
 
-      final servicesStr = services.map((s) => "- ${s['name']}: $currencySymbol${_fmt(s['rate'])}").join("\n");
+      final cleanInvoiceNo = invoiceNumber.replaceAll('/', '_');
+      final pdfUrl = "http://68.183.94.11:78/media/invoices/invoice-$cleanInvoiceNo.pdf";
+
+      final branchName = inv['branch']?.toString() ?? context.read<AuthProvider>().branchName ?? 'our branch';
+      final companyName = context.read<AuthProvider>().companyName ?? 'Wash Pilot';
+      final companyLogo = context.read<AuthProvider>().companyLogo ?? '';
+      final logoSuffix = companyLogo.isNotEmpty ? "\n\nCompany Logo: $companyLogo" : "";
+
+      final doubleTot = double.tryParse(total.toString()) ?? 0.0;
+      final doubleColl = double.tryParse(collected.toString()) ?? 0.0;
+      final balanceVal = doubleTot - doubleColl;
 
       final messageText = 
-          "*INVOICE*\n"
-          "*Invoice No:* $invoiceNumber\n"
-          "*Customer:* ${customer['name']}\n"
-          "*Vehicle:* ${vehicle['number'] ?? vehicle['no'] ?? ''}\n\n"
-          "*Services:*\n$servicesStr\n\n"
-          "*Subtotal:* $currencySymbol$subtotal\n"
-          "*Discount:* $currencySymbol$discount\n"
-          "*Tax:* $currencySymbol$taxAmount\n"
-          "*Total:* $currencySymbol$total\n"
-          "*Paid:* $currencySymbol$collected\n\n"
-          "Thank you for choosing us!";
+          "Dear ${customer['name']},\n\n"
+          "Your invoice *$invoiceNumber* has been generated successfully at $companyName.\n\n"
+          "*Invoice Details:*\n"
+          "Vehicle: ${vehicle['number'] ?? vehicle['no'] ?? ''}\n"
+          "Services:\n$servicesStr\n"
+          "Total: $currencySymbol$total\n"
+          "Paid: $currencySymbol$collected\n"
+          "Balance: $currencySymbol${_fmt(balanceVal)}\n\n"
+          "Please find the attached PDF invoice for your reference:\n"
+          "$pdfUrl\n\n"
+          "Thank you for choosing $branchName!\n"
+          "Powered by Mobiz Technologies$logoSuffix";
 
       final pdf = await _generateInvoicePdf(inv);
       final dir = await getTemporaryDirectory();
@@ -602,18 +718,37 @@ class _BillsScreenState extends State<BillsScreen> {
                         style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade500)),
                   ]),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: isFullyPaid ? Colors.green.shade50 : Colors.orange.shade50,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: isFullyPaid ? Colors.green.shade200 : Colors.orange.shade200),
-                  ),
-                  child: Text(isFullyPaid ? '✓ ${context.tr('Paid')}' : '⏳ ${context.tr('Partial')}',
-                      style: GoogleFonts.inter(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: isFullyPaid ? Colors.green.shade700 : Colors.orange.shade700)),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: inv['invoice_type'] == 'creditinvoice' ? Colors.red.shade50 : Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: inv['invoice_type'] == 'creditinvoice' ? Colors.red.shade200 : Colors.green.shade200),
+                      ),
+                      child: Text(inv['invoice_type'] == 'creditinvoice' ? context.tr('Credit') : context.tr('Cash'),
+                          style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: inv['invoice_type'] == 'creditinvoice' ? Colors.red.shade700 : Colors.green.shade700)),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: isFullyPaid ? Colors.green.shade50 : Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: isFullyPaid ? Colors.green.shade200 : Colors.orange.shade200),
+                      ),
+                      child: Text(isFullyPaid ? '✓ ${context.tr('Paid')}' : '⏳ ${context.tr('Partial')}',
+                          style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: isFullyPaid ? Colors.green.shade700 : Colors.orange.shade700)),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -804,8 +939,8 @@ class _BillsScreenState extends State<BillsScreen> {
         DropdownMenuItem<String>(value: 'cash', child: Text(context.tr('Cash'))),
         DropdownMenuItem<String>(value: 'card', child: Text(context.tr('Card'))),
         DropdownMenuItem<String>(value: 'digital_payments', child: Text(context.tr('Digital payments'))),
-        DropdownMenuItem<String>(value: 'cheque', child: Text(context.tr('Cheque'))),
-        DropdownMenuItem<String>(value: 'online', child: Text(context.tr('Online'))),
+        // DropdownMenuItem<String>(value: 'cheque', child: Text(context.tr('Cheque'))),
+        // DropdownMenuItem<String>(value: 'online', child: Text(context.tr('Online'))),
       ],
       onChanged: (value) {
         setState(() {

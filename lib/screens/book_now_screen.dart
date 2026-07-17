@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../config/country_config.dart';
 import '../providers/language_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
@@ -16,6 +18,7 @@ class BookNowScreen extends StatefulWidget {
 
 class _BookNowScreenState extends State<BookNowScreen> {
   final _mobileController = TextEditingController();
+  String _selectedCountryCode = CountryConfig.phoneDialCode;
 
   @override
   void dispose() {
@@ -29,7 +32,9 @@ class _BookNowScreenState extends State<BookNowScreen> {
     FocusScope.of(context).unfocus();
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
-    context.read<CustomerProvider>().searchCustomer(mobile, token);
+    final cleanCode = _selectedCountryCode.replaceAll('+', '');
+    final formattedMobile = mobile.startsWith(cleanCode) ? mobile : '$cleanCode$mobile';
+    context.read<CustomerProvider>().searchCustomer(formattedMobile, token);
   }
 
   @override
@@ -51,16 +56,23 @@ class _BookNowScreenState extends State<BookNowScreen> {
             child: Row(
               children: [
                 Expanded(
-                  child: TextField(
+                  child: IntlPhoneField(
                     controller: _mobileController,
                     keyboardType: TextInputType.phone,
+                    initialCountryCode: CountryConfig.phoneIsoCode,
+                    dropdownTextStyle: GoogleFonts.inter(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 14),
                     style: GoogleFonts.inter(fontWeight: FontWeight.w500),
+                    disableLengthCheck: true,
+                    onCountryChanged: (country) {
+                      setState(() {
+                        _selectedCountryCode = '+' + country.dialCode;
+                      });
+                    },
                     decoration: InputDecoration(
                       hintText: context.tr('Enter mobile number...'),
                       hintStyle: GoogleFonts.inter(color: Colors.grey.shade500),
                       filled: true,
                       fillColor: Colors.white,
-                      prefixIcon: const Icon(Icons.phone, color: Color(0xFF000080)),
                       contentPadding: const EdgeInsets.symmetric(vertical: 16),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                     ),

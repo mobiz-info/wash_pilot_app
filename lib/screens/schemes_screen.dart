@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
+import '../config/country_config.dart';
 import '../services/api_service.dart';
 import 'add_scheme_screen.dart';
 
@@ -19,7 +20,7 @@ class _SchemesScreenState extends State<SchemesScreen> {
     try {
       return context.read<AuthProvider>().currencySymbol;
     } catch (_) {
-      return '₹';
+      return CountryConfig.currencySymbol;
     }
   }
 

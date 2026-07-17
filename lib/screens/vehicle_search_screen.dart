@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import '../providers/language_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'dart:async';
 
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
+import 'invoice_create_screen.dart';
 
 class VehicleSearchScreen extends StatefulWidget {
   const VehicleSearchScreen({super.key});
@@ -18,22 +21,87 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
   bool _isLoading = false;
   String _errorMessage = '';
   Map<String, dynamic>? _result;
+  Timer? _debounce;
+  List<dynamic> _suggestions = [];
+  bool _isSuggesting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _vehicleController.addListener(_onSearchChanged);
+  }
+
+  void _onSearchChanged() {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    final text = _vehicleController.text.trim();
+    if (text.length >= 2) {
+      _debounce = Timer(const Duration(milliseconds: 300), () {
+        _fetchSuggestions(text);
+      });
+    } else if (text.isEmpty) {
+      setState(() {
+        _result = null;
+        _suggestions = [];
+        _errorMessage = '';
+      });
+    }
+  }
 
   @override
   void dispose() {
+    _debounce?.cancel();
+    _vehicleController.removeListener(_onSearchChanged);
     _vehicleController.dispose();
     super.dispose();
   }
 
-  Future<void> _search() async {
-    final number = _vehicleController.text.trim().toUpperCase();
-    if (number.isEmpty) return;
+  Future<void> _fetchSuggestions(String query) async {
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
 
+    setState(() {
+      _isSuggesting = true;
+    });
+
+    try {
+      final res = await ApiService.searchVehicleList(query, token);
+      if (res['success'] == true) {
+        setState(() {
+          _suggestions = res['vehicles'] as List<dynamic>;
+          _errorMessage = '';
+          _isSuggesting = false;
+        });
+      } else {
+        setState(() {
+          _suggestions = [];
+          _isSuggesting = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _suggestions = [];
+        _isSuggesting = false;
+      });
+    }
+  }
+
+  /// Called when user taps the search button or submits from keyboard.
+  void _searchManual() {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
     FocusScope.of(context).unfocus();
+    final text = _vehicleController.text.trim();
+    if (text.isNotEmpty) {
+      _search(text);
+    }
+  }
+
+  Future<void> _search(String vehicleNumber) async {
+    final number = vehicleNumber.replaceAll(' ', '');
     setState(() {
       _isLoading = true;
       _errorMessage = '';
       _result = null;
+      _suggestions = [];
     });
 
     final token = context.read<AuthProvider>().token;
@@ -60,50 +128,140 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
     }
   }
 
-  void _showAlertDialog(String type) {
-    final isReady = type == 'ready';
-    showDialog(
+
+  Future<void> _makeCall(String phone) async {
+    if (phone.isNotEmpty) {
+      final url = Uri.parse('tel:$phone');
+      try {
+        final success = await launchUrl(url);
+        if (!success && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(context.tr('Could not launch phone dialer.')), backgroundColor: Colors.red),
+          );
+        }
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(context.tr('Could not launch phone dialer.')), backgroundColor: Colors.red),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _sendReadyAlert(Map<String, dynamic> customer, Map<String, dynamic> vehicle) async {
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
-            Icon(isReady ? Icons.check_circle : Icons.star, color: isReady ? Colors.green : Colors.orange),
-            const SizedBox(width: 10),
-            Text(isReady ? 'Ready Alert' : 'Special Alert', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 17)),
+            const Icon(Icons.notifications_active_outlined, color: Colors.green),
+            const SizedBox(width: 8),
+            Text(context.tr('Send Ready Alert'),
+                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16)),
           ],
         ),
         content: Text(
-          isReady
-              ? 'Mark this vehicle as "Ready"?\nThis will notify the customer that their vehicle is ready for pickup.'
-              : 'Send a "Special Alert" for this vehicle?\nThis will flag the vehicle for special attention.',
+          context.tr('Send the automated WhatsApp ready alert notification to this customer?'),
           style: GoogleFonts.inter(fontSize: 14, color: Colors.grey.shade700),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () => Navigator.pop(ctx, false),
             child: Text(context.tr('Cancel'), style: GoogleFonts.inter(color: Colors.grey)),
           ),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(isReady ? '✅ Ready alert sent!' : '⭐ Special alert sent!'),
-                  backgroundColor: isReady ? Colors.green : Colors.orange,
-                ),
-              );
-            },
+            onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: isReady ? Colors.green : Colors.orange,
+              backgroundColor: Colors.green,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            child: Text(context.tr('Confirm'), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+            child: Text(context.tr('Send'), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
     );
+
+    if (confirmed != true) return;
+
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final phone = customer['phone'] ?? '';
+      final vehicleNumber = vehicle['number'] ?? '';
+      final customerName = customer['name'] ?? 'Customer';
+
+      final res = await ApiService.sendVehicleReadyAlertGeneric(
+        phone: phone,
+        vehicleNumber: vehicleNumber,
+        customerName: customerName,
+        token: token,
+      );
+
+      if (!mounted) return;
+
+      if (res['success'] == true) {
+        if (res['action'] == 'auto') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(context.tr('✅ WhatsApp Ready Alert sent successfully!')),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          // Manual WhatsApp chat opening fallback
+          final message = "Hello $customerName, your vehicle ($vehicleNumber) is ready for pickup! Thank you for choosing our service.";
+          
+          String cleanedPhone = phone.replaceAll(RegExp(r'\D'), '');
+          if (cleanedPhone.length == 10) {
+            cleanedPhone = '91$cleanedPhone';
+          }
+          
+          if (cleanedPhone.isNotEmpty) {
+            final whatsappUrl = Uri.parse(
+              "https://wa.me/$cleanedPhone?text=${Uri.encodeComponent(message)}"
+            );
+            await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(context.tr('No phone number available for this customer')),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(res['message'] ?? context.tr('Failed to send Ready Alert.')),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -138,12 +296,12 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
                       contentPadding: const EdgeInsets.symmetric(vertical: 16),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                     ),
-                    onSubmitted: (_) => _search(),
+                    onSubmitted: (_) => _searchManual(),
                   ),
                 ),
                 const SizedBox(width: 12),
                 GestureDetector(
-                  onTap: _search,
+                  onTap: _searchManual,
                   child: Container(
                     height: 54,
                     width: 54,
@@ -164,14 +322,90 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
                 ? const Center(child: CircularProgressIndicator())
                 : _errorMessage.isNotEmpty
                     ? _buildEmptyState()
-                    : _result == null
-                        ? _buildHint()
-                        : _buildResult(),
+                    : _result != null
+                        ? _buildResult()
+                        : _suggestions.isNotEmpty
+                            ? _buildSuggestionsList()
+                            : _buildHint(),
           ),
         ],
       ),
     );
   }
+
+  Widget _buildSuggestionsList() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _suggestions.length,
+      itemBuilder: (context, index) {
+        final suggestion = _suggestions[index];
+        return Card(
+          color: Colors.white,
+          elevation: 0,
+          margin: const EdgeInsets.only(bottom: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: Colors.grey.shade200, width: 1),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () {
+              _vehicleController.text = suggestion['vehicle_number'] ?? '';
+              _searchManual();
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF000080).withOpacity(0.08),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.directions_car,
+                      color: Color(0xFF000080),
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          suggestion['vehicle_number'] ?? '',
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF000080),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${suggestion['vehicle_model']} · ${suggestion['customer_name']}',
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.chevron_right,
+                    color: Colors.grey,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
 
   Widget _buildHint() {
     return Center(
@@ -336,7 +570,38 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 28),
+          // New Job primary action button
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => InvoiceCreateScreen(
+                    customer: customer,
+                    vehicle: {
+                      'id': vehicle['id'],
+                      'no': vehicle['number'],
+                      'type': vehicle['model'],
+                      'vehicle_type': vehicle['vehicle_type'],
+                    },
+                  ),
+                ),
+              );
+            },
+            icon: const Icon(Icons.add_shopping_cart, color: Colors.white),
+            label: Text(
+              context.tr('New Job'),
+              style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF000080),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              elevation: 0,
+            ),
+          ),
+          const SizedBox(height: 16),
 
           // Action Buttons
           Row(
@@ -346,20 +611,21 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
                   label: 'Ready Alert',
                   icon: Icons.check_circle_outline,
                   color: Colors.green,
-                  onTap: () => _showAlertDialog('ready'),
+                  onTap: () => _sendReadyAlert(customer, vehicle),
                 ),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: _actionButton(
-                  label: 'Special Alert',
-                  icon: Icons.star_outline,
-                  color: Colors.orange,
-                  onTap: () => _showAlertDialog('special'),
+                  label: 'Call',
+                  icon: Icons.phone_outlined,
+                  color: Colors.blue,
+                  onTap: () => _makeCall(customer['phone'] ?? ''),
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 28),
         ],
       ),
     );

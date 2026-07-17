@@ -19,7 +19,11 @@ import 'reports_screen.dart';
 import 'broadcast_screen.dart';
 import 'complaints_screen.dart';
 import 'language_screen.dart';
+import 'country_screen.dart';
+import '../config/country_config.dart';
+import '../config/app_defaults.dart';
 import 'expense_screen.dart';
+import 'supplier_screen.dart';
 import 'staff_leave_screen.dart';
 import 'purchase_request_screen.dart';
 import 'expense_head_screen.dart';
@@ -97,6 +101,11 @@ class _MenuScreenState extends State<MenuScreen> {
       'color': Color(0xFFF59E0B),
     },
     {
+      'title': 'Suppliers',
+      'icon': Icons.business_outlined,
+      'color': Color(0xFF0F766E),
+    },
+    {
       'title': 'Purchase',
       'icon': Icons.shopping_cart_outlined,
       'color': Color(0xFF6366F1),
@@ -164,6 +173,11 @@ class _MenuScreenState extends State<MenuScreen> {
       'color': Color(0xFFF59E0B),
     },
     {
+      'title': 'Suppliers',
+      'icon': Icons.business_outlined,
+      'color': Color(0xFF0F766E),
+    },
+    {
       'title': 'Staff Leaves',
       'icon': Icons.calendar_month_outlined,
       'color': Color(0xFF10B981),
@@ -228,7 +242,9 @@ class _MenuScreenState extends State<MenuScreen> {
       'Notifications': const BroadcastScreen(),
       'Complaints': const ComplaintsScreen(),
       'Language': const LanguageScreen(),
+      'Country': const CountryScreen(),
       'Expense': const ExpenseScreen(),
+      'Suppliers': const SupplierScreen(),
       'Staff Leaves': const StaffLeaveScreen(),
       'Purchase': const PurchaseRequestScreen(),
       'Expense Heads': const ExpenseHeadScreen(),
@@ -391,6 +407,13 @@ class _MenuScreenState extends State<MenuScreen> {
                         MaterialPageRoute(builder: (_) => const ExpenseScreen()),
                       );
                     }),
+                    _drawerItem(Icons.business_outlined, 'Suppliers', () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const SupplierScreen()),
+                      );
+                    }),
                     if (isCompany)
                       _drawerItem(Icons.calendar_month_outlined, 'Staff Leaves', () {
                         Navigator.pop(context);
@@ -457,6 +480,19 @@ class _MenuScreenState extends State<MenuScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (_) => const LanguageScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _drawerItem(
+                      Icons.public_outlined,
+                      'Country',
+                      () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const CountryScreen(),
                           ),
                         );
                       },
@@ -539,7 +575,7 @@ class _MenuScreenState extends State<MenuScreen> {
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Text(
-                  context.tr('v1.3.1'),
+                  context.tr('Car wash ${CountryConfig.current.displayName} V $kAppVersion'),
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     color: Colors.grey.shade400,

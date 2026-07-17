@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../providers/auth_provider.dart';
+import '../config/country_config.dart';
 import '../services/api_service.dart';
 
 class ReceiptsScreen extends StatefulWidget {
@@ -329,13 +330,13 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
                     pw.SizedBox(height: 8),
                     _pdfRow(
                       'Amount Received',
-                      '₹${_formatAmount(receipt['amount'])}',
+                      '${CountryConfig.currencySymbol}${_formatAmount(receipt['amount'])}',
                       bold: true,
                     ),
                     pw.SizedBox(height: 8),
                     _pdfRow(
                       'Balance',
-                      '₹${_formatAmount((receipt['invoice'] as Map?)?['balance'])}',
+                      '${CountryConfig.currencySymbol}${_formatAmount((receipt['invoice'] as Map?)?['balance'])}',
                     ),
                   ],
                 ),
@@ -571,7 +572,7 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
                     ),
                   ),
                   Text(
-                    context.tr('₹${_totalCollected.toStringAsFixed(2)}'),
+                    context.tr('${CountryConfig.currencySymbol}${_totalCollected.toStringAsFixed(2)}'),
                     style: GoogleFonts.inter(
                       fontWeight: FontWeight.w900,
                       color: Colors.green.shade700,
@@ -772,7 +773,7 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
                     border: Border.all(color: Colors.green.shade200),
                   ),
                   child: Text(
-                    context.tr('₹${_formatAmount(receipt['amount'])}'),
+                    context.tr('${CountryConfig.currencySymbol}${_formatAmount(receipt['amount'])}'),
                     style: GoogleFonts.inter(
                       fontWeight: FontWeight.w900,
                       fontSize: 15,

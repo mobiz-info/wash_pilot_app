@@ -32,7 +32,7 @@ class _CustomerInvoicesCollectionScreenState
   bool _collecting = false;
 
   final _amountController = TextEditingController();
-  String _selectedPaymentMode = 'cash'; // 'cash', 'card', 'digital_payments'
+  String _selectedPaymentMode = 'digital_payments'; // 'cash', 'card', 'digital_payments'
 
   @override
   void initState() {
@@ -489,6 +489,10 @@ class _CustomerInvoicesCollectionScreenState
                             ),
                             items: [
                               DropdownMenuItem(
+                                value: 'digital_payments',
+                                child: Text(context.tr('Digital payments')),
+                              ),
+                              DropdownMenuItem(
                                 value: 'cash',
                                 child: Text(context.tr('Cash')),
                               ),
@@ -496,10 +500,7 @@ class _CustomerInvoicesCollectionScreenState
                                 value: 'card',
                                 child: Text(context.tr('Card')),
                               ),
-                              DropdownMenuItem(
-                                value: 'digital_payments',
-                                child: Text(context.tr('Digital payments')),
-                              ),
+                              
                             ],
                             onChanged: (v) {
                               if (v != null) {

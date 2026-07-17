@@ -8,7 +8,10 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/auth_provider.dart';
+import '../services/api_service.dart';
+import 'package:http/http.dart' as http;
 
 
 class InvoiceViewScreen extends StatelessWidget {
@@ -35,274 +38,7 @@ class InvoiceViewScreen extends StatelessWidget {
     return d.toStringAsFixed(2);
   }
 
-  // ── PDF generation ────────────────────────────────────────────────────────
-  Future<void> _shareInvoice(BuildContext context) async {
-    try {
-      final currencySymbol = context.read<AuthProvider>().currencySymbol;
-
-      // Load NotoSans from bundled assets — supports ₹ (U+20B9) and full Unicode.
-      // The pdf package's built-in fonts are Latin-only.
-      final fontData =
-          await rootBundle.load('assets/fonts/NotoSans-Regular.ttf');
-      final notoFont = pw.Font.ttf(fontData);
-
-      final pdf = pw.Document(
-        theme: pw.ThemeData.withFont(
-          base: notoFont,
-          bold: notoFont, // variable font — bold weight is embedded
-        ),
-      );
-
-      final services  = invoiceData['services']   as List<dynamic>? ?? [];
-      final taxes     = invoiceData['taxes']       as List<dynamic>? ?? [];
-      final subtotal  = invoiceData['subtotal']    ?? '0.00';
-      final discount  = invoiceData['discount']    ?? '0.00';
-      final taxAmount = invoiceData['tax_amount']  ?? '0.00';
-      final total     = invoiceData['total']       ?? '0.00';
-
-      final bool hasAnyDiscount = services.any(
-        (s) => ((s['discount'] as num?)?.toDouble() ?? 0.0) > 0,
-      );
-
-      pdf.addPage(
-        pw.Page(
-          pageFormat: PdfPageFormat.a4,
-          margin: const pw.EdgeInsets.all(36),
-          build: (pw.Context ctx) {
-            return pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                // Header
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text('INVOICE',
-                        style: pw.TextStyle(
-                            fontSize: 26,
-                            fontWeight: pw.FontWeight.bold,
-                            color: PdfColors.indigo900)),
-                    pw.Text(invoiceNumber,
-                        style: pw.TextStyle(
-                            fontSize: 14,
-                            color: PdfColors.grey700,
-                            fontWeight: pw.FontWeight.bold)),
-                  ],
-                ),
-                pw.SizedBox(height: 4),
-                pw.Divider(color: PdfColors.indigo900, thickness: 2),
-                pw.SizedBox(height: 16),
-
-                // Customer & Vehicle
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.Text('BILLED TO',
-                            style: pw.TextStyle(
-                                fontSize: 9,
-                                color: PdfColors.grey600,
-                                fontWeight: pw.FontWeight.bold,
-                                letterSpacing: 0.5)),
-                        pw.SizedBox(height: 4),
-                        pw.Text(customer['name'],
-                            style: pw.TextStyle(
-                                fontSize: 13,
-                                fontWeight: pw.FontWeight.bold)),
-                        if ((customer['phone'] ?? '').toString().isNotEmpty)
-                          pw.Text(customer['phone'],
-                              style: const pw.TextStyle(
-                                  fontSize: 11, color: PdfColors.grey700)),
-                      ],
-                    ),
-                    pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.end,
-                      children: [
-                        pw.Text('VEHICLE',
-                            style: pw.TextStyle(
-                                fontSize: 9,
-                                color: PdfColors.grey600,
-                                fontWeight: pw.FontWeight.bold,
-                                letterSpacing: 0.5)),
-                        pw.SizedBox(height: 4),
-                        pw.Text(vehicle['no'],
-                            style: pw.TextStyle(
-                                fontSize: 13,
-                                fontWeight: pw.FontWeight.bold)),
-                        pw.Text(
-                            (vehicle['vehicle_type'] != null && vehicle['vehicle_type'].toString().isNotEmpty)
-                                ? "${vehicle['vehicle_type']} - ${vehicle['type']}"
-                                : (vehicle['type'] ?? ''),
-                            style: const pw.TextStyle(
-                                fontSize: 11, color: PdfColors.grey700)),
-                      ],
-                    ),
-                  ],
-                ),
-                pw.SizedBox(height: 24),
-
-                // Services table
-                pw.Text('SERVICES',
-                    style: pw.TextStyle(
-                        fontSize: 9,
-                        color: PdfColors.grey600,
-                        fontWeight: pw.FontWeight.bold,
-                        letterSpacing: 0.5)),
-                pw.SizedBox(height: 6),
-                pw.Table(
-                  columnWidths: hasAnyDiscount
-                      ? {
-                          0: const pw.FlexColumnWidth(4),
-                          1: const pw.FixedColumnWidth(70),
-                          2: const pw.FixedColumnWidth(70),
-                          3: const pw.FixedColumnWidth(80),
-                        }
-                      : {
-                          0: const pw.FlexColumnWidth(4),
-                          1: const pw.FixedColumnWidth(80),
-                        },
-                  border:
-                      pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
-                  children: [
-                    // Header row
-                    pw.TableRow(
-                      decoration:
-                          const pw.BoxDecoration(color: PdfColors.indigo900),
-                      children: [
-                        _pdfCell('Service',
-                            isHeader: true,
-                            align: pw.Alignment.centerLeft),
-                        _pdfCell('Rate', isHeader: true),
-                        if (hasAnyDiscount)
-                          _pdfCell('Discount', isHeader: true),
-                        if (hasAnyDiscount)
-                          _pdfCell('Line Total', isHeader: true),
-                      ],
-                    ),
-                    // Data rows
-                    for (int i = 0; i < services.length; i++)
-                      pw.TableRow(
-                        decoration: pw.BoxDecoration(
-                          color: i.isEven ? PdfColors.grey50 : PdfColors.white,
-                        ),
-                        children: [
-                          _pdfCell(services[i]['name'] ?? '',
-                              align: pw.Alignment.centerLeft),
-                          _pdfCell(
-                              '$currencySymbol ${_fmt(services[i]['rate'])}'),
-                          if (hasAnyDiscount)
-                            _pdfCell(
-                              ((services[i]['discount'] as num?)?.toDouble() ??
-                                          0.0) >
-                                      0
-                                  ? '-$currencySymbol ${_fmt(services[i]['discount'])}'
-                                  : '—',
-                              color: ((services[i]['discount'] as num?)
-                                              ?.toDouble() ??
-                                          0) >
-                                      0
-                                  ? PdfColors.green700
-                                  : PdfColors.grey500,
-                            ),
-                          if (hasAnyDiscount)
-                            _pdfCell(
-                              '$currencySymbol ${_fmt(
-                                (services[i]['rate'] as num).toDouble() -
-                                    ((services[i]['discount'] as num?)
-                                            ?.toDouble() ??
-                                        0),
-                              )}',
-                              bold: true,
-                            ),
-                        ],
-                      ),
-                  ],
-                ),
-                pw.SizedBox(height: 20),
-
-                // Bill summary box (right-aligned)
-                pw.Align(
-                  alignment: pw.Alignment.centerRight,
-                  child: pw.Container(
-                    width: 260,
-                    padding: const pw.EdgeInsets.all(12),
-                    decoration: pw.BoxDecoration(
-                      border: pw.Border.all(color: PdfColors.grey300),
-                      borderRadius:
-                          const pw.BorderRadius.all(pw.Radius.circular(6)),
-                    ),
-                    child: pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.stretch,
-                      children: [
-                        _pdfSummaryRow(
-                            'Subtotal', '$currencySymbol $subtotal'),
-                        if ((double.tryParse(discount.toString()) ?? 0) > 0)
-                          _pdfSummaryRow(
-                            'Total Discount',
-                            '-$currencySymbol $discount',
-                            valueColor: PdfColors.green700,
-                          ),
-                        if (taxes.isNotEmpty)
-                          for (final tax in taxes)
-                            _pdfSummaryRow(
-                              tax['name']?.toString() ?? 'Tax',
-                              '$currencySymbol ${tax['amount']}',
-                            )
-                        else if ((double.tryParse(taxAmount.toString()) ?? 0) >
-                            0)
-                          _pdfSummaryRow(
-                              'Tax', '$currencySymbol $taxAmount'),
-                        pw.Divider(color: PdfColors.grey400),
-                        pw.Row(
-                          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                          children: [
-                            pw.Text('TOTAL',
-                                style: pw.TextStyle(
-                                    fontWeight: pw.FontWeight.bold,
-                                    fontSize: 13)),
-                            pw.Text('$currencySymbol $total',
-                                style: pw.TextStyle(
-                                    fontWeight: pw.FontWeight.bold,
-                                    fontSize: 16,
-                                    color: PdfColors.indigo900)),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                pw.Spacer(),
-                pw.Center(
-                  child: pw.Text('Thank you for your business!',
-                      style:
-                          const pw.TextStyle(color: PdfColors.grey600)),
-                ),
-              ],
-            );
-          },
-        ),
-      );
-
-      final output = await getTemporaryDirectory();
-      final file = File('${output.path}/$invoiceNumber.pdf');
-      await file.writeAsBytes(await pdf.save());
-      final xFile = XFile(file.path);
-      await Share.shareXFiles([xFile],
-          text: 'Here is your invoice $invoiceNumber');
-    } catch (e) {
-      print(e.toString());
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.tr('Error generating PDF: $e'))),
-        );
-      }
-    }
-  }
-
-  // PDF helper widgets
+  // ── PDF helper widgets ───────────────────────────────────────────────────
   pw.Widget _pdfCell(
     String text, {
     bool isHeader = false,
@@ -324,16 +60,13 @@ class InvoiceViewScreen extends StatelessWidget {
     );
   }
 
-  pw.Widget _pdfSummaryRow(String label, String value,
-      {PdfColor? valueColor}) {
+  pw.Widget _pdfSummaryRow(String label, String value, {PdfColor? valueColor}) {
     return pw.Padding(
       padding: const pw.EdgeInsets.symmetric(vertical: 3),
       child: pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         children: [
-          pw.Text(label,
-              style: const pw.TextStyle(
-                  fontSize: 11, color: PdfColors.grey700)),
+          pw.Text(label, style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey700)),
           pw.Text(value,
               style: pw.TextStyle(
                   fontSize: 11,
@@ -343,6 +76,528 @@ class InvoiceViewScreen extends StatelessWidget {
       ),
     );
   }
+
+  // ── PDF generation ────────────────────────────────────────────────────────
+  Future<pw.Document> _generateInvoicePdf(BuildContext context) async {
+    final currencySymbol = context.read<AuthProvider>().currencySymbol;
+
+    // Load NotoSans from bundled assets — supports ₹ (U+20B9) and full Unicode.
+    final fontData = await rootBundle.load('assets/fonts/NotoSans-Regular.ttf');
+    final notoFont = pw.Font.ttf(fontData);
+
+    final pdf = pw.Document(
+      title: invoiceNumber,
+      theme: pw.ThemeData.withFont(
+        base: notoFont,
+        bold: notoFont,
+      ),
+    );
+
+    final services  = invoiceData['services']   as List<dynamic>? ?? [];
+    final taxes     = invoiceData['taxes']       as List<dynamic>? ?? [];
+    final subtotal  = invoiceData['subtotal']    ?? '0.00';
+    final discount  = invoiceData['discount']    ?? '0.00';
+    final taxAmount = invoiceData['tax_amount']  ?? '0.00';
+    final total     = invoiceData['total']       ?? '0.00';
+
+    final bool hasAnyDiscount = services.any(
+      (s) => ((s['discount'] as num?)?.toDouble() ?? 0.0) > 0,
+    );
+
+    pw.ImageProvider? logoImage;
+    try {
+      final logoUrl = invoiceData['company_logo'] as String? ?? context.read<AuthProvider>().companyLogo ?? '';
+      if (logoUrl.isNotEmpty) {
+        final response = await http.get(Uri.parse(logoUrl));
+        if (response.statusCode == 200) {
+          logoImage = pw.MemoryImage(response.bodyBytes);
+        }
+      }
+    } catch (_) {}
+
+    if (logoImage == null) {
+      try {
+        final logoData = await rootBundle.load('assets/icons/Wash-Pilot_Blue-Icon.png');
+        logoImage = pw.MemoryImage(logoData.buffer.asUint8List());
+      } catch (_) {}
+    }
+
+    final String customerBranch = customer['branch']?.toString() ?? '';
+    final String invoiceBranch = invoiceData['branch']?.toString() ?? '';
+    final String authBranch = context.read<AuthProvider>().branchName ?? '';
+    final String branchName = customerBranch.isNotEmpty 
+        ? customerBranch 
+        : (invoiceBranch.isNotEmpty 
+            ? invoiceBranch 
+            : (authBranch.isNotEmpty ? authBranch : 'our service'));
+
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(36),
+        build: (pw.Context ctx) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              // Header
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Row(
+                    crossAxisAlignment: pw.CrossAxisAlignment.center,
+                    children: [
+                      if (logoImage != null) ...[
+                        pw.Image(logoImage, width: 45, height: 45),
+                        pw.SizedBox(width: 10),
+                      ],
+                      pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text('INVOICE',
+                              style: pw.TextStyle(
+                                  fontSize: 26,
+                                  fontWeight: pw.FontWeight.bold,
+                                  color: PdfColors.indigo900)),
+                          pw.SizedBox(height: 4),
+                          pw.Text(
+                              invoiceData['invoice_type'] == 'creditinvoice' ? 'Credit Invoice' : 'Cash Invoice',
+                              style: pw.TextStyle(
+                                  fontSize: 10,
+                                  color: PdfColors.grey700,
+                                  fontWeight: pw.FontWeight.bold)),
+                        ],
+                      ),
+                    ],
+                  ),
+                  pw.Text(invoiceNumber,
+                      style: pw.TextStyle(
+                          fontSize: 14,
+                          color: PdfColors.grey700,
+                          fontWeight: pw.FontWeight.bold)),
+                ],
+              ),
+              pw.SizedBox(height: 4),
+              pw.Divider(color: PdfColors.indigo900, thickness: 2),
+              pw.SizedBox(height: 16),
+
+              // Customer & Vehicle
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text('BILLED TO',
+                          style: pw.TextStyle(
+                              fontSize: 9,
+                              color: PdfColors.grey600,
+                              fontWeight: pw.FontWeight.bold,
+                              letterSpacing: 0.5)),
+                      pw.SizedBox(height: 4),
+                      pw.Text(customer['name'],
+                          style: pw.TextStyle(
+                              fontSize: 13,
+                              fontWeight: pw.FontWeight.bold)),
+                      if ((customer['phone'] ?? '').toString().isNotEmpty)
+                        pw.Text(customer['phone'],
+                            style: const pw.TextStyle(
+                                fontSize: 11, color: PdfColors.grey700)),
+                    ],
+                  ),
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      pw.Text('VEHICLE',
+                          style: pw.TextStyle(
+                              fontSize: 9,
+                              color: PdfColors.grey600,
+                              fontWeight: pw.FontWeight.bold,
+                              letterSpacing: 0.5)),
+                      pw.SizedBox(height: 4),
+                      pw.Text(vehicle['no'],
+                          style: pw.TextStyle(
+                              fontSize: 13,
+                              fontWeight: pw.FontWeight.bold)),
+                      pw.Text(
+                          (vehicle['vehicle_type'] != null && vehicle['vehicle_type'].toString().isNotEmpty)
+                              ? "${vehicle['vehicle_type']} - ${vehicle['type']}"
+                              : (vehicle['type'] ?? ''),
+                          style: const pw.TextStyle(
+                              fontSize: 11, color: PdfColors.grey700)),
+                    ],
+                  ),
+                ],
+              ),
+              pw.SizedBox(height: 24),
+
+              // Services table
+              pw.Text('SERVICES',
+                  style: pw.TextStyle(
+                      fontSize: 9,
+                      color: PdfColors.grey600,
+                      fontWeight: pw.FontWeight.bold,
+                      letterSpacing: 0.5)),
+              pw.SizedBox(height: 6),
+              pw.Table(
+                columnWidths: hasAnyDiscount
+                    ? {
+                        0: const pw.FlexColumnWidth(4),
+                        1: const pw.FixedColumnWidth(70),
+                        2: const pw.FixedColumnWidth(70),
+                        3: const pw.FixedColumnWidth(80),
+                      }
+                    : {
+                        0: const pw.FlexColumnWidth(4),
+                        1: const pw.FixedColumnWidth(80),
+                      },
+                border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+                children: [
+                  // Header row
+                  pw.TableRow(
+                    decoration: const pw.BoxDecoration(color: PdfColors.indigo900),
+                    children: [
+                      _pdfCell('Service', isHeader: true, align: pw.Alignment.centerLeft),
+                      _pdfCell('Rate', isHeader: true),
+                      if (hasAnyDiscount) _pdfCell('Discount', isHeader: true),
+                      if (hasAnyDiscount) _pdfCell('Line Total', isHeader: true),
+                    ],
+                  ),
+                  // Data rows
+                  for (int i = 0; i < services.length; i++)
+                    pw.TableRow(
+                      decoration: pw.BoxDecoration(
+                        color: i.isEven ? PdfColors.grey50 : PdfColors.white,
+                      ),
+                      children: [
+                        _pdfCell(services[i]['name'] ?? '', align: pw.Alignment.centerLeft),
+                        _pdfCell('$currencySymbol${_fmt(services[i]['rate'])}'),
+                        if (hasAnyDiscount)
+                          _pdfCell(
+                            ((services[i]['discount'] as num?)?.toDouble() ?? 0.0) > 0
+                                ? '-$currencySymbol${_fmt(services[i]['discount'])}'
+                                : '—',
+                            color: ((services[i]['discount'] as num?)?.toDouble() ?? 0) > 0
+                                ? PdfColors.green700
+                                : PdfColors.grey500,
+                          ),
+                        if (hasAnyDiscount)
+                          _pdfCell(
+                            '$currencySymbol${_fmt(
+                              (services[i]['rate'] as num).toDouble() -
+                                  ((services[i]['discount'] as num?)?.toDouble() ?? 0),
+                            )}',
+                            bold: true,
+                          ),
+                      ],
+                    ),
+                ],
+              ),
+              pw.SizedBox(height: 20),
+
+              // Bill summary box (right-aligned)
+              pw.Align(
+                alignment: pw.Alignment.centerRight,
+                child: pw.Container(
+                  width: 260,
+                  padding: const pw.EdgeInsets.all(12),
+                  decoration: pw.BoxDecoration(
+                    border: pw.Border.all(color: PdfColors.grey300),
+                    borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+                  ),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+                    children: [
+                      _pdfSummaryRow('Subtotal', '$currencySymbol$subtotal'),
+                      if ((double.tryParse(discount.toString()) ?? 0) > 0)
+                        _pdfSummaryRow(
+                          'Total Discount',
+                          '-$currencySymbol$discount',
+                          valueColor: PdfColors.green700,
+                        ),
+                      if (taxes.isNotEmpty)
+                        for (final tax in taxes)
+                          _pdfSummaryRow(
+                            tax['name']?.toString() ?? 'Tax',
+                            '$currencySymbol${tax['amount']}',
+                          )
+                      else if ((double.tryParse(taxAmount.toString()) ?? 0) > 0)
+                        _pdfSummaryRow('Tax', '$currencySymbol$taxAmount'),
+                      pw.Divider(color: PdfColors.grey400),
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text('TOTAL', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13)),
+                          pw.Text('$currencySymbol$total',
+                              style: pw.TextStyle(
+                                  fontWeight: pw.FontWeight.bold,
+                                  fontSize: 16,
+                                  color: PdfColors.indigo900)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              pw.Spacer(),
+              pw.Center(
+                child: pw.Column(
+                  children: [
+                    pw.Text('Thanks for choosing $branchName',
+                        style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
+                    pw.SizedBox(height: 4),
+                    pw.Text('Powered by Mobiz Technologies',
+                        style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey500)),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    return pdf;
+  }
+
+  String _getCleanedWhatsAppNumber(Map<String, dynamic> customer) {
+    String phone = (customer['whatsapp_number']?.toString().isNotEmpty == true)
+        ? customer['whatsapp_number'].toString()
+        : (customer['phone']?.toString() ?? '');
+    
+    String cleaned = phone.replaceAll(RegExp(r'\D'), '');
+    if (cleaned.length == 10) {
+      cleaned = '91$cleaned';
+    }
+    return cleaned;
+  }
+
+  // ── Share Invoice ────────────────────────────────────────────────────────
+  void _shareInvoice(BuildContext context) {
+    _showShareOptions(context);
+  }
+
+  Future<void> _shareViaWhatsApp(BuildContext context) async {
+    try {
+      final token = context.read<AuthProvider>().token;
+      if (token != null && invoiceId.isNotEmpty) {
+        // Show loading progress
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => const Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF000080)),
+            ),
+          ),
+        );
+
+        try {
+          final res = await ApiService.sendInvoiceWhatsApp(invoiceId, token);
+          if (Navigator.canPop(context)) {
+            Navigator.pop(context); // Dismiss loading dialog
+          }
+
+          if (res['success'] == true && res['action'] == 'auto') {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(context.tr('Invoice sent automatically via WhatsApp API')),
+                backgroundColor: Colors.green,
+              ),
+            );
+            return; // Finished!
+          }
+        } catch (_) {
+          if (Navigator.canPop(context)) {
+            Navigator.pop(context); // Dismiss loading dialog
+          }
+        }
+      }
+
+      final currencySymbol = context.read<AuthProvider>().currencySymbol;
+      final services = invoiceData['services'] as List<dynamic>? ?? [];
+      final subtotal = invoiceData['subtotal'] ?? '0.00';
+      final discount = invoiceData['discount'] ?? '0.00';
+      final taxAmount = invoiceData['tax_amount'] ?? '0.00';
+      final total = invoiceData['total'] ?? '0.00';
+      final collected = invoiceData['amount_collected'] ?? '0.00';
+
+      final servicesStr = services.map((s) => "- ${s['name']}: $currencySymbol${_fmt(s['rate'])}").join("\n");
+
+      final cleanInvoiceNo = invoiceNumber.replaceAll('/', '_');
+      final pdfUrl = "http://68.183.94.11:78/media/invoices/invoice-$cleanInvoiceNo.pdf";
+
+      final branchName = invoiceData['branch']?.toString() ?? context.read<AuthProvider>().branchName ?? 'our branch';
+      final companyName = context.read<AuthProvider>().companyName ?? 'Wash Pilot';
+      final companyLogo = context.read<AuthProvider>().companyLogo ?? '';
+      final logoSuffix = companyLogo.isNotEmpty ? "\n\nCompany Logo: $companyLogo" : "";
+
+      final doubleTot = double.tryParse(total.toString()) ?? 0.0;
+      final doubleColl = double.tryParse(collected.toString()) ?? 0.0;
+      final balanceVal = doubleTot - doubleColl;
+
+      final messageText = 
+          "Dear ${customer['name']},\n\n"
+          "Your invoice *$invoiceNumber* has been generated successfully at $companyName.\n\n"
+          "*Invoice Details:*\n"
+          "Vehicle: ${vehicle['no']}\n"
+          "Services:\n$servicesStr\n"
+          "Total: $currencySymbol$total\n"
+          "Paid: $currencySymbol$collected\n"
+          "Balance: $currencySymbol${_fmt(balanceVal)}\n\n"
+          "Please find the attached PDF invoice for your reference:\n"
+          "$pdfUrl\n\n"
+          "Thank you for choosing $branchName!\n"
+          "Powered by Mobiz Technologies$logoSuffix";
+
+      final cleanedPhone = _getCleanedWhatsAppNumber(customer);
+      if (cleanedPhone.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.tr('No phone number available for this customer')),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      final whatsappUrl = Uri.parse(
+        "https://wa.me/$cleanedPhone?text=${Uri.encodeComponent(messageText)}"
+      );
+
+      await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.tr('Error launching WhatsApp: $e'))),
+        );
+      }
+    }
+  }
+
+  Future<void> _sharePdfFile(BuildContext context) async {
+    try {
+      final currencySymbol = context.read<AuthProvider>().currencySymbol;
+      final services = invoiceData['services'] as List<dynamic>? ?? [];
+      final subtotal = invoiceData['subtotal'] ?? '0.00';
+      final discount = invoiceData['discount'] ?? '0.00';
+      final taxAmount = invoiceData['tax_amount'] ?? '0.00';
+      final total = invoiceData['total'] ?? '0.00';
+      final collected = invoiceData['amount_collected'] ?? '0.00';
+
+      final cleanInvoiceNo = invoiceNumber.replaceAll('/', '_');
+      final pdfUrl = "http://68.183.94.11:78/media/invoices/invoice-$cleanInvoiceNo.pdf";
+
+      final branchName = invoiceData['branch']?.toString() ?? context.read<AuthProvider>().branchName ?? 'our branch';
+      final companyName = context.read<AuthProvider>().companyName ?? 'Wash Pilot';
+      final companyLogo = context.read<AuthProvider>().companyLogo ?? '';
+      final logoSuffix = companyLogo.isNotEmpty ? "\n\nCompany Logo: $companyLogo" : "";
+
+      final doubleTot = double.tryParse(total.toString()) ?? 0.0;
+      final doubleColl = double.tryParse(collected.toString()) ?? 0.0;
+      final balanceVal = doubleTot - doubleColl;
+
+      final messageText = 
+          "Dear ${customer['name']},\n\n"
+          "Your invoice *$invoiceNumber* has been generated successfully at $companyName.\n\n"
+          "*Invoice Details:*\n"
+          "Vehicle: ${vehicle['no']}\n"
+          "Services:\n$servicesStr\n"
+          "Total: $currencySymbol$total\n"
+          "Paid: $currencySymbol$collected\n"
+          "Balance: $currencySymbol${_fmt(balanceVal)}\n\n"
+          "Please find the attached PDF invoice for your reference:\n"
+          "$pdfUrl\n\n"
+          "Thank you for choosing $branchName!\n"
+          "Powered by Mobiz Technologies$logoSuffix";
+
+      final pdf = await _generateInvoicePdf(context);
+      final output = await getTemporaryDirectory();
+      final cleanInvoiceNo = invoiceNumber.replaceAll('/', '_');
+      final file = File('${output.path}/$cleanInvoiceNo.pdf');
+      await file.writeAsBytes(await pdf.save());
+      final xFile = XFile(file.path);
+      await Share.shareXFiles([xFile], text: messageText);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.tr('Error generating PDF: $e'))),
+        );
+      }
+    }
+  }
+
+  void _showShareOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext bc) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16.0),
+            child: Wrap(
+              children: <Widget>[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+                  child: Text(
+                    context.tr('Share Invoice'),
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: const Color(0xFF000080),
+                    ),
+                  ),
+                ),
+                ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.green.shade50,
+                    child: const Icon(Icons.chat_bubble_outline, color: Colors.green),
+                  ),
+                  title: Text(
+                    context.tr('Share via WhatsApp (Direct Chat)'),
+                    style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(
+                    context.tr('Opens chat with pre-filled summary'),
+                    style: GoogleFonts.inter(fontSize: 12),
+                  ),
+                  onTap: () {
+                    Navigator.pop(bc);
+                    _shareViaWhatsApp(context);
+                  },
+                ),
+                ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.red.shade50,
+                    child: const Icon(Icons.picture_as_pdf_outlined, color: Colors.red),
+                  ),
+                  title: Text(
+                    context.tr('Share PDF Document'),
+                    style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(
+                    context.tr('Generates PDF and opens sharing menu'),
+                    style: GoogleFonts.inter(fontSize: 12),
+                  ),
+                  onTap: () {
+                    Navigator.pop(bc);
+                    _sharePdfFile(context);
+                  },
+                ),
+                const SizedBox(height: 12),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+
 
   // ── Screen UI ─────────────────────────────────────────────────────────────
   @override
@@ -365,7 +620,7 @@ class InvoiceViewScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.share),
             onPressed: () => _shareInvoice(context),
-            tooltip: context.tr('Share Invoice PDF'),
+            tooltip: context.tr('Share Invoice'),
           ),
         ],
       ),
@@ -669,8 +924,8 @@ class InvoiceViewScreen extends StatelessWidget {
               // ── Buttons ───────────────────────────────────────────────────
               ElevatedButton.icon(
                 onPressed: () => _shareInvoice(context),
-                icon: const Icon(Icons.picture_as_pdf_outlined),
-                label: Text(context.tr('Share Invoice PDF'),
+                icon: const Icon(Icons.share),
+                label: Text(context.tr('Share Invoice'),
                     style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF000080),

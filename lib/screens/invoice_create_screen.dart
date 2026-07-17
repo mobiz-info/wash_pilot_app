@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
+import '../config/country_config.dart';
 import '../services/api_service.dart';
 import 'invoice_view_screen.dart';
 
@@ -68,7 +69,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
     try {
       return context.read<AuthProvider>().currencySymbol;
     } catch (_) {
-      return '₹';
+      return CountryConfig.currencySymbol;
     }
   }
 
@@ -82,6 +83,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
   // Taxes (company-level, applied on whole invoice subtotal)
   List<Map<String, dynamic>> _availableTaxes = [];
   Set<String> _selectedTaxIds = {};
+  bool _applyGst = false;
 
   // Selected service rows (each row = one service line)
   final List<_ServiceRow> _rows = [];
@@ -95,7 +97,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
   final _amountCollectedController = TextEditingController(text: '0.00');
 
   // Payment mode selection state
-  String _selectedPaymentMode = 'cash';
+  String _selectedPaymentMode = 'digital_payments';
 
   // ── Computed totals ──────────────────────────────────────────────────────
   double get totalServicesAmount => _rows.fold(0.0, (s, r) => s + r.rate);
@@ -111,6 +113,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
       (totalServicesAmount + totalExtrasAmount - totalDiscount)
           .clamp(0.0, double.infinity);
   double get taxAmount {
+    if (!_applyGst) return 0;
     double t = 0;
     for (final tax in _availableTaxes) {
       if (_selectedTaxIds.contains(tax['id'] as String)) {
@@ -122,18 +125,20 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
 
   double get total => subtotal + taxAmount;
 
-  List<Map<String, dynamic>> get selectedTaxes => _availableTaxes
-      .where((t) => _selectedTaxIds.contains(t['id'] as String))
-      .map((t) {
-        final pct = (t['percent'] as num).toDouble();
-        return {
-          'id': t['id'],
-          'name': t['name'],
-          'percent': pct,
-          'amount': (subtotal * pct / 100).toStringAsFixed(2),
-        };
-      })
-      .toList();
+  List<Map<String, dynamic>> get selectedTaxes => _applyGst
+      ? _availableTaxes
+          .where((t) => _selectedTaxIds.contains(t['id'] as String))
+          .map((t) {
+            final pct = (t['percent'] as num).toDouble();
+            return {
+              'id': t['id'],
+              'name': t['name'],
+              'percent': pct,
+              'amount': (subtotal * pct / 100).toStringAsFixed(2),
+            };
+          })
+          .toList()
+      : [];
 
   // Determine if any row already uses a Quantity (free wash) scheme
   String? get _quantitySchemeUsedId {
@@ -271,8 +276,13 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
     if (st == 'Discount') {
       final pct = (scheme['discount_percentage'] as num?)?.toDouble() ?? 0.0;
       setState(() => row.schemeDiscount = row.rate * pct / 100);
-    } else if (st == 'Quantity' && scheme['is_eligible'] == true) {
-      setState(() => row.schemeDiscount = row.rate);
+    } else if (st == 'Quantity') {
+      // Only apply full discount when the customer is eligible (reached paid_visits)
+      // If not yet eligible, discount = 0 but scheme is still recorded for progress tracking
+      if (scheme['is_eligible'] == true) {
+        setState(() => row.schemeDiscount = row.rate);
+      }
+      // else: schemeDiscount stays 0.0 — visit counts toward progress but no free wash yet
     }
     _syncAmountCollected();
   }
@@ -396,6 +406,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 'tax_amount': taxAmount.toStringAsFixed(2),
                 'total': total.toStringAsFixed(2),
                 'taxes': selectedTaxes,
+                'company_logo': response['company_logo'] ?? '',
+                'branch_logo': response['branch_logo'] ?? '',
+                'branch': response['branch'] ?? '',
               },
               customer: widget.customer,
               vehicle: widget.vehicle,
@@ -806,12 +819,17 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
     final visitsCount = scheme['visits_count'] as int? ?? 0;
     final paidVisits = scheme['paid_visits'] as int? ?? 1;
 
-    // Disable quantity scheme if another row already uses it
+    // Disable quantity scheme only if another row already uses it
+    // (A qty scheme can always be selected to track progress; discount only applies when eligible)
     final lockedByOtherRow = schemeType == 'Quantity' &&
         !isSelected &&
         _quantitySchemeUsedId == scheme['id'];
 
-    final canSelect = isEligible && !lockedByOtherRow;
+    // Qty schemes are always selectable for progress tracking
+    // Other scheme types (Discount/Voucher) only selectable when eligible
+    final canSelect = schemeType == 'Quantity'
+        ? !lockedByOtherRow
+        : isEligible && !lockedByOtherRow;
 
     IconData icon;
     Color iconColor;
@@ -907,9 +925,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 if (schemeType == 'Quantity')
                   _statusBadge(
                     isEligible
-                        ? (lockedByOtherRow ? 'Used' : 'FREE')
-                        : 'Need ${(paidVisits - visitsCount).clamp(0, paidVisits)} more',
-                    isEligible && !lockedByOtherRow ? Colors.green : Colors.orange,
+                        ? (lockedByOtherRow ? 'Used' : 'FREE! 🎉')
+                        : '$visitsCount / $paidVisits',
+                    isEligible && !lockedByOtherRow ? Colors.green : Colors.blue,
                   ),
                 const SizedBox(width: 8),
                 Radio<String>(
@@ -1113,63 +1131,98 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
   // ── Tax section ───────────────────────────────────────────────────────────
   Widget _taxSelectionSection() {
     return _card(
-      title: 'Taxes',
+      title: 'Tax',
       child: Column(
-        children: _availableTaxes.map((tax) {
-          final id = tax['id'] as String;
-          final name = tax['name'] as String;
-          final percent = (tax['percent'] as num).toDouble();
-          final isSelected = _selectedTaxIds.contains(id);
-          return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
               Checkbox(
-                value: isSelected,
+                value: _applyGst,
                 activeColor: const Color(0xFF000080),
                 onChanged: (val) {
                   setState(() {
-                    if (val == true) {
-                      _selectedTaxIds.add(id);
-                    } else {
-                      _selectedTaxIds.remove(id);
-                    }
+                    _applyGst = val ?? false;
                     _syncAmountCollected();
                   });
                 },
               ),
               Expanded(
                 child: Text(
-                  context.tr('$name (${percent.toStringAsFixed(1)}%)'),
+                  context.tr('TAX'),
                   style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
                     color: const Color(0xFF1e293b),
                   ),
                 ),
               ),
-              Text(
-                _rows.isEmpty
-                    ? '$currencySymbol 0.00'
-                    : '$currencySymbol${(subtotal * percent / 100).toStringAsFixed(2)}',
-                style: GoogleFonts.inter(
-                    fontSize: 13, color: Colors.grey.shade700),
-              ),
             ],
-          );
-        }).toList(),
+          ),
+          if (_applyGst) ...[
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Divider(),
+            ),
+            ..._availableTaxes.map((tax) {
+              final id = tax['id'] as String;
+              final name = tax['name'] as String;
+              final percent = (tax['percent'] as num).toDouble();
+              final isSelected = _selectedTaxIds.contains(id);
+              return Row(
+                children: [
+                  Checkbox(
+                    value: isSelected,
+                    activeColor: const Color(0xFF000080),
+                    onChanged: (val) {
+                      setState(() {
+                        if (val == true) {
+                          _selectedTaxIds.add(id);
+                        } else {
+                          _selectedTaxIds.remove(id);
+                        }
+                        _syncAmountCollected();
+                      });
+                    },
+                  ),
+                  Expanded(
+                    child: Text(
+                      context.tr('$name (${percent.toStringAsFixed(1)}%)'),
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF1e293b),
+                      ),
+                    ),
+                  ),
+                  Text(
+                    _rows.isEmpty
+                        ? '$currencySymbol 0.00'
+                        : '$currencySymbol${(subtotal * percent / 100).toStringAsFixed(2)}',
+                    style: GoogleFonts.inter(
+                        fontSize: 13, color: Colors.grey.shade700),
+                  ),
+                ],
+              );
+            }),
+          ],
+        ],
       ),
     );
   }
 
   // ── Bill summary ──────────────────────────────────────────────────────────
   Widget _billSummary() {
-    final selectedTaxRows = _availableTaxes
-        .where((t) => _selectedTaxIds.contains(t['id'] as String))
-        .map((t) {
-          final name = t['name'] as String;
-          final pct = (t['percent'] as num).toDouble();
-          return MapEntry(name, subtotal * pct / 100);
-        })
-        .toList();
+    final selectedTaxRows = _applyGst
+        ? _availableTaxes
+            .where((t) => _selectedTaxIds.contains(t['id'] as String))
+            .map((t) {
+              final name = t['name'] as String;
+              final pct = (t['percent'] as num).toDouble();
+              return MapEntry(name, subtotal * pct / 100);
+            })
+            .toList()
+        : <MapEntry<String, double>>[];
 
     return _card(
       title: 'Bill Summary',
@@ -1298,9 +1351,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+               _paymentModeOption('digital_payments', 'Digital payments', Icons.qr_code_scanner),
               _paymentModeOption('cash', 'Cash', Icons.money),
               _paymentModeOption('card', 'Card', Icons.credit_card),
-              _paymentModeOption('digital_payments', 'Digital payments', Icons.qr_code_scanner),
+             
             ],
           ),
         ],

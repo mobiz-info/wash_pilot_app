@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
+import 'config/country_config.dart';
 import 'providers/auth_provider.dart';
 import 'providers/customer_provider.dart';
 import 'providers/language_provider.dart';
@@ -12,7 +13,10 @@ import 'screens/menu_screen.dart';
 import 'screens/login_screen.dart';
 import 'services/api_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Load saved country config (phone code, currency) before the app renders
+  await CountryConfig.load();
   runApp(
     MultiProvider(
       providers: [
@@ -45,6 +49,14 @@ class CarWashApp extends StatelessWidget {
         Locale('ar', 'AE'),
         Locale('ur', 'PK'),
         Locale('bn', 'BD'),
+        Locale('te', 'IN'),
+        Locale('si', 'LK'),
+        Locale('ta', 'IN'),
+        Locale('ta', 'LK'),
+        Locale('kn', 'IN'),
+        Locale('or', 'IN'),
+        Locale('ps', 'AF'),
+        Locale('fa', 'AF'),
       ],
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,

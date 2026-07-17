@@ -89,12 +89,23 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> searchCustomer(
-    String mobile,
-    String token,
-  ) async {
+    String query,
+    String token, {
+    String? branchId,
+    bool isVehicle = false,
+  }) async {
     await ensureModelToTypeMap(token);
+    String url = '$baseUrl/customer/search/?';
+    if (isVehicle) {
+      url += 'vehicle_number=${Uri.encodeComponent(query)}';
+    } else {
+      url += 'mobile=$query';
+    }
+    if (branchId != null && branchId.isNotEmpty) {
+      url += '&branch_id=$branchId';
+    }
     final response = await http.get(
-      Uri.parse('$baseUrl/customer/search/?mobile=$mobile'),
+      Uri.parse(url),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -112,10 +123,15 @@ class ApiService {
 
   static Future<Map<String, dynamic>> searchCustomerList(
     String query,
-    String token,
-  ) async {
+    String token, {
+    String? branchId,
+  }) async {
+    String url = '$baseUrl/customer/search-list/?q=$query';
+    if (branchId != null && branchId.isNotEmpty) {
+      url += '&branch_id=$branchId';
+    }
     final response = await http.get(
-      Uri.parse('$baseUrl/customer/search-list/?q=$query'),
+      Uri.parse(url),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -163,6 +179,28 @@ class ApiService {
         'Authorization': 'Bearer $token',
       },
       body: jsonEncode(invoiceData),
+    );
+
+    if (response.statusCode == 200 ||
+        response.statusCode == 400 ||
+        response.statusCode == 401) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to connect to the server.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> sendInvoiceWhatsApp(
+    String invoiceId,
+    String token,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/invoice/send-whatsapp/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'invoice_id': invoiceId}),
     );
 
     if (response.statusCode == 200 ||
@@ -350,6 +388,55 @@ class ApiService {
     if (response.statusCode == 200 ||
         response.statusCode == 400 ||
         response.statusCode == 401) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to connect to the server.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getReminderPlans(
+    String token, {
+    String? date,
+    String? search,
+  }) async {
+    String url = '$baseUrl/booking/reminder/list/';
+    final params = <String, String>{};
+    if (date != null) params['date'] = date;
+    if (search != null && search.isNotEmpty) params['search'] = search;
+    if (params.isNotEmpty) {
+      url += '?' + params.entries.map((e) => '${e.key}=${e.value}').join('&');
+    }
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200 || response.statusCode == 401) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to connect to the server.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> sendReminders(
+    String token,
+    List<String> planIds, {
+    String? action,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/booking/reminder/send/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'plan_ids': planIds,
+        if (action != null) 'action': action,
+      }),
+    );
+    if (response.statusCode == 200 || response.statusCode == 401) {
       return jsonDecode(response.body);
     } else {
       throw Exception('Failed to connect to the server.');
@@ -854,6 +941,29 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> deleteCustomer(
+    String customerId,
+    String token,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/customer/delete/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'customer_id': customerId}),
+    );
+    if (response.statusCode == 200 ||
+        response.statusCode == 400 ||
+        response.statusCode == 404 ||
+        response.statusCode == 401 ||
+        response.statusCode == 403) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to delete customer.');
+    }
+  }
+
   static Future<Map<String, dynamic>> _reportGet(
     String path,
     String token,
@@ -1127,6 +1237,97 @@ class ApiService {
       return jsonDecode(response.body);
     } else {
       throw Exception('Failed to create expense.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getPurchaseExpensesList(String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/purchase-expenses/list/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load purchase expenses.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> updatePurchaseExpensePayment(
+    String token,
+    String id,
+    double additionalPaid,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/purchase-expenses/update-payment/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'id': id,
+        'additional_paid': additionalPaid,
+      }),
+    );
+    if (response.statusCode == 200 || response.statusCode == 400) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to update payment.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getSuppliersList(String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/supplier/list/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load suppliers.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> createSupplier(
+    String token,
+    Map<String, dynamic> data,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/supplier/create/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(data),
+    );
+    if (response.statusCode == 200 || response.statusCode == 400) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to save supplier.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> deleteSupplier(
+    String token,
+    String id,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/supplier/delete/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'id': id}),
+    );
+    if (response.statusCode == 200 || response.statusCode == 400) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to delete supplier.');
     }
   }
 

@@ -31,6 +31,12 @@ class LanguageScreen extends StatelessWidget {
         'flag': '🇮🇳',
       },
       {
+        'code': 'te',
+        'name': 'Telugu',
+        'nativeName': 'తెలుగు',
+        'flag': '🇮🇳',
+      },
+      {
         'code': 'ta',
         'name': 'Tamil',
         'nativeName': 'தமிழ்',
@@ -65,6 +71,24 @@ class LanguageScreen extends StatelessWidget {
         'name': 'Bengali',
         'nativeName': 'বাংলা',
         'flag': '🇧🇩',
+      },
+      {
+        'code': 'si',
+        'name': 'Sinhala (Sri Lanka)',
+        'nativeName': 'සිංහල',
+        'flag': '🇱🇰',
+      },
+      {
+        'code': 'ps',
+        'name': 'Pashto (Afghanistan)',
+        'nativeName': 'پښتو',
+        'flag': '🇦🇫',
+      },
+      {
+        'code': 'fa',
+        'name': 'Dari (Afghanistan)',
+        'nativeName': 'دری',
+        'flag': '🇦🇫',
       },
     ];
 

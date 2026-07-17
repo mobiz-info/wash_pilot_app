@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../config/country_config.dart';
 import '../providers/language_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
@@ -27,8 +29,11 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
   bool _isSaving = false;
 
   List<dynamic> _customerTypes = [];
-  List<dynamic> _vehicleModels = [];
-  Map<String, List<dynamic>> _vehicleModelsByType = {};
+  List<dynamic> _vehicleTypes = [];
+  List<dynamic> _vehicleTypeModels = []; // all segments
+  List<dynamic> _makes = [];             // all manufacturers/makes
+  List<dynamic> _brandModels = [];       // all brand models
+  List<dynamic> _colors = [];
 
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -36,6 +41,10 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
   final _emailController = TextEditingController();
   final _addressController = TextEditingController();
   Map<String, dynamic>? _selectedCustomerType;
+  String _selectedPhoneCode = CountryConfig.phoneDialCode;
+  String _selectedWhatsappCode = CountryConfig.phoneDialCode;
+  String _phoneIso = CountryConfig.phoneIsoCode;
+  String _whatsappIso = CountryConfig.phoneIsoCode;
 
   // Existing vehicles (editable)
   final List<Map<String, dynamic>> _existingVehicleRows = [];
@@ -123,11 +132,11 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
       }
 
       final types = formRes['customer_types'] as List<dynamic>? ?? [];
-      final models = formRes['vehicle_models'] as List<dynamic>? ?? [];
-      final Map<String, List<dynamic>> grouped = {};
-      for (final m in models) {
-        grouped.putIfAbsent(m['vehicle_type'] as String, () => []).add(m);
-      }
+      final vehicleTypes = formRes['vehicle_types'] as List<dynamic>? ?? [];
+      final vehicleTypeModels = formRes['vehicle_type_models'] as List<dynamic>? ?? formRes['vehicle_models'] as List<dynamic>? ?? [];
+      final makes = formRes['makes'] as List<dynamic>? ?? [];
+      final brandModels = formRes['brand_models'] as List<dynamic>? ?? [];
+      final colors = formRes['colors'] as List<dynamic>? ?? [];
 
       final c = customerRes['customer'] as Map<String, dynamic>;
       final typeId = c['customer_type_id'] as String?;
@@ -136,9 +145,29 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
               orElse: () => types.isNotEmpty ? types.first : null)
           : (types.isNotEmpty ? types.first : null);
 
+      String rawPhone = c['phone'] ?? '';
+      String phoneCode = '+91';
+      for (final code in ['971', '966', '965', '968', '974', '973', '91']) {
+        if (rawPhone.startsWith(code)) {
+          phoneCode = '+$code';
+          rawPhone = rawPhone.substring(code.length);
+          break;
+        }
+      }
+      
+      String rawWhatsapp = c['whatsapp_number'] ?? '';
+      String whatsappCode = '+91';
+      for (final code in ['971', '966', '965', '968', '974', '973', '91']) {
+        if (rawWhatsapp.startsWith(code)) {
+          whatsappCode = '+$code';
+          rawWhatsapp = rawWhatsapp.substring(code.length);
+          break;
+        }
+      }
+
       _nameController.text = c['name'] ?? '';
-      _phoneController.text = c['phone'] ?? '';
-      _whatsappController.text = c['whatsapp_number'] ?? '';
+      _phoneController.text = rawPhone;
+      _whatsappController.text = rawWhatsapp;
       _emailController.text = c['email'] ?? '';
       _addressController.text = c['address'] ?? '';
 
@@ -150,24 +179,54 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
       _newVehicleRows.clear();
 
       for (final v in c['vehicles'] as List<dynamic>) {
-        final modelId = v['vehicle_model_id']?.toString();
-        final matchedModel = modelId != null
-            ? models.firstWhere((m) => m['id'].toString() == modelId, orElse: () => models.isNotEmpty ? models.first : null)
-            : (models.isNotEmpty ? models.first : null);
+        final segmentId = v['vehicle_model_id']?.toString();
+        final brandId = v['brand_model_id']?.toString();
+        final makeId = v['make_id']?.toString();
+        final colorId = v['color_id']?.toString();
+
+        final matchedSegment = segmentId != null
+            ? vehicleTypeModels.firstWhere((m) => m['id'].toString() == segmentId, orElse: () => null)
+            : null;
+
+        final matchedType = (matchedSegment != null && matchedSegment['vehicle_type_id'] != null)
+            ? vehicleTypes.firstWhere((t) => t['id'].toString() == matchedSegment['vehicle_type_id'].toString(), orElse: () => null)
+            : (vehicleTypes.isNotEmpty ? vehicleTypes.first : null);
+        final matchedMake = makeId != null
+            ? makes.firstWhere((m) => m['id'].toString() == makeId, orElse: () => null)
+            : null;
+
+        final matchedBrand = brandId != null
+            ? brandModels.firstWhere((b) => b['id'].toString() == brandId, orElse: () => null)
+            : null;
+
+        final matchedColor = colorId != null
+            ? colors.firstWhere((col) => col['id'].toString() == colorId, orElse: () => null)
+            : null;
 
         _existingVehicleRows.add({
           'id': v['id'],
           'controller': TextEditingController(text: v['vehicle_number'] ?? ''),
-          'model': matchedModel,
+          'vehicle_type': matchedType,
+          'vehicle_type_model': matchedSegment,
+          'make': matchedMake,
+          'brand_model': matchedBrand,
+          'color': matchedColor,
         });
       }
 
       setState(() {
         _selectedCustomer = c;
         _customerTypes = types;
-        _vehicleModels = models;
-        _vehicleModelsByType = grouped;
+        _vehicleTypes = vehicleTypes;
+        _vehicleTypeModels = vehicleTypeModels;
+        _makes = makes;
+        _brandModels = brandModels;
+        _colors = colors;
         _selectedCustomerType = selectedType as Map<String, dynamic>?;
+        _selectedPhoneCode = phoneCode;
+        _selectedWhatsappCode = whatsappCode;
+        _phoneIso = _isoFromDialCode(phoneCode);
+        _whatsappIso = _isoFromDialCode(whatsappCode);
         _isLoadingEdit = false;
       });
     } catch (e) {
@@ -180,22 +239,52 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
 
   Future<void> _save() async {
     final name = _nameController.text.trim();
-    final phone = _phoneController.text.trim();
+    String localPhone = _phoneController.text.trim();
     if (name.isEmpty) { _showMsg('Please enter customer name.', isError: true); return; }
-    if (phone.isEmpty) { _showMsg('Please enter phone number.', isError: true); return; }
+    if (localPhone.isEmpty) { _showMsg('Please enter phone number.', isError: true); return; }
     if (_selectedCustomerType == null) { _showMsg('Please select a customer type.', isError: true); return; }
+
+    final cleanPhoneCode = _selectedPhoneCode.replaceAll('+', '');
+    if (localPhone.startsWith('+')) {
+      localPhone = localPhone.replaceFirst('+', '');
+    }
+    if (localPhone.startsWith(cleanPhoneCode)) {
+      localPhone = localPhone.substring(cleanPhoneCode.length);
+    }
+    final phone = cleanPhoneCode + localPhone;
+
+    String localWhatsapp = _whatsappController.text.trim();
+    String whatsappVal = '';
+    if (localWhatsapp.isNotEmpty) {
+      final cleanWhatsappCode = _selectedWhatsappCode.replaceAll('+', '');
+      if (localWhatsapp.startsWith('+')) {
+        localWhatsapp = localWhatsapp.replaceFirst('+', '');
+      }
+      if (localWhatsapp.startsWith(cleanWhatsappCode)) {
+        localWhatsapp = localWhatsapp.substring(cleanWhatsappCode.length);
+      }
+      whatsappVal = cleanWhatsappCode + localWhatsapp;
+    }
 
     // Collect updated existing vehicles
     final updatedVehicles = <Map<String, dynamic>>[];
     for (final row in _existingVehicleRows) {
       final num = (row['controller'] as TextEditingController).text.trim();
-      final model = row['model'];
-      if (num.isNotEmpty) {
-        updatedVehicles.add({
+      final segment = row['vehicle_type_model'] as Map<String, dynamic>?;
+      final brandModel = row['brand_model'] as Map<String, dynamic>?;
+      final make = row['make'] as Map<String, dynamic>?;
+      final color = row['color'] as Map<String, dynamic>?;
+
+      if (num.isNotEmpty && segment != null) {
+        final vehicleData = <String, dynamic>{
           'id': row['id'],
           'vehicle_number': num,
-          'vehicle_model_id': model != null ? model['id'] : null,
-        });
+          'vehicle_model_id': segment['id'],
+        };
+        if (brandModel != null) vehicleData['brand_model_id'] = brandModel['id'];
+        if (make != null) vehicleData['make_id'] = make['id'];
+        if (color != null) vehicleData['color_id'] = color['id'];
+        updatedVehicles.add(vehicleData);
       }
     }
 
@@ -203,9 +292,20 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
     final newVehicles = <Map<String, dynamic>>[];
     for (final row in _newVehicleRows) {
       final num = (row['controller'] as TextEditingController).text.trim();
-      final model = row['model'];
-      if (num.isNotEmpty && model != null) {
-        newVehicles.add({'vehicle_number': num, 'vehicle_model_id': model['id']});
+      final segment = row['vehicle_type_model'] as Map<String, dynamic>?;
+      final brandModel = row['brand_model'] as Map<String, dynamic>?;
+      final make = row['make'] as Map<String, dynamic>?;
+      final color = row['color'] as Map<String, dynamic>?;
+
+      if (num.isNotEmpty && segment != null) {
+        final vehicleData = <String, dynamic>{
+          'vehicle_number': num,
+          'vehicle_model_id': segment['id'],
+        };
+        if (brandModel != null) vehicleData['brand_model_id'] = brandModel['id'];
+        if (make != null) vehicleData['make_id'] = make['id'];
+        if (color != null) vehicleData['color_id'] = color['id'];
+        newVehicles.add(vehicleData);
       }
     }
 
@@ -219,7 +319,7 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
         'name': name,
         'phone': phone,
         'customer_type_id': _selectedCustomerType!['id'],
-        'whatsapp_number': _whatsappController.text.trim(),
+        'whatsapp_number': whatsappVal,
         'email': _emailController.text.trim(),
         'address': _addressController.text.trim(),
         'updated_vehicles': updatedVehicles,
@@ -234,6 +334,53 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
         _fetchCustomers();
       } else {
         _showMsg(res['message'] ?? 'Update failed', isError: true);
+      }
+    } catch (e) {
+      setState(() => _isSaving = false);
+      _showMsg(e.toString(), isError: true);
+    }
+  }
+
+  Future<void> _confirmDeleteCustomer() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(context.tr('Delete Customer')),
+        content: Text(context.tr('Are you sure you want to delete this customer? This action cannot be undone.')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(context.tr('Cancel'), style: GoogleFonts.inter(color: Colors.grey.shade600)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(context.tr('Delete'), style: GoogleFonts.inter(color: Colors.red.shade700, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+    if (!mounted) return;
+
+    setState(() => _isSaving = true);
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
+
+    try {
+      final res = await ApiService.deleteCustomer(_selectedCustomer!['id'], token);
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+
+      if (res['success'] == true) {
+        _showMsg(context.tr('Customer deleted successfully!'));
+        setState(() {
+          _selectedCustomer = null;
+          _newVehicleRows.clear();
+        });
+        _fetchCustomers();
+      } else {
+        _showMsg(res['message'] ?? 'Failed to delete customer', isError: true);
       }
     } catch (e) {
       setState(() => _isSaving = false);
@@ -437,9 +584,33 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
             children: [
               _buildTextField(_nameController, 'Full Name *', Icons.badge_outlined),
               const SizedBox(height: 14),
-              _buildTextField(_phoneController, 'Phone Number *', Icons.phone_outlined, keyboardType: TextInputType.phone),
+              _buildPhoneField(
+                controller: _phoneController,
+                label: 'Phone Number *',
+                countryIso: _phoneIso,
+                selectedCode: _selectedPhoneCode,
+                onCodeChanged: (dialCode, iso) {
+                  setState(() {
+                    _selectedPhoneCode = dialCode;
+                    _phoneIso = iso;
+                  });
+                },
+                icon: Icons.phone_outlined,
+              ),
               const SizedBox(height: 14),
-              _buildTextField(_whatsappController, 'WhatsApp Number', Icons.chat_outlined, keyboardType: TextInputType.phone),
+              _buildPhoneField(
+                controller: _whatsappController,
+                label: 'WhatsApp Number',
+                countryIso: _whatsappIso,
+                selectedCode: _selectedWhatsappCode,
+                onCodeChanged: (dialCode, iso) {
+                  setState(() {
+                    _selectedWhatsappCode = dialCode;
+                    _whatsappIso = iso;
+                  });
+                },
+                icon: Icons.chat_outlined,
+              ),
               const SizedBox(height: 14),
               _buildTextField(_emailController, 'Email', Icons.email_outlined, keyboardType: TextInputType.emailAddress),
               const SizedBox(height: 14),
@@ -505,6 +676,22 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
                 ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                 : Text(context.tr('Save Changes'), style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold)),
           ),
+          if (context.read<AuthProvider>().isCompanyAdmin) ...[
+            const SizedBox(height: 12),
+            OutlinedButton(
+              onPressed: _isSaving ? null : _confirmDeleteCustomer,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red.shade700,
+                side: BorderSide(color: Colors.red.shade300, width: 1.5),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text(
+                context.tr('Delete Customer'),
+                style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
           const SizedBox(height: 20),
         ],
       ),
@@ -513,15 +700,27 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
 
   // ─── Vehicle Row (shared for existing & new) ─────────────────
 
+  // ─── Vehicle Row (shared for existing & new) ─────────────────
+
   Widget _buildVehicleRow(int index, {required bool isNew}) {
     final rows = isNew ? _newVehicleRows : _existingVehicleRows;
     final row = rows[index];
     final label = isNew ? 'New Vehicle ${index + 1}' : 'Vehicle ${index + 1}';
 
+    final selectedType = row['vehicle_type'] as Map<String, dynamic>?;
+    final selectedSegment = row['vehicle_type_model'] as Map<String, dynamic>?;
+    final selectedMake = row['make'] as Map<String, dynamic>?;
+    final selectedBrand = row['brand_model'] as Map<String, dynamic>?;
+    final selectedColor = row['color'] as Map<String, dynamic>?;
+
+    final segments = _segmentsForType(selectedType?['id']);
+    final makes = _makesForSegment(selectedSegment?['id']);
+    final brands = _brandModelsForSegmentAndMake(selectedSegment?['id'], selectedMake?['id']);
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.only(bottom: 16),
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: isNew ? const Color(0xFFF0FDF4) : const Color(0xFFF8FAFF),
           borderRadius: BorderRadius.circular(12),
@@ -531,76 +730,218 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
                 : const Color(0xFF000080).withOpacity(0.15),
           ),
         ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Icon(Icons.directions_car, size: 18,
-                color: isNew ? Colors.green.shade700 : const Color(0xFF000080).withOpacity(0.7)),
-            const SizedBox(width: 6),
-            Text(label, style: GoogleFonts.inter(
-                fontWeight: FontWeight.w600,
-                color: isNew ? Colors.green.shade700 : const Color(0xFF000080))),
-            const Spacer(),
-            GestureDetector(
-              onTap: () {
-                if (isNew) {
-                  (_newVehicleRows[index]['controller'] as TextEditingController).dispose();
-                  setState(() => _newVehicleRows.removeAt(index));
-                } else {
-                  (_existingVehicleRows[index]['controller'] as TextEditingController).dispose();
-                  setState(() => _existingVehicleRows.removeAt(index));
-                }
-              },
-              child: Icon(Icons.remove_circle_outline, color: Colors.red.shade400, size: 22),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header row
+            Row(
+              children: [
+                Icon(Icons.directions_car, size: 18,
+                    color: isNew ? Colors.green.shade700 : const Color(0xFF000080).withOpacity(0.7)),
+                const SizedBox(width: 6),
+                Text(label, style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w600,
+                    color: isNew ? Colors.green.shade700 : const Color(0xFF000080))),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () {
+                    if (isNew) {
+                      (_newVehicleRows[index]['controller'] as TextEditingController).dispose();
+                      setState(() => _newVehicleRows.removeAt(index));
+                    } else {
+                      (_existingVehicleRows[index]['controller'] as TextEditingController).dispose();
+                      setState(() => _existingVehicleRows.removeAt(index));
+                    }
+                  },
+                  child: Icon(Icons.remove_circle_outline, color: Colors.red.shade400, size: 22),
+                ),
+              ],
             ),
-          ]),
-          const SizedBox(height: 12),
-          Text(context.tr('Vehicle Model'), style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
-          const SizedBox(height: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.shade300)),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<Map<String, dynamic>>(
-                isExpanded: true,
-                menuMaxHeight: 350,
-                value: row['model'],
-                hint: Text(context.tr('Select model...')),
-                items: _buildGroupedDropdownItems(),
-                onChanged: (val) => setState(() => rows[index]['model'] = val),
+            const SizedBox(height: 14),
+
+            // Level 1 — Vehicle Type
+            _buildDropdown<Map<String, dynamic>>(
+              label: 'Vehicle Type *',
+              value: selectedType,
+              items: _vehicleTypes.cast<Map<String, dynamic>>(),
+              labelBuilder: (vt) => vt['name']?.toString() ?? '',
+              hint: 'Select vehicle type',
+              onChanged: (val) {
+                setState(() {
+                  row['vehicle_type'] = val;
+                  row['vehicle_type_model'] = null;
+                  row['make'] = null;
+                  row['brand_model'] = null;
+                });
+              },
+            ),
+            const SizedBox(height: 12),
+
+            // Level 2 — Segment
+            if (selectedType != null) ...[
+              _buildDropdown<Map<String, dynamic>>(
+                label: 'Segment *',
+                value: selectedSegment,
+                items: segments.cast<Map<String, dynamic>>(),
+                labelBuilder: (m) => m['name']?.toString() ?? '',
+                hint: segments.isEmpty ? 'No segments available' : 'Select segment',
+                onChanged: segments.isEmpty ? null : (val) {
+                  setState(() {
+                    row['vehicle_type_model'] = val;
+                    row['make'] = null;
+                    row['brand_model'] = null;
+                  });
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            // Level 3 — Make (Optional)
+            if (selectedSegment != null) ...[
+              _buildDropdown<Map<String, dynamic>>(
+                label: 'Vehicle Make',
+                value: selectedMake,
+                items: makes.cast<Map<String, dynamic>>(),
+                labelBuilder: (b) => b['name']?.toString() ?? '',
+                hint: makes.isEmpty ? 'No makes available' : 'Select make',
+                onChanged: makes.isEmpty ? null : (val) {
+                  setState(() {
+                    row['make'] = val;
+                    row['brand_model'] = null;
+                  });
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            // Level 4 — Brand Model (Optional)
+            if (selectedSegment != null && selectedMake != null) ...[
+              _buildDropdown<Map<String, dynamic>>(
+                label: 'Brand',
+                value: selectedBrand,
+                items: brands.cast<Map<String, dynamic>>(),
+                labelBuilder: (b) => b['name']?.toString() ?? '',
+                hint: brands.isEmpty ? 'No brands available' : 'Select brand',
+                onChanged: brands.isEmpty ? null : (val) {
+                  setState(() {
+                    row['brand_model'] = val;
+                  });
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            // Color (optional)
+            if (selectedType != null) ...[
+              _buildDropdown<Map<String, dynamic>>(
+                label: 'Color (Optional)',
+                value: selectedColor,
+                items: [{'id': '', 'name': 'None'}, ..._colors.cast<Map<String, dynamic>>()],
+                labelBuilder: (c) => c['name']?.toString() ?? '',
+                hint: 'Select color',
+                onChanged: (val) {
+                  setState(() {
+                    row['color'] = (val?['id'] == '') ? null : val;
+                  });
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            // Vehicle Number
+            Text('Vehicle Number *', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+            const SizedBox(height: 6),
+            TextField(
+              controller: row['controller'] as TextEditingController,
+              textCapitalization: TextCapitalization.characters,
+              decoration: InputDecoration(
+                hintText: 'Enter Vehicle Number',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
+                focusedBorder: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8)), borderSide: BorderSide(color: Color(0xFF000080))),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                isDense: true,
               ),
             ),
-          ),
-          const SizedBox(height: 10),
-          Text(context.tr('Vehicle Number'), style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
-          const SizedBox(height: 6),
-          TextField(
-            controller: row['controller'] as TextEditingController,
-            textCapitalization: TextCapitalization.characters,
-            decoration: InputDecoration(
-              hintText: context.tr('e.g. KL 01 AB 1234'),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
-              focusedBorder: const OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(8)),
-                  borderSide: BorderSide(color: Color(0xFF000080))),
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              isDense: true,
-            ),
-          ),
-        ]),
+          ],
+        ),
       ),
     );
   }
 
   // ─── Helpers ─────────────────────────────────────────────────
 
+  List<dynamic> _segmentsForType(String? vehicleTypeId) {
+    if (vehicleTypeId == null) return [];
+    return _vehicleTypeModels.where((m) => m['vehicle_type_id']?.toString() == vehicleTypeId.toString()).toList();
+  }
+
+  List<dynamic> _makesForSegment(String? segmentId) {
+    if (segmentId == null) return [];
+    final brandModelsInSegment = _brandModels.where((b) => b['vehicle_type_model_id']?.toString() == segmentId.toString());
+    final makeIds = brandModelsInSegment.map((b) => b['make_id']?.toString()).toSet();
+    return _makes.where((m) => makeIds.contains(m['id']?.toString())).toList();
+  }
+
+  List<dynamic> _brandModelsForSegmentAndMake(String? segmentId, String? makeId) {
+    if (segmentId == null || makeId == null) return [];
+    return _brandModels
+        .where((b) => b['vehicle_type_model_id']?.toString() == segmentId.toString() && b['make_id']?.toString() == makeId.toString())
+        .toList();
+  }
+
+  Widget _buildDropdown<T>({
+    required String label,
+    required T? value,
+    required List<T> items,
+    required String Function(T) labelBuilder,
+    required void Function(T?)? onChanged,
+    bool required = false,
+    String? hint,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+        const SizedBox(height: 6),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<T>(
+              isExpanded: true,
+              menuMaxHeight: 350,
+              value: value,
+              hint: Text(hint ?? 'Select...', style: GoogleFonts.inter(color: Colors.grey.shade500)),
+              items: items.map((item) {
+                return DropdownMenuItem<T>(
+                  value: item,
+                  child: Text(labelBuilder(item), style: GoogleFonts.inter()),
+                );
+              }).toList(),
+              onChanged: onChanged,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   void _addNewVehicleRow() {
     setState(() {
       _newVehicleRows.add({
         'controller': TextEditingController(),
-        'model': _vehicleModels.isNotEmpty ? _vehicleModels.first : null,
+        'vehicle_type': _vehicleTypes.isNotEmpty ? _vehicleTypes.first : null,
+        'vehicle_type_model': null,
+        'make': null,
+        'brand_model': null,
+        'color': null,
       });
     });
   }
@@ -627,6 +968,56 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
     );
   }
 
+  String _isoFromDialCode(String dialCode) {
+    switch (dialCode) {
+      case '+971': return 'AE';
+      case '+966': return 'SA';
+      case '+965': return 'KW';
+      case '+968': return 'OM';
+      case '+974': return 'QA';
+      case '+973': return 'BH';
+      case '+91':  return 'IN';
+      default:     return 'IN';
+    }
+  }
+
+  Widget _buildPhoneField({
+    required TextEditingController controller,
+    required String label,
+    required String countryIso,
+    required String selectedCode,
+    required void Function(String dialCode, String iso) onCodeChanged,
+    required IconData icon,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(context.tr(label), style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+        const SizedBox(height: 6),
+        IntlPhoneField(
+          key: ValueKey('${label}_$countryIso'),
+          controller: controller,
+          initialCountryCode: countryIso,
+          onCountryChanged: (country) {
+            onCodeChanged('+${country.dialCode}', country.code);
+          },
+          dropdownTextStyle: GoogleFonts.inter(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 14),
+          style: GoogleFonts.inter(fontWeight: FontWeight.w500),
+          disableLengthCheck: true,
+          decoration: InputDecoration(
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF000080))),
+            filled: true,
+            fillColor: const Color(0xFFFAFAFA),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          ),
+          keyboardType: TextInputType.phone,
+        ),
+      ],
+    );
+  }
+
   Widget _buildTextField(TextEditingController ctrl, String label, IconData icon, {TextInputType? keyboardType, int maxLines = 1}) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(label, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
@@ -646,24 +1037,5 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
         ),
       ),
     ]);
-  }
-
-  List<DropdownMenuItem<Map<String, dynamic>>> _buildGroupedDropdownItems() {
-    final items = <DropdownMenuItem<Map<String, dynamic>>>[];
-    _vehicleModelsByType.forEach((type, models) {
-      items.add(DropdownMenuItem<Map<String, dynamic>>(
-        enabled: false,
-        value: null,
-        child: Text(type.toUpperCase(),
-            style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.grey.shade500, letterSpacing: 0.5)),
-      ));
-      for (final m in models) {
-        items.add(DropdownMenuItem<Map<String, dynamic>>(
-          value: m as Map<String, dynamic>,
-          child: Padding(padding: const EdgeInsets.only(left: 8), child: Text(m['name'], style: GoogleFonts.inter())),
-        ));
-      }
-    });
-    return items;
   }
 }

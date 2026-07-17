@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/country_config.dart';
 import '../services/api_service.dart';
 
 class AuthProvider with ChangeNotifier {
@@ -10,7 +11,9 @@ class AuthProvider with ChangeNotifier {
   String? _branchName;
   String? _displayName;
   String? _username;
-  String _currencySymbol = '₹';
+  String? _companyLogo;
+  // Currency is always driven by CountryConfig (set via dart tools/setup_country.dart)
+  // Do NOT store/restore from SharedPreferences — that would override the build-time setting.
   bool _subscriptionActive = true;
   int _subscriptionDaysLeft = 999;
   String? _subscriptionEndDate;
@@ -23,6 +26,7 @@ class AuthProvider with ChangeNotifier {
   String? get branchName => _branchName;
   String? get displayName => _displayName;
   String? get username => _username;
+  String? get companyLogo => _companyLogo;
   bool get isBranchAdmin =>
       _role == 'BRANCH_ADMIN' ||
       _role == 'BRANCH_MANAGER' ||
@@ -34,7 +38,9 @@ class AuthProvider with ChangeNotifier {
       _role == 'COMPANY_ADMIN' ||
       _role == 'BRANCH_ADMIN' ||
       _role == 'BRANCH_MANAGER';
-  String get currencySymbol => _currencySymbol;
+  /// Always returns the symbol for the country selected via setup_country.dart
+  /// A trailing space is included so currency amounts are formatted as "₹ 100" / "AED 50".
+  String get currencySymbol => '${CountryConfig.currencySymbol} ';
   bool get subscriptionActive => _subscriptionActive;
   int get subscriptionDaysLeft => _subscriptionDaysLeft;
   String? get subscriptionEndDate => _subscriptionEndDate;
@@ -58,7 +64,8 @@ class AuthProvider with ChangeNotifier {
     _branchName = prefs.getString('auth_branch');
     _displayName = prefs.getString('auth_display_name');
     _username = prefs.getString('auth_username');
-    _currencySymbol = prefs.getString('auth_currency_symbol') ?? '₹';
+    _companyLogo = prefs.getString('auth_company_logo');
+    // Currency symbol is NOT read from prefs — always use CountryConfig
     _subscriptionActive = prefs.getBool('subscription_active') ?? true;
     _subscriptionDaysLeft = prefs.getInt('subscription_days_left') ?? 999;
     _subscriptionEndDate = prefs.getString('subscription_end_date');
@@ -79,7 +86,7 @@ class AuthProvider with ChangeNotifier {
         _branchName = data['branch_name'] ?? '';
         _displayName = data['display_name'] ?? data['company_name'];
         _username = data['username'];
-        _currencySymbol = data['currency_symbol'] ?? '₹';
+        _companyLogo = data['company_logo'] ?? '';
         _subscriptionActive = data['subscription_active'] ?? true;
         _subscriptionDaysLeft = data['subscription_days_left'] ?? 999;
         _subscriptionEndDate = data['subscription_end_date'];
@@ -91,7 +98,8 @@ class AuthProvider with ChangeNotifier {
         await prefs.setString('auth_branch', _branchName ?? '');
         await prefs.setString('auth_display_name', _displayName ?? '');
         await prefs.setString('auth_username', _username ?? '');
-        await prefs.setString('auth_currency_symbol', _currencySymbol);
+        await prefs.setString('auth_company_logo', _companyLogo ?? '');
+        // Currency symbol is NOT saved to prefs — driven by CountryConfig at build time
         await prefs.setBool('subscription_active', _subscriptionActive);
         await prefs.setInt('subscription_days_left', _subscriptionDaysLeft);
         if (_subscriptionEndDate != null) {
@@ -142,7 +150,7 @@ class AuthProvider with ChangeNotifier {
     _branchName = null;
     _displayName = null;
     _username = null;
-    _currencySymbol = '₹';
+    _companyLogo = null;
     _subscriptionActive = true;
     _subscriptionDaysLeft = 999;
     _subscriptionEndDate = null;

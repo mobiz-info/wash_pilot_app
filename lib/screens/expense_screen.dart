@@ -22,15 +22,18 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
   List<dynamic> _branches = [];
   List<dynamic> _stocks = [];
   List<dynamic> _staffs = [];
+  List<dynamic> _suppliers = [];
 
   // Form State
   DateTime _selectedDate = DateTime.now();
   Map<String, dynamic>? _selectedExpenseHead;
   String? _selectedBranchId;
+  String? _selectedSupplierId;
 
   final _expenseNameController = TextEditingController();
   final _amountController = TextEditingController();
   final _remarkController = TextEditingController();
+  final _paidAmountController = TextEditingController();
 
   @override
   void initState() {
@@ -43,6 +46,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     _expenseNameController.dispose();
     _amountController.dispose();
     _remarkController.dispose();
+    _paidAmountController.dispose();
     super.dispose();
   }
 
@@ -95,11 +99,21 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
         }
       } catch (_) {}
 
+      // 5. Fetch Suppliers list
+      List<dynamic> suppliers = [];
+      try {
+        final supRes = await ApiService.getSuppliersList(token);
+        if (supRes['success'] == true) {
+          suppliers = supRes['suppliers'] ?? [];
+        }
+      } catch (_) {}
+
       setState(() {
         _expenseHeads = heads;
         _branches = branches;
         _staffs = staffs;
         _stocks = stocks;
+        _suppliers = suppliers;
         // Default to first branch if available
         if (branches.isNotEmpty) {
           _selectedBranchId = branches.first['id']?.toString();
@@ -200,6 +214,22 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
       return;
     }
 
+    final isPurchase = _selectedExpenseHead != null &&
+        (_selectedExpenseHead!['name'] ?? '').toString().toLowerCase().trim() == 'purchase';
+
+    if (isPurchase) {
+      final paidAmountStr = _paidAmountController.text.trim();
+      if (paidAmountStr.isEmpty) {
+        _showSnackBar(context.tr('Please enter paid amount'), Colors.orange);
+        return;
+      }
+      final paidAmount = double.tryParse(paidAmountStr);
+      if (paidAmount == null || paidAmount < 0) {
+        _showSnackBar(context.tr('Please enter a valid paid amount'), Colors.orange);
+        return;
+      }
+    }
+
     setState(() => _isSaving = true);
 
     try {
@@ -211,6 +241,8 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
         'date': formattedDate,
         'remarks': _remarkController.text.trim(),
         if (auth.isCompanyAdmin) 'branch_id': _selectedBranchId,
+        if (isPurchase) 'supplier_id': _selectedSupplierId,
+        if (isPurchase) 'paid_amount': double.tryParse(_paidAmountController.text.trim()),
       };
 
       final res = await ApiService.createExpenseEntry(token, payload);
@@ -245,6 +277,8 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.read<AuthProvider>();
+    final isPurchase = _selectedExpenseHead != null &&
+        (_selectedExpenseHead!['name'] ?? '').toString().toLowerCase().trim() == 'purchase';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
@@ -402,14 +436,49 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                           _buildExpenseNameField(),
                           const SizedBox(height: 14),
 
+                          if (isPurchase) ...[
+                            _buildDropdownField(
+                              label: context.tr('Supplier (Optional)'),
+                              icon: Icons.business,
+                              hintText: context.tr('Select Supplier'),
+                              value: _selectedSupplierId,
+                              items: _suppliers.map((s) {
+                                final sup = Map<String, dynamic>.from(s as Map);
+                                return DropdownMenuItem<String>(
+                                  value: sup['id']?.toString(),
+                                  child: Text(
+                                    sup['name'] ?? '',
+                                    style: GoogleFonts.inter(fontSize: 15),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (val) {
+                                setState(() {
+                                  _selectedSupplierId = val;
+                                });
+                              },
+                            ),
+                            const SizedBox(height: 14),
+                          ],
+
                           // Amount
                           _buildTextField(
                             _amountController,
                             context.tr('Amount *'),
-                            Icons.attach_money,
+                            Icons.money,
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           ),
                           const SizedBox(height: 14),
+
+                          if (isPurchase) ...[
+                            _buildTextField(
+                              _paidAmountController,
+                              context.tr('Paid Amount *'),
+                              Icons.money,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            ),
+                            const SizedBox(height: 14),
+                          ],
 
                           // Remark
                           _buildTextField(
