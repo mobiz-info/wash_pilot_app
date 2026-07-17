@@ -418,9 +418,6 @@ class InvoiceViewScreen extends StatelessWidget {
 
       final currencySymbol = context.read<AuthProvider>().currencySymbol;
       final services = invoiceData['services'] as List<dynamic>? ?? [];
-      final subtotal = invoiceData['subtotal'] ?? '0.00';
-      final discount = invoiceData['discount'] ?? '0.00';
-      final taxAmount = invoiceData['tax_amount'] ?? '0.00';
       final total = invoiceData['total'] ?? '0.00';
       final collected = invoiceData['amount_collected'] ?? '0.00';
 
@@ -481,12 +478,10 @@ class InvoiceViewScreen extends StatelessWidget {
     try {
       final currencySymbol = context.read<AuthProvider>().currencySymbol;
       final services = invoiceData['services'] as List<dynamic>? ?? [];
-      final subtotal = invoiceData['subtotal'] ?? '0.00';
-      final discount = invoiceData['discount'] ?? '0.00';
-      final taxAmount = invoiceData['tax_amount'] ?? '0.00';
       final total = invoiceData['total'] ?? '0.00';
       final collected = invoiceData['amount_collected'] ?? '0.00';
 
+      final servicesStr = services.map((s) => "- ${s['name']}: $currencySymbol${_fmt(s['rate'])}").join("\n");
       final cleanInvoiceNo = invoiceNumber.replaceAll('/', '_');
       final pdfUrl = "http://68.183.94.11:78/media/invoices/invoice-$cleanInvoiceNo.pdf";
 
@@ -515,7 +510,6 @@ class InvoiceViewScreen extends StatelessWidget {
 
       final pdf = await _generateInvoicePdf(context);
       final output = await getTemporaryDirectory();
-      final cleanInvoiceNo = invoiceNumber.replaceAll('/', '_');
       final file = File('${output.path}/$cleanInvoiceNo.pdf');
       await file.writeAsBytes(await pdf.save());
       final xFile = XFile(file.path);
