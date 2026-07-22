@@ -290,7 +290,7 @@ class _NewJobScreenState extends State<NewJobScreen> {
                     });
                   },
                   child: Text(
-                    context.tr('Search by Number'),
+                    context.tr('Owner Number'),
                     style: GoogleFonts.inter(
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
@@ -298,7 +298,7 @@ class _NewJobScreenState extends State<NewJobScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 20),
+                const SizedBox(width: 15),
                 Radio<String>(
                   value: 'vehicle',
                   groupValue: _searchType,
@@ -322,7 +322,7 @@ class _NewJobScreenState extends State<NewJobScreen> {
                     });
                   },
                   child: Text(
-                    context.tr('Search by Vehicle'),
+                    context.tr('Vehicle Number'),
                     style: GoogleFonts.inter(
                       fontWeight: FontWeight.w600,
                       fontSize: 14,

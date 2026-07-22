@@ -32,6 +32,8 @@ import 'extras_screen.dart';
 import 'booking_settings_screen.dart';
 import 'customer_collection_screen.dart';
 import '../services/api_service.dart';
+import 'oil_stock_screen.dart';
+
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
@@ -117,11 +119,17 @@ class _MenuScreenState extends State<MenuScreen> {
       'color': Color(0xFFF43F5E),
     },
     {
+      'title': 'Oil Stock',
+      'icon': Icons.oil_barrel_outlined,
+      'color': Color(0xFFD97706),
+    },
+    {
       'title': 'Language',
       'icon': Icons.language,
       'color': Color(0xFF92400E),
     },
   ];
+
 
   final List<Map<String, dynamic>> _companyMenuItems = [
     {
@@ -214,6 +222,11 @@ class _MenuScreenState extends State<MenuScreen> {
       'color': Color(0xFF000080),
     },
     {
+      'title': 'Oil Stock',
+      'icon': Icons.oil_barrel_outlined,
+      'color': Color(0xFFD97706),
+    },
+    {
       'title': 'Notifications',
       'icon': Icons.notifications_outlined,
       'color': Color(0xFF00BFFF),
@@ -224,6 +237,7 @@ class _MenuScreenState extends State<MenuScreen> {
       'color': Color(0xFF92400E),
     },
   ];
+
 
   void _navigate(BuildContext context, String title) {
     final routes = <String, Widget>{
@@ -251,7 +265,9 @@ class _MenuScreenState extends State<MenuScreen> {
       'Stock Items': const StockItemScreen(),
       'Extras': const ExtrasScreen(),
       'Booking Settings': const BookingSettingsScreen(),
+      'Oil Stock': const OilStockScreen(),
     };
+
     final screen = routes[title];
     if (screen != null) {
       Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
@@ -446,8 +462,20 @@ class _MenuScreenState extends State<MenuScreen> {
                       }),
                     ],
                     _drawerItem(
+                      Icons.oil_barrel_outlined,
+                      'Oil Stock',
+                      () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const OilStockScreen()),
+                        );
+                      },
+                    ),
+                    _drawerItem(
                       Icons.directions_car_outlined,
                       'Vehicle Search',
+
                       () {
                         Navigator.pop(context);
                         Navigator.push(

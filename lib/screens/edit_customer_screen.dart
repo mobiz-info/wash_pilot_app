@@ -529,6 +529,21 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
                     decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(20)),
                     child: Text(c['customer_type'] ?? '', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFF2563EB))),
                   ),
+                  if ((c['branch_name']?.toString() ?? c['branch']?.toString() ?? '').isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                          color: const Color(0xFFF5F3FF),
+                          borderRadius: BorderRadius.circular(20)),
+                      child: Text(
+                          c['branch_name']?.toString() ?? c['branch']?.toString() ?? '',
+                          style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF7C3AED))),
+                    ),
+                  ],
                   const SizedBox(width: 8),
                   Icon(Icons.directions_car, size: 13, color: Colors.grey.shade500),
                   const SizedBox(width: 3),

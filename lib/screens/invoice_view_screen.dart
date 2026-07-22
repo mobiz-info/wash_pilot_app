@@ -380,7 +380,7 @@ class InvoiceViewScreen extends StatelessWidget {
               pw.Center(
                 child: pw.Column(
                   children: [
-                    pw.Text('Thanks for choosing $branchName',
+                    pw.Text('Thank you for choosing $branchName!',
                         style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
                     pw.SizedBox(height: 4),
                     pw.Text('Powered by Mobiz Technologies',
@@ -814,81 +814,104 @@ class InvoiceViewScreen extends StatelessWidget {
                         : Colors.white,
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: hasAnyDiscount
-                      ? Row(children: [
-                          Expanded(
-                            child: Text(services[i]['name'] ?? '',
-                                style: GoogleFonts.inter(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 14,
-                                    color: const Color(0xFF1e293b))),
-                          ),
-                          SizedBox(
-                            width: 68,
-                            child: Text(
-                              context.tr('$currencySymbol${_fmt(services[i]['rate'])}'),
-                              textAlign: TextAlign.right,
-                              style: GoogleFonts.inter(
-                                  fontSize: 13,
-                                  color: Colors.grey.shade700),
-                            ),
-                          ),
-                          SizedBox(
-                            width: 68,
-                            child: Text(
-                              ((services[i]['discount'] as num?)
-                                              ?.toDouble() ??
-                                          0) >
-                                      0
-                                  ? '-$currencySymbol${_fmt(services[i]['discount'])}'
-                                  : '—',
-                              textAlign: TextAlign.right,
-                              style: GoogleFonts.inter(
-                                fontSize: 13,
-                                color: ((services[i]['discount'] as num?)
-                                                ?.toDouble() ??
-                                            0) >
-                                        0
-                                    ? Colors.green.shade600
-                                    : Colors.grey.shade400,
-                                fontWeight: FontWeight.w600,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      hasAnyDiscount
+                          ? Row(children: [
+                              Expanded(
+                                child: Text(services[i]['name'] ?? '',
+                                    style: GoogleFonts.inter(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14,
+                                        color: const Color(0xFF1e293b))),
                               ),
-                            ),
-                          ),
-                          SizedBox(
-                            width: 76,
-                            child: Text(
-                              context.tr('$currencySymbol${_fmt(
-                                (services[i]['rate'] as num).toDouble() -
-                                    ((services[i]['discount'] as num?)
-                                            ?.toDouble() ??
-                                        0),
-                              )}'),
-                              textAlign: TextAlign.right,
-                              style: GoogleFonts.inter(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 14,
-                                  color: const Color(0xFF000080)),
-                            ),
-                          ),
-                        ])
-                      : Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(services[i]['name'] ?? '',
-                                style: GoogleFonts.inter(
+                              SizedBox(
+                                width: 68,
+                                child: Text(
+                                  context.tr('$currencySymbol${_fmt(services[i]['rate'])}'),
+                                  textAlign: TextAlign.right,
+                                  style: GoogleFonts.inter(
+                                      fontSize: 13,
+                                      color: Colors.grey.shade700),
+                                ),
+                              ),
+                              SizedBox(
+                                width: 68,
+                                child: Text(
+                                  ((services[i]['discount'] as num?)
+                                                  ?.toDouble() ??
+                                              0) >
+                                          0
+                                      ? '-$currencySymbol${_fmt(services[i]['discount'])}'
+                                      : '—',
+                                  textAlign: TextAlign.right,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13,
+                                    color: ((services[i]['discount'] as num?)
+                                                    ?.toDouble() ??
+                                                0) >
+                                            0
+                                        ? Colors.green.shade600
+                                        : Colors.grey.shade400,
                                     fontWeight: FontWeight.w600,
-                                    fontSize: 14,
-                                    color: const Color(0xFF1e293b))),
-                            Text(
-                              context.tr('$currencySymbol${_fmt(services[i]['rate'])}'),
-                              style: GoogleFonts.inter(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 14,
-                                  color: const Color(0xFF000080)),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(
+                                width: 76,
+                                child: Text(
+                                  context.tr('$currencySymbol${_fmt(
+                                    (services[i]['rate'] as num).toDouble() -
+                                        ((services[i]['discount'] as num?)
+                                                ?.toDouble() ??
+                                            0),
+                                  )}'),
+                                  textAlign: TextAlign.right,
+                                  style: GoogleFonts.inter(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14,
+                                      color: const Color(0xFF000080)),
+                                ),
+                              ),
+                            ])
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(services[i]['name'] ?? '',
+                                    style: GoogleFonts.inter(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14,
+                                        color: const Color(0xFF1e293b))),
+                                Text(
+                                  context.tr('$currencySymbol${_fmt(services[i]['rate'])}'),
+                                  style: GoogleFonts.inter(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14,
+                                      color: const Color(0xFF000080)),
+                                ),
+                              ],
                             ),
-                          ],
+                      if (services[i]['service_detail'] != null) ...[
+                        const SizedBox(height: 4),
+                        Builder(
+                          builder: (context) {
+                            final sd = services[i]['service_detail'];
+                            final cat = sd['service_category']?.toString() ?? '';
+                            if (cat == 'oil_change') {
+                              final litres = sd['oil_litres_used'] ?? sd['oil_litres'] ?? 0;
+                              final filter = sd['oil_filter_changed'] == true;
+                              return Text(
+                                '• Litres: ${litres}L${filter ? ' • Filter Changed' : ''}',
+                                style: GoogleFonts.inter(fontSize: 11, color: Colors.amber.shade900, fontWeight: FontWeight.w500),
+                              );
+                            }
+                            return const SizedBox.shrink();
+                          },
                         ),
+                      ],
+                    ],
+                  ),
                 ),
               ],
 

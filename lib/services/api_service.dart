@@ -1108,7 +1108,60 @@ class ApiService {
     branchId: branchId,
   );
 
+  static Future<Map<String, dynamic>> getOilChangeReport(
+    String token,
+    String fromDate,
+    String toDate, {
+    String? branchId,
+  }) => _reportGet(
+    'reports/oil-change/',
+    token,
+    fromDate,
+    toDate,
+    branchId: branchId,
+  );
+
+  static Future<Map<String, dynamic>> getTyreChangeReport(
+    String token,
+    String fromDate,
+    String toDate, {
+    String? branchId,
+  }) => _reportGet(
+    'reports/tyre-change/',
+    token,
+    fromDate,
+    toDate,
+    branchId: branchId,
+  );
+
+  static Future<Map<String, dynamic>> getWheelAlignmentReport(
+    String token,
+    String fromDate,
+    String toDate, {
+    String? branchId,
+  }) => _reportGet(
+    'reports/wheel-alignment/',
+    token,
+    fromDate,
+    toDate,
+    branchId: branchId,
+  );
+
+  static Future<Map<String, dynamic>> getOilStockLedgerReport(
+    String token,
+    String fromDate,
+    String toDate, {
+    String? branchId,
+  }) => _reportGet(
+    'reports/oil-stock/',
+    token,
+    fromDate,
+    toDate,
+    branchId: branchId,
+  );
+
   static Future<Map<String, dynamic>> listComplaintTypes(String token) async {
+
     final response = await http.get(
       Uri.parse('$baseUrl/complaint-types/'),
       headers: {
@@ -1987,5 +2040,117 @@ class ApiService {
     }
     throw Exception('Failed to delete booking pause.');
   }
+
+  // ── Multi-Category Vehicle Service Platform APIs ──────────────────────────
+
+  static Future<Map<String, dynamic>> getOilProducts(String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/oil-products/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to load oil products.');
+  }
+
+  static Future<Map<String, dynamic>> getTyreBrands(String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/tyre-brands/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to load tyre brands.');
+  }
+
+  static Future<Map<String, dynamic>> getOilStock(String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/oil-stock/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to load oil stock.');
+  }
+
+  static Future<Map<String, dynamic>> addOilStock(
+    String oilProductId,
+    double quantity,
+    String notes,
+    String token,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/oil-stock/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'oil_product_id': oilProductId,
+        'quantity_litres': quantity,
+        'notes': notes,
+      }),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to update oil stock.');
+  }
+
+  static Future<Map<String, dynamic>> getVehicleServiceHistory(
+    String vehicleId,
+    String token,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/vehicle-service-history/$vehicleId/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to load vehicle service history.');
+  }
+
+  /// Fetch oil price per litre from backend for a given oil product + vehicle make/type.
+  /// Returns { price_per_litre: double?, recommended_qty_litres: double? }
+  static Future<Map<String, dynamic>> getOilPrice(
+    String token,
+    String oilProductId, {
+    String? vehicleMakeId,
+    String? vehicleTypeId,
+  }) async {
+    final params = <String, String>{'oil_product_id': oilProductId};
+    if (vehicleMakeId != null && vehicleMakeId.isNotEmpty) {
+      params['vehicle_make_id'] = vehicleMakeId;
+    }
+    if (vehicleTypeId != null && vehicleTypeId.isNotEmpty) {
+      params['vehicle_type_id'] = vehicleTypeId;
+    }
+    final url = Uri.parse('$baseUrl/oil-price/').replace(queryParameters: params);
+    final response = await http.get(url, headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    });
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to fetch oil price.');
+  }
 }
+
 

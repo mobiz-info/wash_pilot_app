@@ -8,6 +8,8 @@ import 'dart:async';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import 'invoice_create_screen.dart';
+import 'vehicle_service_history_screen.dart';
+
 
 class VehicleSearchScreen extends StatefulWidget {
   const VehicleSearchScreen({super.key});
@@ -511,8 +513,13 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
           ),
           const SizedBox(height: 16),
 
+          // Service Status Card (Badges, Odometer, Alerts)
+          _buildServiceStatusCard(vehicle),
+          const SizedBox(height: 16),
+
           // Visit Details Card
           _buildCard(
+
             label: 'Visit Details',
             icon: Icons.history,
             child: Column(
@@ -707,4 +714,138 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
       ),
     );
   }
+  Widget _buildServiceStatusCard(Map<String, dynamic> vehicle) {
+    final int odo = vehicle['current_odometer_km'] ?? 0;
+    final int? nextOil = vehicle['next_oil_change_km'];
+    final int? nextTyre = vehicle['next_tyre_change_km'];
+    final String? lastOilDate = vehicle['last_oil_change_date'];
+    final String? lastTyreDate = vehicle['last_tyre_change_date'];
+
+    bool oilAlert = nextOil != null && odo >= (nextOil - 500);
+    bool tyreAlert = nextTyre != null && odo >= (nextTyre - 2000);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 3))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.engineering_outlined, size: 18, color: Color(0xFF000080)),
+                  const SizedBox(width: 8),
+                  Text(context.tr('Service Status'), style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14, color: const Color(0xFF000080))),
+                ],
+              ),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => VehicleServiceHistoryScreen(
+                        vehicleId: vehicle['id'],
+                        vehicleNumber: vehicle['number'],
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.history, size: 14, color: Color(0xFF000080)),
+                label: Text(context.tr('History'), style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFF000080))),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF000080).withOpacity(0.08),
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ],
+          ),
+          const Divider(height: 20),
+          _serviceIndicatorRow(
+            Icons.speed,
+            'Current Odometer',
+            odo > 0 ? '$odo km' : 'Not recorded',
+            Colors.grey.shade700,
+          ),
+          const Divider(height: 20),
+          _serviceIndicatorRow(
+            Icons.oil_barrel,
+            'Oil Change',
+            nextOil != null ? 'Next at $nextOil km' : 'Not scheduled',
+            oilAlert ? Colors.red : Colors.green,
+            subtitle: lastOilDate != null ? 'Last: $lastOilDate' : null,
+            badge: oilAlert ? 'DUE / OVERDUE' : null,
+          ),
+          const Divider(height: 20),
+          _serviceIndicatorRow(
+            Icons.circle_outlined,
+            'Tyre Change',
+            nextTyre != null ? 'Next at $nextTyre km' : 'Not scheduled',
+            tyreAlert ? Colors.red : Colors.green,
+            subtitle: lastTyreDate != null ? 'Last: $lastTyreDate' : null,
+            badge: tyreAlert ? 'DUE / OVERDUE' : null,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _serviceIndicatorRow(
+    IconData icon,
+    String label,
+    String value,
+    Color statusColor, {
+    String? subtitle,
+    String? badge,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18, color: statusColor),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(context.tr(label), style: GoogleFonts.inter(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 2),
+              Row(
+                children: [
+                  Text(context.tr(value), style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.grey.shade800)),
+                  if (badge != null) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        border: Border.all(color: Colors.red.shade200),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        context.tr(badge),
+                        style: GoogleFonts.inter(color: Colors.red.shade700, fontSize: 9, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              if (subtitle != null) ...[
+                const SizedBox(height: 2),
+                Text(context.tr(subtitle), style: GoogleFonts.inter(fontSize: 11, color: Colors.grey.shade400)),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 }
+

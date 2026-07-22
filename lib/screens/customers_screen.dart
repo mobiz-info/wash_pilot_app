@@ -1022,6 +1022,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                               fontWeight: FontWeight.w600,
                               color: const Color(0xFF2563EB))),
                     ),
+                    
                     const SizedBox(width: 8),
                     Icon(Icons.directions_car, size: 13, color: Colors.grey.shade500),
                     const SizedBox(width: 3),
@@ -1030,6 +1031,22 @@ class _CustomersScreenState extends State<CustomersScreen> {
                         style: GoogleFonts.inter(
                             fontSize: 12, color: Colors.grey.shade500)),
                   ]),
+                  const SizedBox(height: 5),
+                  if ((c['branch_name']?.toString() ?? c['branch']?.toString() ?? '').isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                            color: const Color(0xFFF5F3FF),
+                            borderRadius: BorderRadius.circular(20)),
+                        child: Text(
+                           "Branch: ${ c['branch_name']?.toString() ?? c['branch']?.toString() ?? ''}",
+                            style: GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF7C3AED))),
+                      ),
+                    ],
                 ],
               ),
             ),
