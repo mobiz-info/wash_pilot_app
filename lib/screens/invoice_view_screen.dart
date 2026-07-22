@@ -144,7 +144,7 @@ class InvoiceViewScreen extends StatelessWidget {
             ? invoiceBranch 
             : (authBranch.isNotEmpty ? authBranch : 'our service'));
 
-    final companyName = context.read<AuthProvider>().companyName ?? 'Wash Pilot';
+    final companyName = context.read<AuthProvider>().companyName ?? 'Mobiz Autocare Pro';
     final branchAddress = invoiceData['branch_address']?.toString() ?? '';
     final branchPhone = invoiceData['branch_phone']?.toString() ?? '';
     final branchEmail = invoiceData['branch_email']?.toString() ?? '';
@@ -462,7 +462,7 @@ class InvoiceViewScreen extends StatelessWidget {
       final pdfUrl = "http://68.183.94.11:78/media/invoices/invoice-$cleanInvoiceNo.pdf";
 
       final branchName = invoiceData['branch']?.toString() ?? context.read<AuthProvider>().branchName ?? 'our branch';
-      final companyName = context.read<AuthProvider>().companyName ?? 'Wash Pilot';
+      final companyName = context.read<AuthProvider>().companyName ?? 'Mobiz Autocare Pro';
       final companyLogo = context.read<AuthProvider>().companyLogo ?? '';
       final logoSuffix = companyLogo.isNotEmpty ? "\n\nCompany Logo: $companyLogo" : "";
 
@@ -521,7 +521,7 @@ class InvoiceViewScreen extends StatelessWidget {
       final pdfUrl = "http://68.183.94.11:78/media/invoices/invoice-$cleanInvoiceNo.pdf";
 
       final branchName = invoiceData['branch']?.toString() ?? context.read<AuthProvider>().branchName ?? 'our branch';
-      final companyName = context.read<AuthProvider>().companyName ?? 'Wash Pilot';
+      final companyName = context.read<AuthProvider>().companyName ?? 'Mobiz Autocare Pro';
       final companyLogo = context.read<AuthProvider>().companyLogo ?? '';
       final logoSuffix = companyLogo.isNotEmpty ? "\n\nCompany Logo: $companyLogo" : "";
 

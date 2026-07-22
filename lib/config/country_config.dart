@@ -1,6 +1,4 @@
-// lib/config/country_config.dart
-//
-// Centralized country configuration for the Wash Pilot app.
+// Centralized country configuration for the Mobiz Autocare Pro app.
 //
 // HOW TO USE:
 // -----------

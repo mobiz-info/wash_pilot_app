@@ -23,7 +23,7 @@ android {
         val rawCountry = (project.findProperty("selectedCountryName") as? String ?: "India")
         val countryLower = rawCountry.toLowerCase().replace(" ", "")
         applicationId = "com.mobiz.carwash.$countryLower"
-        manifestPlaceholders["appName"] = "Car wash $rawCountry"
+        manifestPlaceholders["appName"] = "Mobiz Autocare Pro $rawCountry"
         
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
@@ -45,7 +45,7 @@ android {
             if (apkOutput != null) {
                 val country = project.findProperty("selectedCountryName") as? String ?: "India"
                 val version = versionName ?: "1.3.4"
-                apkOutput.outputFileName = "Car wash $country V $version.apk"
+                apkOutput.outputFileName = "Mobiz Autocare Pro $country V $version.apk"
             }
         }
     }

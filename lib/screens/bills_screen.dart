@@ -184,7 +184,7 @@ class _BillsScreenState extends State<BillsScreen> {
         ? invBranch
         : (authBranch.isNotEmpty ? authBranch : 'our service');
 
-    final companyName = context.read<AuthProvider>().companyName ?? 'Wash Pilot';
+    final companyName = context.read<AuthProvider>().companyName ?? 'Mobiz Autocare Pro';
     final branchAddress = inv['branch_address']?.toString() ?? '';
     final branchPhone = inv['branch_phone']?.toString() ?? '';
     final branchEmail = inv['branch_email']?.toString() ?? '';
@@ -383,7 +383,7 @@ class _BillsScreenState extends State<BillsScreen> {
       final pdfUrl = "http://68.183.94.11:78/media/invoices/invoice-$cleanInvoiceNo.pdf";
 
       final branchName = inv['branch']?.toString() ?? context.read<AuthProvider>().branchName ?? 'our branch';
-      final companyName = context.read<AuthProvider>().companyName ?? 'Wash Pilot';
+      final companyName = context.read<AuthProvider>().companyName ?? 'Mobiz Autocare Pro';
       final companyLogo = context.read<AuthProvider>().companyLogo ?? '';
       final logoSuffix = companyLogo.isNotEmpty ? "\n\nCompany Logo: $companyLogo" : "";
 
@@ -446,7 +446,7 @@ class _BillsScreenState extends State<BillsScreen> {
       final pdfUrl = "http://68.183.94.11:78/media/invoices/invoice-$cleanInvoiceNo.pdf";
 
       final branchName = inv['branch']?.toString() ?? context.read<AuthProvider>().branchName ?? 'our branch';
-      final companyName = context.read<AuthProvider>().companyName ?? 'Wash Pilot';
+      final companyName = context.read<AuthProvider>().companyName ?? 'Mobiz Autocare Pro';
       final companyLogo = context.read<AuthProvider>().companyLogo ?? '';
       final logoSuffix = companyLogo.isNotEmpty ? "\n\nCompany Logo: $companyLogo" : "";
 

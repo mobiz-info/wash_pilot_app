@@ -153,7 +153,7 @@ void _printLine([String char = '─', int width = 55]) {
 
 void _printBanner() {
   _printLine('═');
-  print('  🌍  Wash Pilot — Country Setup');
+  print('  🌍  Mobiz Autocare Pro — Country Setup');
   _printLine('═');
   print('');
 }

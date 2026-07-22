@@ -3,7 +3,7 @@ import 'dart:io';
 void main(List<String> args) async {
   final apps = [
     AppConfig(
-        appName: "Wash Pilot",
+        appName: "Mobiz Autocare Pro",
         iconPath: "assets/icons/Wash-Pilot_Blue-Icon.png",
         packageName: "com.mobiz.washpilot",
         baseUrl: "http://68.183.94.11:78/api"),
