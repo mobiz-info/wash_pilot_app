@@ -763,11 +763,28 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 children: [
                   _filterChip('all', 'All'),
                   ..._enabledCategories.map((slug) {
-                    String name = slug.toString();
-                    if (slug == 'washing') name = 'Washing';
-                    else if (slug == 'oil_change') name = 'Oil Change';
-                    else if (slug == 'tyre_change') name = 'Tyre Change';
-                    else if (slug == 'wheel_alignment') name = 'Alignment';
+                    final matchingService = _allServices.firstWhere(
+                      (s) => s['service_type_slug'] == slug,
+                      orElse: () => null,
+                    );
+                    String name;
+                    if (matchingService != null && matchingService['service_type'] != null) {
+                      name = matchingService['service_type'].toString();
+                    } else {
+                      if (slug == 'washing') name = 'Washing';
+                      else if (slug == 'oil_change') name = 'Oil Change';
+                      else if (slug == 'tyre_change') name = 'Tyre Change';
+                      else if (slug == 'wheel_alignment') name = 'Alignment';
+                      else {
+                        name = slug.toString()
+                            .replaceAll('_', ' ')
+                            .split(' ')
+                            .map((word) => word.isNotEmpty
+                                ? '${word[0].toUpperCase()}${word.substring(1)}'
+                                : '')
+                            .join(' ');
+                      }
+                    }
                     return _filterChip(slug.toString(), name);
                   }),
                 ],
