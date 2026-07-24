@@ -179,9 +179,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                   (e['priceController'] as TextEditingController).text) ??
               0.0));
   double get totalDiscount => _rows.fold(0.0, (s, r) => s + r.effectiveDiscount);
+  // Subtotal = gross amount before discount
   double get subtotal =>
-      (totalServicesAmount + totalExtrasAmount - totalDiscount)
-          .clamp(0.0, double.infinity);
+      (totalServicesAmount + totalExtrasAmount).clamp(0.0, double.infinity);
   double get taxAmount {
     if (!_applyGst) return 0;
     double t = 0;
@@ -193,7 +193,8 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
     return t;
   }
 
-  double get total => subtotal + taxAmount;
+  // Total = subtotal - discount + tax
+  double get total => (subtotal - totalDiscount + taxAmount).clamp(0.0, double.infinity);
 
   List<Map<String, dynamic>> get selectedTaxes => _applyGst
       ? _availableTaxes
