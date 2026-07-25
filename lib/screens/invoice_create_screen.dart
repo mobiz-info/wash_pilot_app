@@ -164,6 +164,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
   // Amount collected
   final _amountCollectedController = TextEditingController(text: '0');
 
+  // Additional Invoice-level discount (Percentage/Amount)
+  bool _usePercentageDiscount = false; // false = Amount, true = Percentage
+  final TextEditingController _additionalDiscountController = TextEditingController(text: '0');
+
   // Payment mode selection state
   String _selectedPaymentMode = 'digital_payments';
 
@@ -178,7 +182,21 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           (double.tryParse(
                   (e['priceController'] as TextEditingController).text) ??
               0.0));
-  double get totalDiscount => _rows.fold(0.0, (s, r) => s + r.effectiveDiscount);
+
+  double get additionalDiscountAmount {
+    final val = double.tryParse(_additionalDiscountController.text) ?? 0.0;
+    if (_usePercentageDiscount) {
+      return subtotal * (val / 100);
+    } else {
+      return val;
+    }
+  }
+
+  double get totalDiscount {
+    final itemDiscount = _rows.fold(0.0, (s, r) => s + r.effectiveDiscount);
+    return itemDiscount + additionalDiscountAmount;
+  }
+
   // Subtotal = gross amount before discount
   double get subtotal =>
       (totalServicesAmount + totalExtrasAmount).clamp(0.0, double.infinity);
@@ -225,6 +243,11 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
   @override
   void initState() {
     super.initState();
+    _additionalDiscountController.addListener(() {
+      setState(() {
+        _syncAmountCollected();
+      });
+    });
     _loadAll();
   }
 
@@ -237,6 +260,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
       (extra['priceController'] as TextEditingController).dispose();
     }
     _amountCollectedController.dispose();
+    _additionalDiscountController.dispose();
     super.dispose();
   }
 
@@ -628,6 +652,8 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     _extrasCard(),
                   ],
                   if (_rows.isNotEmpty) ...[
+                    _additionalDiscountCard(),
+                    const SizedBox(height: 16),
                     _billSummary(),
                     const SizedBox(height: 16),
                     _amountCollectedField(),
@@ -978,6 +1004,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 _schemeChip(row, scheme as Map<String, dynamic>)),
           ],
 
+          // Category-specific details (oil/tyre/alignment details)
+          _categoryDetailSection(row),
+
           // Manual discount (only when no scheme on this row)
           if (row.selectedScheme == null) ...[
             const SizedBox(height: 12),
@@ -990,9 +1019,6 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
             const SizedBox(height: 12),
             _voucherInput(row),
           ],
-
-          // Category-specific details (oil/tyre/alignment details)
-          _categoryDetailSection(row),
 
           // Row subtotal
           const SizedBox(height: 12),
@@ -2021,12 +2047,22 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
             ),
             const SizedBox(height: 6),
           ],
-          if (_rows.length > 1)
+          if (_rows.length > 1 || _selectedExtras.isNotEmpty)
             _summaryRow(
-              context.tr('Services Subtotal'),
+              context.tr('Subtotal'),
               '$currencySymbol${subtotal.toStringAsFixed(2)}',
               isBold: true,
             ),
+          if (additionalDiscountAmount > 0) ...[
+            const SizedBox(height: 6),
+            _summaryRow(
+              _usePercentageDiscount
+                  ? '  ${context.tr('Additional Discount')} (${_additionalDiscountController.text}%)'
+                  : '  ${context.tr('Additional Discount')}',
+              '-$currencySymbol${additionalDiscountAmount.toStringAsFixed(2)}',
+              valueColor: Colors.green,
+            ),
+          ],
           // Taxes
           for (final entry in selectedTaxRows) ...[
             const SizedBox(height: 6),
@@ -2104,6 +2140,87 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Additional Discount ───────────────────────────────────────────────────
+  Widget _additionalDiscountCard() {
+    return _card(
+      title: 'Additional Discount',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Radio<bool>(
+                    value: false,
+                    groupValue: _usePercentageDiscount,
+                    activeColor: const Color(0xFF000080),
+                    onChanged: (val) {
+                      setState(() {
+                        _usePercentageDiscount = val ?? false;
+                        _syncAmountCollected();
+                      });
+                    },
+                  ),
+                  Text(
+                    context.tr('Amount'),
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: const Color(0xFF1e293b),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 24),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Radio<bool>(
+                    value: true,
+                    groupValue: _usePercentageDiscount,
+                    activeColor: const Color(0xFF000080),
+                    onChanged: (val) {
+                      setState(() {
+                        _usePercentageDiscount = val ?? true;
+                        _syncAmountCollected();
+                      });
+                    },
+                  ),
+                  Text(
+                    context.tr('Percentage'),
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: const Color(0xFF1e293b),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _additionalDiscountController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14),
+            decoration: InputDecoration(
+              labelText: _usePercentageDiscount
+                  ? context.tr('Discount Percentage (%)')
+                  : context.tr('Discount Amount'),
+              prefixText: _usePercentageDiscount ? null : '$currencySymbol ',
+              suffixText: _usePercentageDiscount ? '%' : null,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             ),
           ),
         ],
