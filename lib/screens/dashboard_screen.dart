@@ -1,103 +1,72 @@
-import 'package:car_wash_mobile/providers/auth_provider.dart';
-import 'package:car_wash_mobile/services/api_service.dart';
 import 'package:flutter/material.dart';
+import '../providers/auth_provider.dart';
+import '../providers/dashboard_provider.dart';
 import '../providers/language_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
-class DashboardScreen extends StatefulWidget {
+class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
-  @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
-}
-
-class _DashboardScreenState extends State<DashboardScreen> {
-  bool _statsLoading = true;
-  int _totalJobs = 0;
-  String _todayRevenue = '0';
-  String _todayCollected = '0';
-  String _todayExpense = '0';
-  String _todayNetProfit = '0';
-  String _totalOutstanding = '0';
-  int _outstandingCount = 0;
-  int _totalCustomers = 0;
-  List<Map<String, dynamic>> _recentInvoices = [];
-
-  Future<void> _loadStats() async {
-    if (!mounted) return;
-    setState(() => _statsLoading = true);
-    final auth = context.read<AuthProvider>();
-    final token = auth.token;
-    if (token == null) return;
-    try {
-      final res = await ApiService.getDashboardStats(token);
-      if (mounted && res['success'] == true) {
-        auth.updateSubscriptionStatus(
-          active: res['subscription_active'] ?? true,
-          daysLeft: res['subscription_days_left'] ?? 999,
-          endDate: res['subscription_end_date'],
-        );
-        setState(() {
-          _totalJobs = res['today_jobs'] ?? 0;
-          _todayRevenue = res['today_revenue'] ?? '0';
-          _todayCollected = res['today_collected'] ?? '0';
-          _todayExpense = res['today_expense'] ?? '0';
-          _todayNetProfit = res['today_net_profit'] ?? '0';
-          _totalOutstanding = res['total_outstanding'] ?? '0';
-          _outstandingCount = res['outstanding_count'] ?? 0;
-          _totalCustomers = res['total_customers'] ?? 0;
-          _recentInvoices = List<Map<String, dynamic>>.from(
-            res['recent_invoices'] ?? [],
-          ).take(3).toList();
-          _statsLoading = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _statsLoading = false);
-    }
-  }
-
-  String _fmt(String raw) {
-    final currencySymbol = context.read<AuthProvider>().currencySymbol;
-    try {
-      final v = double.parse(raw);
-      if (v >= 1000000) return '$currencySymbol${(v / 1000000).toStringAsFixed(1)}M';
-      if (v >= 1000) return '$currencySymbol${(v / 1000).toStringAsFixed(1)}K';
-      return '$currencySymbol${v.toStringAsFixed(0)}';
-    } catch (_) {
-      return '$currencySymbol$raw';
-    }
-  }
-
-  @override
-  void initState() {
-    // TODO: implement initState
-    super.initState();
-    _loadStats();
-  }
 
   @override
   Widget build(BuildContext context) {
+    final dashProvider = context.watch<DashboardProvider>();
+    final auth = context.watch<AuthProvider>();
+
+    // Load stats on first build if not yet loaded
+    if (!dashProvider.isLoading && !dashProvider.hasLoaded) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final token = context.read<AuthProvider>().token;
+        if (token != null) {
+          context.read<DashboardProvider>().loadStats(token).then((res) {
+            if (res != null && context.mounted) {
+              context.read<AuthProvider>().updateSubscriptionStatus(
+                active: res['subscription_active'] ?? true,
+                daysLeft: res['subscription_days_left'] ?? 999,
+                endDate: res['subscription_end_date'],
+              );
+            }
+          });
+        }
+      });
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
           context.tr('Dashboard'),
-          style: TextStyle(fontWeight: FontWeight.w600),
+          style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         leading: IconButton(
           icon: const Icon(Icons.menu),
-          onPressed: () {
-            // Open drawer
-          },
+          onPressed: () {},
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              final token = context.read<AuthProvider>().token;
+              if (token != null) {
+                context.read<DashboardProvider>().loadStats(token).then((res) {
+                  if (res != null && context.mounted) {
+                    context.read<AuthProvider>().updateSubscriptionStatus(
+                      active: res['subscription_active'] ?? true,
+                      daysLeft: res['subscription_days_left'] ?? 999,
+                      endDate: res['subscription_end_date'],
+                    );
+                  }
+                });
+              }
+            },
+          ),
+        ],
       ),
       body: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 27,horizontal: 20),
+        padding: const EdgeInsets.symmetric(vertical: 27, horizontal: 20),
         child: Column(
           children: [
-            if (context.watch<AuthProvider>().subscriptionActive &&
-                context.watch<AuthProvider>().subscriptionDaysLeft <= 5)
+            if (auth.subscriptionActive && auth.subscriptionDaysLeft <= 5)
               Container(
                 margin: const EdgeInsets.only(bottom: 16),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -112,11 +81,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        context.read<AuthProvider>().subscriptionDaysLeft == 0
+                        auth.subscriptionDaysLeft == 0
                             ? context.tr('Subscription ends today. Please renew to avoid service disruption.')
-                            : context.read<AuthProvider>().subscriptionDaysLeft == 1
+                            : auth.subscriptionDaysLeft == 1
                                 ? context.tr('Subscription ends tomorrow. Please renew to avoid service disruption.')
-                                : context.tr('Subscription ending in ${context.read<AuthProvider>().subscriptionDaysLeft} days. Please renew to avoid service disruption.'),
+                                : context.tr('Subscription ending in ${auth.subscriptionDaysLeft} days. Please renew to avoid service disruption.'),
                         style: GoogleFonts.inter(
                           color: Colors.amber.shade900,
                           fontWeight: FontWeight.w600,
@@ -128,45 +97,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
             // ── Today's Stats ───────────────────────────────────────────
+            // ── Today's Stats ───────────────────────────────────────────
             buildSectionTitle(context.tr("Today's Summary"), Icons.today_outlined),
             const SizedBox(height: 10),
-            _buildTodayStats(),
+            _buildTodayStats(dashProvider, auth, context),
             const SizedBox(height: 20),
-        
+
             // ── Totals Row ──────────────────────────────────────────────
             buildSectionTitle(context.tr('Overview'), Icons.analytics_outlined),
             const SizedBox(height: 10),
-            _buildOverviewRow(),
+            _buildOverviewRow(dashProvider, context),
             const SizedBox(height: 20),
-        
-            // ── Recent Invoices ─────────────────────────────────────────
-            // if (_recentInvoices.isNotEmpty) ...[
-            //   buildSectionTitle(
-            //     'Today\'s Recent Jobs',
-            //     Icons.receipt_long_outlined,
-            //   ),
-            //   const SizedBox(height: 10),
-            //   _buildRecentInvoices(),
-            //   const SizedBox(height: 20),
-            // ],
           ],
         ),
       ),
     );
   }
 
-  
-
   // ─── Today Stats (3 cards) ───────────────────────────────────────────────
-  Widget _buildTodayStats() {
+  Widget _buildTodayStats(DashboardProvider p, AuthProvider auth, BuildContext context) {
+    final loading = p.isLoading;
     return Column(
       children: [
         Row(
           children: [
             Expanded(
               child: _statCard(
+                context,
                 'Revenue',
-                _statsLoading ? '...' : _todayRevenue,
+                loading ? '...' : _fmt(p.todayRevenue, auth),
                 Icons.trending_up,
                 const Color(0xFF3B82F6),
                 const Color(0xFFEFF6FF),
@@ -175,42 +134,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(width: 8),
             Expanded(
               child: _statCard(
+                context,
                 'Collected',
-                _statsLoading ? '...' : _todayCollected,
+                loading ? '...' : _fmt(p.todayCollected, auth),
                 Icons.check_circle_outline,
                 const Color(0xFF22C55E),
                 const Color(0xFFF0FDF4),
               ),
             ),
-            const SizedBox(width: 8),
-            
           ],
         ),
         const SizedBox(height: 10),
-       
         Row(
           children: [
             Expanded(
               child: _statCard(
+                context,
                 'Expense',
-                _statsLoading ? '...' : _todayExpense,
+                loading ? '...' : _fmt(p.todayExpense, auth),
                 Icons.trending_down,
                 const Color(0xFFEF4444),
                 const Color(0xFFFFF1F2),
               ),
             ),
-            const SizedBox(width: 10),
-            
-           
           ],
         ),
-         const SizedBox(height: 10),
-         Row(
+        const SizedBox(height: 10),
+        Row(
           children: [
             Expanded(
               child: _statCard(
+                context,
                 'Net Profit',
-                _statsLoading ? '...' : _todayNetProfit,
+                loading ? '...' : _fmt(p.todayNetProfit, auth),
                 Icons.account_balance,
                 const Color(0xFF0F766E),
                 const Color(0xFFE6F4F1),
@@ -219,8 +175,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(width: 10),
             Expanded(
               child: _statCard(
+                context,
                 'Jobs',
-                _statsLoading ? '...' : '$_totalJobs',
+                loading ? '...' : '${p.totalJobs}',
                 Icons.work_outline,
                 const Color(0xFF8B5CF6),
                 const Color(0xFFF5F3FF),
@@ -234,24 +191,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ─── Overview Row (outstanding + customers) ──────────────────────────────
-  Widget _buildOverviewRow() {
+  Widget _buildOverviewRow(DashboardProvider p, BuildContext context) {
+    final loading = p.isLoading;
     return Row(
       children: [
         Expanded(
           child: _statCard(
+            context,
             'Outstanding',
-            _statsLoading ? '...' : _totalOutstanding,
+            loading ? '...' : p.totalOutstanding,
             Icons.warning_amber_outlined,
             const Color(0xFFEF4444),
             const Color(0xFFFFF1F2),
-            subtitle: _statsLoading ? '' : '$_outstandingCount ${context.tr('invoices')}',
+            subtitle: loading ? '' : '${p.outstandingCount} ${context.tr('invoices')}',
           ),
         ),
         const SizedBox(width: 10),
         Expanded(
           child: _statCard(
+            context,
             'Customers',
-            _statsLoading ? '...' : '$_totalCustomers',
+            loading ? '...' : '${p.totalCustomers}',
             Icons.people_outline,
             const Color(0xFFF59E0B),
             const Color(0xFFFFFBEB),
@@ -261,7 +221,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildRecentInvoices() {
+  String _fmt(String raw, AuthProvider auth) {
+    final currencySymbol = auth.currencySymbol;
+    try {
+      final v = double.parse(raw);
+      if (v >= 1000000) return '$currencySymbol${(v / 1000000).toStringAsFixed(1)}M';
+      if (v >= 1000) return '$currencySymbol${(v / 1000).toStringAsFixed(1)}K';
+      return '$currencySymbol${v.toStringAsFixed(0)}';
+    } catch (_) {
+      return '$currencySymbol$raw';
+    }
+  }
+
+  Widget _buildRecentInvoices(BuildContext context, List<dynamic> recentInvoices) {
     final currencySymbol = context.read<AuthProvider>().currencySymbol;
     return Container(
       decoration: BoxDecoration(
@@ -276,9 +248,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
       ),
       child: Column(
-        children: _recentInvoices.asMap().entries.map((e) {
+        children: recentInvoices.asMap().entries.map((e) {
           final inv = e.value;
-          final isLast = e.key == _recentInvoices.length - 1;
+          final isLast = e.key == recentInvoices.length - 1;
           final total = inv['total'] ?? '0';
           final collected = inv['collected'] ?? '0';
           final outstanding =
@@ -361,6 +333,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _statCard(
+    BuildContext context,
     String label,
     String value,
     IconData icon,

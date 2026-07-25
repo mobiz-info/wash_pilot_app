@@ -5,20 +5,32 @@ import '../providers/auth_provider.dart';
 import '../providers/language_provider.dart';
 import '../services/api_service.dart';
 
-class OilStockScreen extends StatefulWidget {
+class OilStockScreen extends StatelessWidget {
   const OilStockScreen({super.key});
 
   @override
-  State<OilStockScreen> createState() => _OilStockScreenState();
+  Widget build(BuildContext context) {
+    return const OilStockBodyView(showAppBar: true);
+  }
 }
 
-class _OilStockScreenState extends State<OilStockScreen> {
-  bool _isLoading = true;
-  String _errorMessage = '';
-  List<dynamic> _stocks = [];
-  List<dynamic> _products = [];
+class OilStockBodyView extends StatefulWidget {
+  final bool showAppBar;
+  const OilStockBodyView({super.key, this.showAppBar = false});
+
+  @override
+  State<OilStockBodyView> createState() => _OilStockBodyViewState();
+}
+
+class _OilStockBodyViewState extends State<OilStockBodyView> {
+  final _isLoading = ValueNotifier<bool>(true);
+  final _errorMessage = ValueNotifier<String>('');
+  final _stocks = ValueNotifier<List<dynamic>>([]);
+  final _products = ValueNotifier<List<dynamic>>([]);
+  final _branches = ValueNotifier<List<dynamic>>([]);
+  String? _selectedBranchId;
   final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
+  final _searchQuery = ValueNotifier<String>('');
 
   @override
   void initState() {
@@ -29,46 +41,59 @@ class _OilStockScreenState extends State<OilStockScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _isLoading.dispose();
+    _errorMessage.dispose();
+    _stocks.dispose();
+    _products.dispose();
+    _branches.dispose();
+    _searchQuery.dispose();
     super.dispose();
   }
 
   Future<void> _loadData() async {
-    final token = context.read<AuthProvider>().token;
+    final auth = context.read<AuthProvider>();
+    final token = auth.token;
     if (token == null) return;
 
     try {
-      final stockRes = await ApiService.getOilStock(token);
+      if (_branches.value.isEmpty) {
+        final bRes = await ApiService.getCompanyBranches(token);
+        if (bRes['success'] == true) {
+          final branchList = bRes['branches'] as List<dynamic>? ?? [];
+          _branches.value = branchList;
+          if (branchList.isNotEmpty && _selectedBranchId == null) {
+            _selectedBranchId = branchList[0]['id']?.toString();
+          }
+        }
+      }
+
+      final stockRes = await ApiService.getOilStock(token, branchId: _selectedBranchId);
       final prodRes = await ApiService.getOilProducts(token);
 
       if (stockRes['success'] == true) {
-        setState(() {
-          _stocks = stockRes['oil_stock'] ?? [];
-          _products = prodRes['success'] == true ? prodRes['oil_products'] ?? [] : [];
-          _isLoading = false;
-        });
+        _stocks.value = stockRes['oil_stock'] ?? [];
+        _products.value = prodRes['success'] == true ? prodRes['oil_products'] ?? [] : [];
+        _isLoading.value = false;
       } else {
-        setState(() {
-          _errorMessage = stockRes['message'] ?? 'Failed to load stock levels';
-          _isLoading = false;
-        });
+        _errorMessage.value = stockRes['message'] ?? 'Failed to load stock levels';
+        _isLoading.value = false;
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-        _isLoading = false;
-      });
+      _errorMessage.value = e.toString();
+      _isLoading.value = false;
     }
   }
 
-  Future<void> _openStockInModal() async {
-    if (_products.isEmpty) {
+  Future<void> _openStockInModal(List<dynamic> stocks) async {
+    final products = _products.value;
+    if (products.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.tr('No active oil products in master database.')), backgroundColor: Colors.orange),
       );
       return;
     }
 
-    String? selectedProductId = _products[0]['id'];
+    String? selectedProductId = products[0]['id'];
     final quantityController = TextEditingController();
     final notesController = TextEditingController();
     bool isSubmitting = false;
@@ -103,7 +128,7 @@ class _OilStockScreenState extends State<OilStockScreen> {
                       labelText: context.tr('Select Oil Product'),
                       border: const OutlineInputBorder(),
                     ),
-                    items: _products.map<DropdownMenuItem<String>>((p) {
+                    items: products.map<DropdownMenuItem<String>>((p) {
                       final name = p['display_name'] ?? '';
                       final vol = p['recommended_qty_litres'] ?? 1.0;
                       return DropdownMenuItem<String>(
@@ -145,7 +170,13 @@ class _OilStockScreenState extends State<OilStockScreen> {
                             setModalState(() => isSubmitting = true);
                             final token = context.read<AuthProvider>().token!;
                             try {
-                              final res = await ApiService.addOilStock(selectedProductId!, qty, notesController.text.trim(), token);
+                              final res = await ApiService.addOilStock(
+                                selectedProductId!,
+                                qty,
+                                notesController.text.trim(),
+                                token,
+                                branchId: _selectedBranchId,
+                              );
                               if (res['success'] == true) {
                                 Navigator.pop(ctx);
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -186,175 +217,189 @@ class _OilStockScreenState extends State<OilStockScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
-      appBar: AppBar(
-        title: Text(context.tr('Oil Stock Management'), style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
-        backgroundColor: const Color(0xFF000080),
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage.isNotEmpty
-              ? Center(child: Text(_errorMessage, style: const TextStyle(color: Colors.red)))
-              : Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                      child: TextField(
-                        controller: _searchController,
-                        onChanged: (value) {
-                          setState(() {
-                            _searchQuery = value;
-                          });
-                        },
-                        decoration: InputDecoration(
-                          hintText: context.tr('Search by name, brand, or grade...'),
-                          prefixIcon: const Icon(Icons.search, color: Color(0xFF000080)),
-                          suffixIcon: _searchQuery.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear, color: Colors.grey),
-                                  onPressed: () {
-                                    _searchController.clear();
-                                    setState(() {
-                                      _searchQuery = '';
-                                    });
-                                  },
-                                )
-                              : null,
-                          filled: true,
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.grey.shade200),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.grey.shade200),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF000080), width: 1.5),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: RefreshIndicator(
-                        onRefresh: _loadData,
-                        child: Builder(
-                          builder: (context) {
-                            final query = _searchQuery.trim().toLowerCase();
-                            final filteredStocks = _stocks.where((s) {
-                              final product = (s['oil_product'] ?? '').toString().toLowerCase();
-                              final brand = (s['brand'] ?? '').toString().toLowerCase();
-                              final grade = (s['grade'] ?? '').toString().toLowerCase();
-                              return product.contains(query) ||
-                                  brand.contains(query) ||
-                                  grade.contains(query);
-                            }).toList();
-
-                            if (filteredStocks.isEmpty) {
-                              return Center(
-                                child: Text(
-                                  context.tr('No matching stock items found.'),
-                                  style: GoogleFonts.inter(color: Colors.grey),
-                                ),
-                              );
-                            }
-
-                            return ListView.builder(
-                              padding: const EdgeInsets.all(16),
-                              itemCount: filteredStocks.length,
-                              itemBuilder: (context, index) {
-                                final s = filteredStocks[index] as Map<String, dynamic>;
-                                final product = s['oil_product'] ?? '';
-                                final brand = s['brand'] ?? '';
-                                final grade = s['grade'] ?? '';
-                                final double qty = s['quantity_litres'] ?? 0.0;
-                                final double vol = (s['volume_litres'] as num?)?.toDouble() ?? 1.0;
-                                final bool isLow = s['is_low'] ?? false;
-
-                                return Card(
-                                  color: Colors.white,
-                                  elevation: 0,
-                                  margin: const EdgeInsets.only(bottom: 12),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                    side: BorderSide(color: isLow ? Colors.red.shade200 : Colors.grey.shade200),
-                                  ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(16),
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.all(12),
-                                          decoration: BoxDecoration(
-                                            color: (isLow ? Colors.red : const Color(0xFF000080)).withOpacity(0.08),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: Icon(
-                                            Icons.oil_barrel,
-                                            color: isLow ? Colors.red : const Color(0xFF000080),
-                                            size: 26,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 16),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                product,
-                                                style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: const Color(0xFF1e293b)),
-                                              ),
-                                              const SizedBox(height: 2),
-                                              Text(
-                                                '$brand · Grade: $grade · Volume: ${vol}L',
-                                                style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade500),
-                                              ),
-                                              if (isLow) ...[
-                                                const SizedBox(height: 6),
-                                                Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                                  decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(4)),
-                                                  child: Text(
-                                                    context.tr('LOW STOCK ALERT'),
-                                                    style: GoogleFonts.inter(fontSize: 10, color: Colors.red.shade700, fontWeight: FontWeight.bold),
-                                                  ),
-                                                ),
-                                              ],
-                                            ],
-                                          ),
-                                        ),
-                                        Text(
-                                          '${qty.toInt()} units',
-                                          style: GoogleFonts.inter(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.w900,
-                                            color: isLow ? Colors.red.shade700 : const Color(0xFF000080),
-                                          ),
-                                        ),
-                                      ],
+    return ValueListenableBuilder<bool>(
+      valueListenable: _isLoading,
+      builder: (context, loading, _) => ValueListenableBuilder<String>(
+        valueListenable: _errorMessage,
+        builder: (context, errMsg, _) => ValueListenableBuilder<List<dynamic>>(
+          valueListenable: _branches,
+          builder: (context, branches, _) => ValueListenableBuilder<List<dynamic>>(
+            valueListenable: _stocks,
+            builder: (context, stocks, _) => ValueListenableBuilder<String>(
+              valueListenable: _searchQuery,
+              builder: (context, query, _) => Scaffold(
+                backgroundColor: const Color(0xFFF1F5F9),
+                appBar: widget.showAppBar
+                    ? AppBar(
+                        title: Text(context.tr('Oil Stock Management'), style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+                        backgroundColor: const Color(0xFF000080),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                      )
+                    : null,
+                body: loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : errMsg.isNotEmpty
+                        ? Center(child: Text(errMsg, style: const TextStyle(color: Colors.red)))
+                        : Column(
+                            children: [
+                              if (branches.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: Colors.grey.shade300),
+                                    ),
+                                    child: DropdownButtonHideUnderline(
+                                      child: DropdownButton<String>(
+                                        isExpanded: true,
+                                        value: _selectedBranchId,
+                                        icon: const Icon(Icons.store, color: Color(0xFF000080)),
+                                        items: branches.map<DropdownMenuItem<String>>((b) {
+                                          final bName = b['name'] as String? ?? 'Branch';
+                                          final bId = b['id']?.toString() ?? '';
+                                          return DropdownMenuItem<String>(
+                                            value: bId,
+                                            child: Text(
+                                              'Branch: $bName',
+                                              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14, color: const Color(0xFF000080)),
+                                            ),
+                                          );
+                                        }).toList(),
+                                        onChanged: (newBranchId) {
+                                          if (newBranchId != null && newBranchId != _selectedBranchId) {
+                                            setState(() {
+                                              _selectedBranchId = newBranchId;
+                                              _isLoading.value = true;
+                                            });
+                                            _loadData();
+                                          }
+                                        },
+                                      ),
                                     ),
                                   ),
-                                );
-                              },
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                  ],
+                                ),
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                                child: TextField(
+                                  controller: _searchController,
+                                  onChanged: (value) => _searchQuery.value = value,
+                                  decoration: InputDecoration(
+                                    hintText: context.tr('Search by name, brand, or grade...'),
+                                    prefixIcon: const Icon(Icons.search, color: Color(0xFF000080)),
+                                    suffixIcon: query.isNotEmpty
+                                        ? IconButton(
+                                            icon: const Icon(Icons.clear, color: Colors.grey),
+                                            onPressed: () {
+                                              _searchController.clear();
+                                              _searchQuery.value = '';
+                                            },
+                                          )
+                                        : null,
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF000080), width: 1.5)),
+                                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: RefreshIndicator(
+                                  onRefresh: _loadData,
+                                  child: Builder(
+                                    builder: (context) {
+                                      final q = query.trim().toLowerCase();
+                                      final filteredStocks = stocks.where((s) {
+                                        final product = (s['oil_product'] ?? '').toString().toLowerCase();
+                                        final brand = (s['brand'] ?? '').toString().toLowerCase();
+                                        final grade = (s['grade'] ?? '').toString().toLowerCase();
+                                        return product.contains(q) || brand.contains(q) || grade.contains(q);
+                                      }).toList();
+
+                                      if (filteredStocks.isEmpty) {
+                                        return Center(child: Text(context.tr('No matching stock items found.'), style: GoogleFonts.inter(color: Colors.grey)));
+                                      }
+
+                                      return ListView.builder(
+                                        padding: const EdgeInsets.all(16),
+                                        itemCount: filteredStocks.length,
+                                        itemBuilder: (context, index) {
+                                          final s = filteredStocks[index] as Map<String, dynamic>;
+                                          final product = s['oil_product'] ?? '';
+                                          final brand = s['brand'] ?? '';
+                                          final grade = s['grade'] ?? '';
+                                          final double qty = s['quantity_litres'] ?? 0.0;
+                                          final double vol = (s['volume_litres'] as num?)?.toDouble() ?? 1.0;
+                                          final bool isLow = s['is_low'] ?? false;
+
+                                          return Card(
+                                            color: Colors.white,
+                                            elevation: 0,
+                                            margin: const EdgeInsets.only(bottom: 12),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(14),
+                                              side: BorderSide(color: isLow ? Colors.red.shade200 : Colors.grey.shade200),
+                                            ),
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(16),
+                                              child: Row(
+                                                children: [
+                                                  Container(
+                                                    padding: const EdgeInsets.all(12),
+                                                    decoration: BoxDecoration(
+                                                      color: (isLow ? Colors.red : const Color(0xFF000080)).withOpacity(0.08),
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                    child: Icon(Icons.oil_barrel, color: isLow ? Colors.red : const Color(0xFF000080), size: 26),
+                                                  ),
+                                                  const SizedBox(width: 16),
+                                                  Expanded(
+                                                    child: Column(
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      children: [
+                                                        Text(product, style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: const Color(0xFF1e293b))),
+                                                        const SizedBox(height: 2),
+                                                        Text('$brand · Grade: $grade · Volume: ${vol}L', style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade500)),
+                                                        if (isLow) ...[
+                                                          const SizedBox(height: 6),
+                                                          Container(
+                                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                            decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(4)),
+                                                            child: Text(context.tr('LOW STOCK ALERT'), style: GoogleFonts.inter(fontSize: 10, color: Colors.red.shade700, fontWeight: FontWeight.bold)),
+                                                          ),
+                                                        ],
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  Text('${qty.toInt()} units', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w900, color: isLow ? Colors.red.shade700 : const Color(0xFF000080))),
+                                                ],
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                floatingActionButton: FloatingActionButton.extended(
+                  onPressed: () => _openStockInModal(stocks),
+                  backgroundColor: const Color(0xFF000080),
+                  foregroundColor: Colors.white,
+                  icon: const Icon(Icons.add),
+                  label: Text(context.tr('Stock-In'), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
                 ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openStockInModal,
-        backgroundColor: const Color(0xFF000080),
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: Text(context.tr('Stock-In'), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

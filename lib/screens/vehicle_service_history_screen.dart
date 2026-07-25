@@ -20,15 +20,24 @@ class VehicleServiceHistoryScreen extends StatefulWidget {
 }
 
 class _VehicleServiceHistoryScreenState extends State<VehicleServiceHistoryScreen> {
-  bool _isLoading = true;
-  String _errorMessage = '';
-  List<dynamic> _history = [];
-  Map<String, dynamic> _nextService = {};
+  final _isLoading = ValueNotifier<bool>(true);
+  final _errorMessage = ValueNotifier<String>('');
+  final _history = ValueNotifier<List<dynamic>>([]);
+  final _nextService = ValueNotifier<Map<String, dynamic>>({});
 
   @override
   void initState() {
     super.initState();
     _loadHistory();
+  }
+
+  @override
+  void dispose() {
+    _isLoading.dispose();
+    _errorMessage.dispose();
+    _history.dispose();
+    _nextService.dispose();
+    super.dispose();
   }
 
   Future<void> _loadHistory() async {
@@ -38,70 +47,76 @@ class _VehicleServiceHistoryScreenState extends State<VehicleServiceHistoryScree
     try {
       final res = await ApiService.getVehicleServiceHistory(widget.vehicleId, token);
       if (res['success'] == true) {
-        setState(() {
-          _history = res['history'] ?? [];
-          _nextService = res['next_service'] ?? {};
-          _isLoading = false;
-        });
+        _history.value = res['history'] ?? [];
+        _nextService.value = res['next_service'] ?? {};
+        _isLoading.value = false;
       } else {
-        setState(() {
-          _errorMessage = res['message'] ?? 'Failed to load history';
-          _isLoading = false;
-        });
+        _errorMessage.value = res['message'] ?? 'Failed to load history';
+        _isLoading.value = false;
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-        _isLoading = false;
-      });
+      _errorMessage.value = e.toString();
+      _isLoading.value = false;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
-      appBar: AppBar(
-        title: Text(
-          '${context.tr('Service History')} — ${widget.vehicleNumber}',
-          style: GoogleFonts.inter(fontWeight: FontWeight.w700),
-        ),
-        backgroundColor: const Color(0xFF000080),
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage.isNotEmpty
-              ? Center(child: Text(_errorMessage, style: const TextStyle(color: Colors.red)))
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildSummaryCard(),
-                      const SizedBox(height: 16),
-                      Text(
-                        context.tr('Recent Service Jobs'),
-                        style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF1e293b)),
-                      ),
-                      const SizedBox(height: 10),
-                      if (_history.isEmpty)
-                        _buildEmptyState()
-                      else
-                        ..._history.map((job) => _buildJobCard(job as Map<String, dynamic>)),
-                    ],
-                  ),
+    return ValueListenableBuilder<bool>(
+      valueListenable: _isLoading,
+      builder: (context, loading, _) => ValueListenableBuilder<String>(
+        valueListenable: _errorMessage,
+        builder: (context, error, _) => ValueListenableBuilder<List<dynamic>>(
+          valueListenable: _history,
+          builder: (context, history, _) => ValueListenableBuilder<Map<String, dynamic>>(
+            valueListenable: _nextService,
+            builder: (context, nextSvc, _) => Scaffold(
+              backgroundColor: const Color(0xFFF1F5F9),
+              appBar: AppBar(
+                title: Text(
+                  '${context.tr('Service History')} — ${widget.vehicleNumber}',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w700),
                 ),
+                backgroundColor: const Color(0xFF000080),
+                foregroundColor: Colors.white,
+                elevation: 0,
+              ),
+              body: loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : error.isNotEmpty
+                      ? Center(child: Text(error, style: const TextStyle(color: Colors.red)))
+                      : SingleChildScrollView(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _buildSummaryCard(nextSvc),
+                              const SizedBox(height: 16),
+                              Text(
+                                context.tr('Recent Service Jobs'),
+                                style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF1e293b)),
+                              ),
+                              const SizedBox(height: 10),
+                              if (history.isEmpty)
+                                _buildEmptyState()
+                              else
+                                ...history.map((job) => _buildJobCard(job as Map<String, dynamic>)),
+                            ],
+                          ),
+                        ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
-  Widget _buildSummaryCard() {
-    final int odo = _nextService['current_odometer_km'] ?? 0;
-    final int? nextOil = _nextService['next_oil_change_km'];
-    final int? nextTyre = _nextService['next_tyre_change_km'];
-    final String? lastOilDate = _nextService['last_oil_change_date'];
-    final String? lastTyreDate = _nextService['last_tyre_change_date'];
+  Widget _buildSummaryCard(Map<String, dynamic> nextService) {
+    final int odo = nextService['current_odometer_km'] ?? 0;
+    final int? nextOil = nextService['next_oil_change_km'];
+    final int? nextTyre = nextService['next_tyre_change_km'];
+    final String? lastOilDate = nextService['last_oil_change_date'];
+    final String? lastTyreDate = nextService['last_tyre_change_date'];
 
     return Container(
       padding: const EdgeInsets.all(16),

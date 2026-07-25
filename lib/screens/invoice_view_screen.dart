@@ -38,6 +38,81 @@ class InvoiceViewScreen extends StatelessWidget {
     return d.toStringAsFixed(2);
   }
 
+  String _getServiceDetailText(Map<String, dynamic> svc, String currencySymbol) {
+    final detail = svc['service_detail'] as Map<String, dynamic>?;
+    if (detail == null) return '';
+
+    final cat = detail['service_category']?.toString() ?? '';
+    if (cat == 'oil_change') {
+      final parts = <String>[];
+      
+      final prod = detail['oil_product'] as Map<String, dynamic>?;
+      if (prod != null && prod.isNotEmpty) {
+        final brand = prod['brand']?.toString() ?? prod['oil_brand']?['name']?.toString() ?? '';
+        final name = prod['name']?.toString() ?? '';
+        final grade = prod['grade']?.toString() ?? prod['oil_grade']?['name']?.toString() ?? '';
+        final prodStr = [if (brand.isNotEmpty) brand, if (name.isNotEmpty) name, if (grade.isNotEmpty) '($grade)'].join(' ');
+        if (prodStr.isNotEmpty) parts.add('Oil: $prodStr');
+      }
+      
+      final litres = detail['oil_litres_used']?.toString();
+      if (litres != null && litres.isNotEmpty && litres != '0') {
+        parts.add('Litres: ${litres}L');
+      }
+
+      final filterChanged = detail['oil_filter_changed'] == true || detail['oil_filter_id'] != null || detail['oil_filter'] != null;
+      if (filterChanged) {
+        final filter = detail['oil_filter'] as Map<String, dynamic>?;
+        final fBrand = filter?['brand_name']?.toString() ?? filter?['brand']?['name']?.toString() ?? '';
+        final fName = filter?['name']?.toString() ?? '';
+        final fPriceVal = detail['oil_filter_price'] ?? filter?['price'];
+        final fPriceDouble = (fPriceVal is num) ? fPriceVal.toDouble() : double.tryParse(fPriceVal?.toString() ?? '0') ?? 0.0;
+        final priceStr = fPriceDouble > 0 ? '$currencySymbol${fPriceDouble.toStringAsFixed(2)}' : '';
+        final fLabel = [if (fBrand.isNotEmpty) fBrand, if (fName.isNotEmpty) fName].join(' ');
+        final filterText = fLabel.isNotEmpty ? fLabel : 'Oil Filter';
+        parts.add('Filter: $filterText${priceStr.isNotEmpty ? " ($priceStr)" : ""}');
+      }
+
+      final odo = detail['odometer_at_service']?.toString();
+      if (odo != null && odo.isNotEmpty && odo != '0') {
+        parts.add('Odometer: $odo km');
+      }
+
+      final nextKm = detail['next_oil_change_km']?.toString();
+      if (nextKm != null && nextKm.isNotEmpty && nextKm != '0') {
+        parts.add('Next Change: $nextKm km');
+      }
+
+      return parts.join(' | ');
+    } else if (cat == 'tyre_change') {
+      final parts = <String>[];
+      final tBrand = detail['tyre_brand']?['brand']?.toString() ?? '';
+      if (tBrand.isNotEmpty) parts.add('Tyre: $tBrand');
+      final size = detail['tyre_size']?.toString();
+      if (size != null && size.isNotEmpty) parts.add('Size: $size');
+      final count = detail['tyres_changed_count']?.toString();
+      if (count != null && count.isNotEmpty) parts.add('Qty: $count');
+      final odo = detail['odometer_at_service']?.toString();
+      if (odo != null && odo.isNotEmpty && odo != '0') parts.add('Odometer: $odo km');
+      final nextKm = detail['next_tyre_change_km']?.toString();
+      if (nextKm != null && nextKm.isNotEmpty && nextKm != '0') parts.add('Next Change: $nextKm km');
+      return parts.join(' | ');
+    } else if (cat == 'wheel_alignment') {
+      final parts = <String>[];
+      final align = detail['alignment_done'] == true;
+      final bal = detail['balancing_done'] == true;
+      if (align && bal) parts.add('Tasks: Alignment & Balancing');
+      else if (align) parts.add('Tasks: Alignment');
+      else if (bal) parts.add('Tasks: Balancing');
+      final odo = detail['odometer_at_service']?.toString();
+      if (odo != null && odo.isNotEmpty && odo != '0') parts.add('Odometer: $odo km');
+      final notes = detail['alignment_notes']?.toString();
+      if (notes != null && notes.isNotEmpty) parts.add('Notes: $notes');
+      return parts.join(' | ');
+    }
+    return '';
+  }
+
   // ── PDF helper widgets ───────────────────────────────────────────────────
   pw.Widget _pdfCell(
     String text, {
@@ -306,7 +381,24 @@ class InvoiceViewScreen extends StatelessWidget {
                         color: i.isEven ? PdfColors.grey50 : PdfColors.white,
                       ),
                       children: [
-                        _pdfCell(services[i]['name'] ?? '', align: pw.Alignment.centerLeft),
+                        pw.Container(
+                          padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                          alignment: pw.Alignment.centerLeft,
+                          child: pw.Column(
+                            crossAxisAlignment: pw.CrossAxisAlignment.start,
+                            children: [
+                              pw.Text(services[i]['name'] ?? '', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                              if (_getServiceDetailText(services[i], currencySymbol).isNotEmpty)
+                                pw.Padding(
+                                  padding: const pw.EdgeInsets.only(top: 2),
+                                  child: pw.Text(
+                                    _getServiceDetailText(services[i], currencySymbol),
+                                    style: const pw.TextStyle(fontSize: 8, color: PdfColors.indigo900),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
                         _pdfCell('$currencySymbol${_fmt(services[i]['rate'])}'),
                         if (hasAnyDiscount)
                           _pdfCell(
@@ -479,10 +571,9 @@ class InvoiceViewScreen extends StatelessWidget {
           "Total: $currencySymbol$total\n"
           "Paid: $currencySymbol$collected\n"
           "Balance: $currencySymbol${_fmt(balanceVal)}\n\n"
-          "Please find the attached PDF invoice for your reference:\n"
-          "$pdfUrl\n\n"
+         
           "Thank you for choosing $branchName!\n"
-          "Powered by Mobiz Technologies$logoSuffix";
+          "Powered by Mobiz Technologies";
 
       final cleanedPhone = _getCleanedWhatsAppNumber(customer);
       if (cleanedPhone.isEmpty) {
@@ -538,10 +629,8 @@ class InvoiceViewScreen extends StatelessWidget {
           "Total: $currencySymbol$total\n"
           "Paid: $currencySymbol$collected\n"
           "Balance: $currencySymbol${_fmt(balanceVal)}\n\n"
-          "Please find the attached PDF invoice for your reference:\n"
-          "$pdfUrl\n\n"
           "Thank you for choosing $branchName!\n"
-          "Powered by Mobiz Technologies$logoSuffix";
+          "Powered by Mobiz Technologies";
 
       final pdfBytes = await _getInvoicePdfBytes(context);
       final output = await getTemporaryDirectory();
@@ -892,22 +981,15 @@ class InvoiceViewScreen extends StatelessWidget {
                                 ),
                               ],
                             ),
-                      if (services[i]['service_detail'] != null) ...[
+                      if (_getServiceDetailText(services[i], currencySymbol).isNotEmpty) ...[
                         const SizedBox(height: 4),
-                        Builder(
-                          builder: (context) {
-                            final sd = services[i]['service_detail'];
-                            final cat = sd['service_category']?.toString() ?? '';
-                            if (cat == 'oil_change') {
-                              final litres = sd['oil_litres_used'] ?? sd['oil_litres'] ?? 0;
-                              final filter = sd['oil_filter_changed'] == true;
-                              return Text(
-                                '• Litres: ${litres}L${filter ? ' • Filter Changed' : ''}',
-                                style: GoogleFonts.inter(fontSize: 11, color: Colors.amber.shade900, fontWeight: FontWeight.w500),
-                              );
-                            }
-                            return const SizedBox.shrink();
-                          },
+                        Text(
+                          _getServiceDetailText(services[i], currencySymbol),
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            color: Colors.blue.shade900,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ],
                     ],

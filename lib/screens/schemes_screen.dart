@@ -24,9 +24,9 @@ class _SchemesScreenState extends State<SchemesScreen> {
     }
   }
 
-  bool _loading = true;
-  String _error = '';
-  List<dynamic> _schemes = [];
+  final _loading = ValueNotifier<bool>(true);
+  final _error = ValueNotifier<String>('');
+  final _schemes = ValueNotifier<List<dynamic>>([]);
 
   @override
   void initState() {
@@ -34,38 +34,38 @@ class _SchemesScreenState extends State<SchemesScreen> {
     _fetchSchemes();
   }
 
+  @override
+  void dispose() {
+    _loading.dispose();
+    _error.dispose();
+    _schemes.dispose();
+    super.dispose();
+  }
+
   Future<void> _fetchSchemes() async {
-    setState(() {
-      _loading = true;
-      _error = '';
-    });
+    _loading.value = true;
+    _error.value = '';
 
     final token = context.read<AuthProvider>().token;
     if (token == null) {
-      setState(() {
-        _error = 'Not authenticated';
-        _loading = false;
-      });
+      _error.value = 'Not authenticated';
+      _loading.value = false;
       return;
     }
 
     try {
       final res = await ApiService.getBranchSchemes(token);
       if (!mounted) return;
-      setState(() {
-        if (res['success'] == true) {
-          _schemes = res['schemes'] ?? [];
-        } else {
-          _error = res['message'] ?? 'Failed to load schemes';
-        }
-        _loading = false;
-      });
+      if (res['success'] == true) {
+        _schemes.value = res['schemes'] ?? [];
+      } else {
+        _error.value = res['message'] ?? 'Failed to load schemes';
+      }
+      _loading.value = false;
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _error = 'Network error: $e';
-        _loading = false;
-      });
+      _error.value = 'Network error: $e';
+      _loading.value = false;
     }
   }
 
@@ -237,16 +237,10 @@ class _SchemesScreenState extends State<SchemesScreen> {
         foregroundColor: Colors.white,
         title: Text(
           isCompany ? 'Schemes' : 'Available Schemes',
-          style: GoogleFonts.inter(
-            fontWeight: FontWeight.w800,
-            fontSize: 18,
-          ),
+          style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 18),
         ),
         actions: [
-          IconButton(
-            onPressed: _fetchSchemes,
-            icon: const Icon(Icons.refresh),
-          ),
+          IconButton(onPressed: _fetchSchemes, icon: const Icon(Icons.refresh)),
           if (isCompany)
             IconButton(
               onPressed: () async {
@@ -254,61 +248,51 @@ class _SchemesScreenState extends State<SchemesScreen> {
                   context,
                   MaterialPageRoute(builder: (_) => const AddSchemeScreen()),
                 );
-                if (result == true) {
-                  _fetchSchemes();
-                }
+                if (result == true) _fetchSchemes();
               },
               icon: const Icon(Icons.add),
             ),
         ],
       ),
-      body: _buildListBody(),
+      body: ValueListenableBuilder<bool>(
+        valueListenable: _loading,
+        builder: (context, loading, _) => ValueListenableBuilder<String>(
+          valueListenable: _error,
+          builder: (context, error, _) => ValueListenableBuilder<List<dynamic>>(
+            valueListenable: _schemes,
+            builder: (context, schemes, _) => _buildListBody(loading, error, schemes),
+          ),
+        ),
+      ),
     );
   }
 
-  Widget _buildListBody() {
-    return _loading
-        ? const Center(
-            child: CircularProgressIndicator(color: Color(0xFF000080)),
-          )
-        : _error.isNotEmpty
+  Widget _buildListBody(bool loading, String error, List<dynamic> schemes) {
+    return loading
+        ? const Center(child: CircularProgressIndicator(color: Color(0xFF000080)))
+        : error.isNotEmpty
         ? Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(Icons.error_outline, size: 48, color: Colors.red),
                 const SizedBox(height: 12),
-                Text(
-                  _error,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.red),
-                ),
+                Text(error, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
                 const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: _fetchSchemes,
-                  child: Text(context.tr('Retry')),
-                ),
+                ElevatedButton(onPressed: _fetchSchemes, child: Text(context.tr('Retry'))),
               ],
             ),
           )
-        : _schemes.isEmpty
+        : schemes.isEmpty
         ? Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.local_offer_outlined,
-                  size: 72,
-                  color: Colors.grey.shade300,
-                ),
+                Icon(Icons.local_offer_outlined, size: 72, color: Colors.grey.shade300),
                 const SizedBox(height: 12),
                 Text(
                   context.tr('No schemes available'),
-                  style: GoogleFonts.inter(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF64748B),
-                  ),
+                  style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF64748B)),
                 ),
               ],
             ),
@@ -317,12 +301,9 @@ class _SchemesScreenState extends State<SchemesScreen> {
             onRefresh: _fetchSchemes,
             child: ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: _schemes.length,
-              itemBuilder: (context, index) {
-                return _schemeCard(
-                  Map<String, dynamic>.from(_schemes[index] as Map),
-                );
-              },
+              itemCount: schemes.length,
+              itemBuilder: (context, index) =>
+                  _schemeCard(Map<String, dynamic>.from(schemes[index] as Map)),
             ),
           );
   }

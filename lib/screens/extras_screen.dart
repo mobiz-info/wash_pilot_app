@@ -13,10 +13,10 @@ class ExtrasScreen extends StatefulWidget {
 }
 
 class _ExtrasScreenState extends State<ExtrasScreen> {
-  bool _isLoading = true;
-  String _errorMessage = '';
-  List<dynamic> _extras = [];
-  List<dynamic> _filteredExtras = [];
+  final _isLoading = ValueNotifier<bool>(true);
+  final _errorMessage = ValueNotifier<String>('');
+  final _extras = ValueNotifier<List<dynamic>>([]);
+  final _filteredExtras = ValueNotifier<List<dynamic>>([]);
   final _searchController = TextEditingController();
 
   @override
@@ -29,6 +29,10 @@ class _ExtrasScreenState extends State<ExtrasScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _isLoading.dispose();
+    _errorMessage.dispose();
+    _extras.dispose();
+    _filteredExtras.dispose();
     super.dispose();
   }
 
@@ -36,45 +40,35 @@ class _ExtrasScreenState extends State<ExtrasScreen> {
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = '';
-    });
+    _isLoading.value = true;
+    _errorMessage.value = '';
 
     try {
       final res = await ApiService.getExtrasList(token);
       if (res['success'] == true) {
-        setState(() {
-          _extras = res['extras'] ?? [];
-          _filteredExtras = List.from(_extras);
-          _isLoading = false;
-        });
+        _extras.value = res['extras'] ?? [];
+        _filteredExtras.value = List.from(_extras.value);
+        _isLoading.value = false;
       } else {
-        setState(() {
-          _errorMessage = res['message'] ?? 'Failed to load extras';
-          _isLoading = false;
-        });
+        _errorMessage.value = res['message'] ?? 'Failed to load extras';
+        _isLoading.value = false;
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-        _isLoading = false;
-      });
+      _errorMessage.value = e.toString();
+      _isLoading.value = false;
     }
   }
 
   void _filter() {
     final query = _searchController.text.toLowerCase().trim();
-    setState(() {
-      if (query.isEmpty) {
-        _filteredExtras = List.from(_extras);
-      } else {
-        _filteredExtras = _extras.where((e) {
-          final name = (e['name'] ?? '').toString().toLowerCase();
-          return name.contains(query);
-        }).toList();
-      }
-    });
+    if (query.isEmpty) {
+      _filteredExtras.value = List.from(_extras.value);
+    } else {
+      _filteredExtras.value = _extras.value.where((e) {
+        final name = (e['name'] ?? '').toString().toLowerCase();
+        return name.contains(query);
+      }).toList();
+    }
   }
 
   Future<void> _addNewExtraItem() async {
@@ -230,78 +224,61 @@ class _ExtrasScreenState extends State<ExtrasScreen> {
             ),
           ),
           Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _errorMessage.isNotEmpty
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(20.0),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                _errorMessage,
-                                style: const TextStyle(color: Colors.red),
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: 16),
-                              ElevatedButton(
-                                onPressed: _fetchExtras,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF000080),
-                                  foregroundColor: Colors.white,
-                                ),
-                                child: Text(context.tr('Retry')),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                    : _filteredExtras.isEmpty
-                        ? Center(
-                            child: Text(
-                              context.tr('No extras found'),
-                              style: GoogleFonts.inter(color: Colors.grey, fontSize: 15),
-                            ),
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.all(16),
-                            itemCount: _filteredExtras.length,
-                            itemBuilder: (ctx, i) {
-                              final item = Map<String, dynamic>.from(_filteredExtras[i] as Map);
-                              final name = item['name'] ?? '';
-
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 10),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.02),
-                                      blurRadius: 6,
-                                      offset: const Offset(0, 3),
-                                    )
+            child: ValueListenableBuilder<bool>(
+              valueListenable: _isLoading,
+              builder: (context, loading, _) => ValueListenableBuilder<String>(
+                valueListenable: _errorMessage,
+                builder: (context, errMsg, _) => ValueListenableBuilder<List<dynamic>>(
+                  valueListenable: _filteredExtras,
+                  builder: (context, filtered, _) => loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : errMsg.isNotEmpty
+                          ? Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(20.0),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(errMsg, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
+                                    const SizedBox(height: 16),
+                                    ElevatedButton(
+                                      onPressed: _fetchExtras,
+                                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000080), foregroundColor: Colors.white),
+                                      child: Text(context.tr('Retry')),
+                                    ),
                                   ],
                                 ),
-                                child: ListTile(
-                                  leading: const CircleAvatar(
-                                    backgroundColor: Color(0xFFFCE7F3),
-                                    foregroundColor: Color(0xFFEC4899),
-                                    child: Icon(Icons.more_horiz_outlined),
-                                  ),
-                                  title: Text(
-                                    name,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
+                              ),
+                            )
+                          : filtered.isEmpty
+                              ? Center(child: Text(context.tr('No extras found'), style: GoogleFonts.inter(color: Colors.grey, fontSize: 15)))
+                              : ListView.builder(
+                                  padding: const EdgeInsets.all(16),
+                                  itemCount: filtered.length,
+                                  itemBuilder: (ctx, i) {
+                                    final item = Map<String, dynamic>.from(filtered[i] as Map);
+                                    final name = item['name'] ?? '';
+                                    return Container(
+                                      margin: const EdgeInsets.only(bottom: 10),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(12),
+                                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 6, offset: const Offset(0, 3))],
+                                      ),
+                                      child: ListTile(
+                                        leading: const CircleAvatar(
+                                          backgroundColor: Color(0xFFFCE7F3),
+                                          foregroundColor: Color(0xFFEC4899),
+                                          child: Icon(Icons.more_horiz_outlined),
+                                        ),
+                                        title: Text(name, style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black87)),
+                                      ),
+                                    );
+                                  },
                                 ),
-                              );
-                            },
-                          ),
+                ),
+              ),
+            ),
           ),
         ],
       ),

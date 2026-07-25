@@ -9,30 +9,19 @@ import '../providers/auth_provider.dart';
 import '../providers/customer_provider.dart';
 import '../services/api_service.dart';
 
-class BookNowScreen extends StatefulWidget {
-  const BookNowScreen({super.key});
+class BookNowScreen extends StatelessWidget {
+  BookNowScreen({super.key});
 
-  @override
-  State<BookNowScreen> createState() => _BookNowScreenState();
-}
-
-class _BookNowScreenState extends State<BookNowScreen> {
   final _mobileController = TextEditingController();
-  String _selectedCountryCode = CountryConfig.phoneDialCode;
+  final _selectedCountryCode = ValueNotifier<String>(CountryConfig.phoneDialCode);
 
-  @override
-  void dispose() {
-    _mobileController.dispose();
-    super.dispose();
-  }
-
-  void _search() {
+  void _search(BuildContext context) {
     final mobile = _mobileController.text.trim();
     if (mobile.isEmpty) return;
     FocusScope.of(context).unfocus();
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
-    final cleanCode = _selectedCountryCode.replaceAll('+', '');
+    final cleanCode = _selectedCountryCode.value.replaceAll('+', '');
     final formattedMobile = mobile.startsWith(cleanCode) ? mobile : '$cleanCode$mobile';
     context.read<CustomerProvider>().searchCustomer(formattedMobile, token);
   }
@@ -64,9 +53,7 @@ class _BookNowScreenState extends State<BookNowScreen> {
                     style: GoogleFonts.inter(fontWeight: FontWeight.w500),
                     disableLengthCheck: true,
                     onCountryChanged: (country) {
-                      setState(() {
-                        _selectedCountryCode = '+' + country.dialCode;
-                      });
+                      _selectedCountryCode.value = '+${country.dialCode}';
                     },
                     decoration: InputDecoration(
                       hintText: context.tr('Enter mobile number...'),
@@ -76,12 +63,12 @@ class _BookNowScreenState extends State<BookNowScreen> {
                       contentPadding: const EdgeInsets.symmetric(vertical: 16),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                     ),
-                    onSubmitted: (_) => _search(),
+                    onSubmitted: (_) => _search(context),
                   ),
                 ),
                 const SizedBox(width: 12),
                 GestureDetector(
-                  onTap: _search,
+                  onTap: () => _search(context),
                   child: Container(
                     height: 54,
                     width: 54,

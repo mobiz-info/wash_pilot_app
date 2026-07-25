@@ -13,10 +13,10 @@ class SupplierScreen extends StatefulWidget {
 }
 
 class _SupplierScreenState extends State<SupplierScreen> {
-  bool _isLoading = true;
-  String _errorMessage = '';
-  List<dynamic> _suppliers = [];
-  List<dynamic> _filteredSuppliers = [];
+  final _isLoading = ValueNotifier<bool>(true);
+  final _errorMessage = ValueNotifier<String>('');
+  final _suppliers = ValueNotifier<List<dynamic>>([]);
+  final _filteredSuppliers = ValueNotifier<List<dynamic>>([]);
   final _searchController = TextEditingController();
 
   @override
@@ -29,6 +29,10 @@ class _SupplierScreenState extends State<SupplierScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _isLoading.dispose();
+    _errorMessage.dispose();
+    _suppliers.dispose();
+    _filteredSuppliers.dispose();
     super.dispose();
   }
 
@@ -36,46 +40,36 @@ class _SupplierScreenState extends State<SupplierScreen> {
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = '';
-    });
+    _isLoading.value = true;
+    _errorMessage.value = '';
 
     try {
       final res = await ApiService.getSuppliersList(token);
       if (res['success'] == true) {
-        setState(() {
-          _suppliers = res['suppliers'] ?? [];
-          _filteredSuppliers = List.from(_suppliers);
-          _isLoading = false;
-        });
+        _suppliers.value = res['suppliers'] ?? [];
+        _filteredSuppliers.value = List.from(_suppliers.value);
+        _isLoading.value = false;
       } else {
-        setState(() {
-          _errorMessage = res['message'] ?? 'Failed to load suppliers';
-          _isLoading = false;
-        });
+        _errorMessage.value = res['message'] ?? 'Failed to load suppliers';
+        _isLoading.value = false;
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-        _isLoading = false;
-      });
+      _errorMessage.value = e.toString();
+      _isLoading.value = false;
     }
   }
 
   void _filter() {
     final query = _searchController.text.toLowerCase().trim();
-    setState(() {
-      if (query.isEmpty) {
-        _filteredSuppliers = List.from(_suppliers);
-      } else {
-        _filteredSuppliers = _suppliers.where((s) {
-          final name = (s['name'] ?? '').toString().toLowerCase();
-          final phone = (s['phone_no'] ?? '').toString().toLowerCase();
-          return name.contains(query) || phone.contains(query);
-        }).toList();
-      }
-    });
+    if (query.isEmpty) {
+      _filteredSuppliers.value = List.from(_suppliers.value);
+    } else {
+      _filteredSuppliers.value = _suppliers.value.where((s) {
+        final name = (s['name'] ?? '').toString().toLowerCase();
+        final phone = (s['phone_no'] ?? '').toString().toLowerCase();
+        return name.contains(query) || phone.contains(query);
+      }).toList();
+    }
   }
 
   Future<void> _showSupplierFormDialog({Map<String, dynamic>? supplier}) async {
@@ -261,31 +255,25 @@ class _SupplierScreenState extends State<SupplierScreen> {
     );
 
     if (confirm == true) {
-      setState(() => _isLoading = true);
+      _isLoading.value = true;
       try {
         final res = await ApiService.deleteSupplier(token, supplier['id']);
         if (res['success'] == true) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(context.tr('Supplier deleted successfully!')),
-              backgroundColor: Colors.green,
-            ),
+            SnackBar(content: Text(context.tr('Supplier deleted successfully!')), backgroundColor: Colors.green),
           );
           _fetchSuppliers();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(res['message'] ?? context.tr('Failed to delete supplier')),
-              backgroundColor: Colors.red,
-            ),
+            SnackBar(content: Text(res['message'] ?? context.tr('Failed to delete supplier')), backgroundColor: Colors.red),
           );
-          setState(() => _isLoading = false);
+          _isLoading.value = false;
         }
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
         );
-        setState(() => _isLoading = false);
+        _isLoading.value = false;
       }
     }
   }
@@ -330,125 +318,122 @@ class _SupplierScreenState extends State<SupplierScreen> {
             ),
           ),
           Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _errorMessage.isNotEmpty
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(20.0),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                _errorMessage,
-                                style: const TextStyle(color: Colors.red),
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: 16),
-                              ElevatedButton(
-                                onPressed: _fetchSuppliers,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF000080),
-                                  foregroundColor: Colors.white,
-                                ),
-                                child: Text(context.tr('Retry')),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                    : _filteredSuppliers.isEmpty
-                        ? Center(
-                            child: Text(
-                              context.tr('No suppliers found'),
-                              style: GoogleFonts.inter(color: Colors.grey, fontSize: 15),
-                            ),
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.all(16),
-                            itemCount: _filteredSuppliers.length,
-                            itemBuilder: (ctx, i) {
-                              final supplier = Map<String, dynamic>.from(_filteredSuppliers[i] as Map);
-                              final name = supplier['name'] ?? '';
-                              final phone = supplier['phone_no'] ?? '';
-                              final address = supplier['address'] ?? '';
-                              final gst = supplier['gst_no'] ?? '';
-
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 10),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.02),
-                                      blurRadius: 6,
-                                      offset: const Offset(0, 3),
-                                    )
+            child: ValueListenableBuilder<bool>(
+              valueListenable: _isLoading,
+              builder: (context, loading, _) => ValueListenableBuilder<String>(
+                valueListenable: _errorMessage,
+                builder: (context, errMsg, _) => ValueListenableBuilder<List<dynamic>>(
+                  valueListenable: _filteredSuppliers,
+                  builder: (context, filtered, _) => loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : errMsg.isNotEmpty
+                          ? Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(20.0),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(errMsg, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
+                                    const SizedBox(height: 16),
+                                    ElevatedButton(
+                                      onPressed: _fetchSuppliers,
+                                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000080), foregroundColor: Colors.white),
+                                      child: Text(context.tr('Retry')),
+                                    ),
                                   ],
                                 ),
-                                child: ListTile(
-                                  leading: const CircleAvatar(
-                                    backgroundColor: Color(0xFFE0E0FF),
-                                    foregroundColor: Color(0xFF000080),
-                                    child: Icon(Icons.business),
-                                  ),
-                                  title: Text(
-                                    name,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                  subtitle: Padding(
-                                    padding: const EdgeInsets.only(top: 4.0),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text('${context.tr("Phone")}: $phone', style: GoogleFonts.inter(fontSize: 13, color: Colors.black54)),
-                                        if (gst.toString().isNotEmpty)
-                                          Text('${context.tr("GST")}: $gst', style: GoogleFonts.inter(fontSize: 13, color: Colors.black54)),
-                                        Text('${context.tr("Address")}: $address', style: GoogleFonts.inter(fontSize: 13, color: Colors.black38), maxLines: 2, overflow: TextOverflow.ellipsis),
-                                      ],
-                                    ),
-                                  ),
-                                  trailing: PopupMenuButton<String>(
-                                    icon: const Icon(Icons.more_vert, color: Colors.grey),
-                                    onSelected: (value) {
-                                      if (value == 'edit') {
-                                        _showSupplierFormDialog(supplier: supplier);
-                                      } else if (value == 'delete') {
-                                        _deleteSupplier(supplier);
-                                      }
-                                    },
-                                    itemBuilder: (context) => [
-                                      PopupMenuItem(
-                                        value: 'edit',
-                                        child: Row(
-                                          children: [
-                                            const Icon(Icons.edit, size: 18, color: Colors.blue),
-                                            const SizedBox(width: 8),
-                                            Text(context.tr('Edit'), style: GoogleFonts.inter()),
+                              ),
+                            )
+                          : filtered.isEmpty
+                              ? Center(child: Text(context.tr('No suppliers found'), style: GoogleFonts.inter(color: Colors.grey, fontSize: 15)))
+                              : ListView.builder(
+                                  padding: const EdgeInsets.all(16),
+                                  itemCount: filtered.length,
+                                  itemBuilder: (ctx, i) {
+                                    final supplier = Map<String, dynamic>.from(filtered[i] as Map);
+                                    final name = supplier['name'] ?? '';
+                                    final phone = supplier['phone_no'] ?? '';
+                                    final address = supplier['address'] ?? '';
+                                    final gst = supplier['gst_no'] ?? '';
+
+                                    return Container(
+                                      margin: const EdgeInsets.only(bottom: 10),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(12),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(alpha: 0.02),
+                                            blurRadius: 6,
+                                            offset: const Offset(0, 3),
+                                          )
+                                        ],
+                                      ),
+                                      child: ListTile(
+                                        leading: const CircleAvatar(
+                                          backgroundColor: Color(0xFFE0E0FF),
+                                          foregroundColor: Color(0xFF000080),
+                                          child: Icon(Icons.business),
+                                        ),
+                                        title: Text(
+                                          name,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                        subtitle: Padding(
+                                          padding: const EdgeInsets.only(top: 4.0),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text('${context.tr("Phone")}: $phone', style: GoogleFonts.inter(fontSize: 13, color: Colors.black54)),
+                                              if (gst.toString().isNotEmpty)
+                                                Text('${context.tr("GST")}: $gst', style: GoogleFonts.inter(fontSize: 13, color: Colors.black54)),
+                                              Text('${context.tr("Address")}: $address', style: GoogleFonts.inter(fontSize: 13, color: Colors.black38), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                            ],
+                                          ),
+                                        ),
+                                        trailing: PopupMenuButton<String>(
+                                          icon: const Icon(Icons.more_vert, color: Colors.grey),
+                                          onSelected: (value) {
+                                            if (value == 'edit') {
+                                              _showSupplierFormDialog(supplier: supplier);
+                                            } else if (value == 'delete') {
+                                              _deleteSupplier(supplier);
+                                            }
+                                          },
+                                          itemBuilder: (context) => [
+                                            PopupMenuItem(
+                                              value: 'edit',
+                                              child: Row(
+                                                children: [
+                                                  const Icon(Icons.edit, size: 18, color: Colors.blue),
+                                                  const SizedBox(width: 8),
+                                                  Text(context.tr('Edit'), style: GoogleFonts.inter()),
+                                                ],
+                                              ),
+                                            ),
+                                            PopupMenuItem(
+                                              value: 'delete',
+                                              child: Row(
+                                                children: [
+                                                  const Icon(Icons.delete, size: 18, color: Colors.red),
+                                                  const SizedBox(width: 8),
+                                                  Text(context.tr('Delete'), style: GoogleFonts.inter(color: Colors.red)),
+                                                ],
+                                              ),
+                                            ),
                                           ],
                                         ),
                                       ),
-                                      PopupMenuItem(
-                                        value: 'delete',
-                                        child: Row(
-                                          children: [
-                                            const Icon(Icons.delete, size: 18, color: Colors.red),
-                                            const SizedBox(width: 8),
-                                            Text(context.tr('Delete'), style: GoogleFonts.inter(color: Colors.red)),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                    );
+                                  },
                                 ),
-                              );
-                            },
-                          ),
+                ),
+              ),
+            ),
           ),
         ],
       ),

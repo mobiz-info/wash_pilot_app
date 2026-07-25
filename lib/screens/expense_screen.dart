@@ -3,85 +3,68 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/expense_provider.dart';
+import '../providers/inventory_provider.dart';
 import '../providers/language_provider.dart';
 import '../services/api_service.dart';
 
-class ExpenseScreen extends StatefulWidget {
-  const ExpenseScreen({super.key});
-
-  @override
-  State<ExpenseScreen> createState() => _ExpenseScreenState();
-}
-
-class _ExpenseScreenState extends State<ExpenseScreen> {
-  bool _isLoading = true;
-  bool _isSaving = false;
-  String _errorMessage = '';
-
-  List<dynamic> _expenseHeads = [];
-  List<dynamic> _branches = [];
-  List<dynamic> _stocks = [];
-  List<dynamic> _staffs = [];
-  List<dynamic> _suppliers = [];
-
-  // Form State
-  DateTime _selectedDate = DateTime.now();
-  Map<String, dynamic>? _selectedExpenseHead;
-  String? _selectedBranchId;
-  String? _selectedSupplierId;
-
-  final _expenseNameController = TextEditingController();
-  final _amountController = TextEditingController();
-  final _remarkController = TextEditingController();
-  final _paidAmountController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchInitialData();
+class ExpenseScreen extends StatelessWidget {
+  ExpenseScreen({super.key}) {
+    // We defer initial load to building phase via addPostFrameCallback inside the build method
   }
 
-  @override
-  void dispose() {
-    _expenseNameController.dispose();
-    _amountController.dispose();
-    _remarkController.dispose();
-    _paidAmountController.dispose();
-    super.dispose();
-  }
+  // ValueNotifiers for screen states
+  final ValueNotifier<bool> _isLoadingNotifier = ValueNotifier(true);
+  final ValueNotifier<bool> _isSavingNotifier = ValueNotifier(false);
+  final ValueNotifier<String> _errorMessageNotifier = ValueNotifier('');
 
-  Future<void> _fetchInitialData() async {
+  // Form selections and data sources
+  final ValueNotifier<List<dynamic>> _expenseHeadsNotifier = ValueNotifier([]);
+  final ValueNotifier<List<dynamic>> _branchesNotifier = ValueNotifier([]);
+  final ValueNotifier<List<dynamic>> _staffsNotifier = ValueNotifier([]);
+  final ValueNotifier<List<dynamic>> _stocksNotifier = ValueNotifier([]);
+  final ValueNotifier<List<dynamic>> _suppliersNotifier = ValueNotifier([]);
+
+  final ValueNotifier<List<String>> _headItemsNotifier = ValueNotifier([]);
+  final ValueNotifier<bool> _isCustomExpenseNameNotifier = ValueNotifier(false);
+  final ValueNotifier<bool> _isLoadingHeadItemsNotifier = ValueNotifier(false);
+
+  final ValueNotifier<DateTime> _selectedDateNotifier = ValueNotifier(DateTime.now());
+  final ValueNotifier<Map<String, dynamic>?> _selectedExpenseHeadNotifier = ValueNotifier(null);
+  final ValueNotifier<String?> _selectedBranchIdNotifier = ValueNotifier(null);
+  final ValueNotifier<String?> _selectedSupplierIdNotifier = ValueNotifier(null);
+
+  final TextEditingController _expenseNameController = TextEditingController();
+  final TextEditingController _amountController = TextEditingController();
+  final TextEditingController _remarkController = TextEditingController();
+  final TextEditingController _paidAmountController = TextEditingController();
+
+  Future<void> _fetchInitialData(BuildContext context) async {
     final auth = context.read<AuthProvider>();
     final token = auth.token;
     if (token == null) return;
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = '';
-    });
+    _isLoadingNotifier.value = true;
+    _errorMessageNotifier.value = '';
 
     try {
-      // 1. Fetch Expense Heads
-      final headRes = await ApiService.getExpenseHeads(token);
-      List<dynamic> heads = [];
-      if (headRes['success'] == true) {
-        heads = headRes['expense_heads'] ?? [];
-      } else {
-        throw Exception(headRes['message'] ?? 'Failed to load expense heads');
-      }
+      final expenseProvider = context.read<ExpenseProvider>();
+      final inventoryProvider = context.read<InventoryProvider>();
 
-      // 2. Fetch Branches if Company Admin
+      await Future.wait([
+        expenseProvider.fetchExpenseHeads(token),
+        expenseProvider.fetchSuppliers(token),
+        inventoryProvider.fetchStockItems(token),
+      ]);
+
       List<dynamic> branches = [];
       if (auth.isCompanyAdmin) {
         final branchRes = await ApiService.getCompanyBranches(token);
         if (branchRes['success'] == true) {
           branches = branchRes['branches'] ?? [];
-        } else {
-          throw Exception(branchRes['message'] ?? 'Failed to load branches');
         }
       }
 
-      // 3. Fetch Staff list
       List<dynamic> staffs = [];
       try {
         final staffRes = await ApiService.getStaffList(token);
@@ -90,48 +73,26 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
         }
       } catch (_) {}
 
-      // 4. Fetch Stock list
-      List<dynamic> stocks = [];
-      try {
-        final stockRes = await ApiService.getStockList(token);
-        if (stockRes['success'] == true) {
-          stocks = stockRes['stocks'] ?? [];
-        }
-      } catch (_) {}
+      _expenseHeadsNotifier.value = expenseProvider.expenseHeads;
+      _suppliersNotifier.value = expenseProvider.suppliers;
+      _stocksNotifier.value = inventoryProvider.stockItems;
+      _branchesNotifier.value = branches;
+      _staffsNotifier.value = staffs;
 
-      // 5. Fetch Suppliers list
-      List<dynamic> suppliers = [];
-      try {
-        final supRes = await ApiService.getSuppliersList(token);
-        if (supRes['success'] == true) {
-          suppliers = supRes['suppliers'] ?? [];
-        }
-      } catch (_) {}
-
-      setState(() {
-        _expenseHeads = heads;
-        _branches = branches;
-        _staffs = staffs;
-        _stocks = stocks;
-        _suppliers = suppliers;
-        // Default to first branch if available
-        if (branches.isNotEmpty) {
-          _selectedBranchId = branches.first['id']?.toString();
-        }
-        _isLoading = false;
-      });
+      if (branches.isNotEmpty) {
+        _selectedBranchIdNotifier.value = branches.first['id']?.toString();
+      }
+      _isLoadingNotifier.value = false;
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-        _isLoading = false;
-      });
+      _errorMessageNotifier.value = e.toString();
+      _isLoadingNotifier.value = false;
     }
   }
 
-  Future<void> _pickDate() async {
+  Future<void> _pickDate(BuildContext context) async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDate,
+      initialDate: _selectedDateNotifier.value,
       firstDate: DateTime(2020),
       lastDate: DateTime.now().add(const Duration(days: 365)),
       builder: (ctx, child) => Theme(
@@ -146,139 +107,159 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
       ),
     );
     if (picked != null) {
-      setState(() {
-        _selectedDate = picked;
-      });
+      _selectedDateNotifier.value = picked;
     }
   }
 
-  void _showExpenseHeadSelector() {
+  Future<void> _fetchItemsForHead(BuildContext context, Map<String, dynamic> head) async {
+    _expenseNameController.clear();
+    _isCustomExpenseNameNotifier.value = false;
+    _headItemsNotifier.value = [];
+    final headId = head['id']?.toString();
+    if (headId == null) return;
+
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
+
+    _isLoadingHeadItemsNotifier.value = true;
+    try {
+      final res = await ApiService.getExpenseItemsByHead(token, headId);
+      if (res['success'] == true && res['items'] != null) {
+        final List<String> items = List<String>.from(res['items']);
+        _headItemsNotifier.value = items;
+      }
+    } catch (e) {
+      debugPrint("Error fetching expense items: $e");
+    } finally {
+      _isLoadingHeadItemsNotifier.value = false;
+    }
+  }
+
+  void _showExpenseHeadSelector(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) {
+      builder: (ctx) {
         return _ExpenseHeadBottomSheet(
-          expenseHeads: _expenseHeads,
+          expenseHeads: _expenseHeadsNotifier.value,
           onSelected: (head) {
-            setState(() {
-              _selectedExpenseHead = head;
-              _expenseNameController.clear();
-            });
+            _selectedExpenseHeadNotifier.value = head;
+            _fetchItemsForHead(context, head);
           },
           onHeadCreated: (newHead) {
-            setState(() {
-              _expenseHeads.add(newHead);
-              _expenseHeads.sort((a, b) => (a['name'] ?? '').toString().compareTo((b['name'] ?? '').toString()));
-              _selectedExpenseHead = newHead;
-              _expenseNameController.clear();
-            });
+            final list = List.from(_expenseHeadsNotifier.value);
+            list.add(newHead);
+            list.sort((a, b) => (a['name'] ?? '').toString().compareTo((b['name'] ?? '').toString()));
+            _expenseHeadsNotifier.value = list;
+            _selectedExpenseHeadNotifier.value = newHead;
+            _fetchItemsForHead(context, newHead);
           },
         );
       },
     );
   }
 
-  Future<void> _save() async {
+  Future<void> _save(BuildContext context) async {
     final auth = context.read<AuthProvider>();
     final token = auth.token;
     if (token == null) return;
 
-    if (auth.isCompanyAdmin && (_selectedBranchId == null || _selectedBranchId!.isEmpty)) {
-      _showSnackBar(context.tr('Please select a branch'), Colors.orange);
+    if (auth.isCompanyAdmin && (_selectedBranchIdNotifier.value == null || _selectedBranchIdNotifier.value!.isEmpty)) {
+      _showSnackBar(context, context.tr('Please select a branch'), Colors.orange);
       return;
     }
 
-    if (_selectedExpenseHead == null) {
-      _showSnackBar(context.tr('Please select an expense head'), Colors.orange);
+    if (_selectedExpenseHeadNotifier.value == null) {
+      _showSnackBar(context, context.tr('Please select an expense head'), Colors.orange);
       return;
     }
 
     final expenseName = _expenseNameController.text.trim();
     if (expenseName.isEmpty) {
-      _showSnackBar(context.tr('Please enter expense name'), Colors.orange);
+      _showSnackBar(context, context.tr('Please enter expense name'), Colors.orange);
       return;
     }
 
     final amountStr = _amountController.text.trim();
     if (amountStr.isEmpty) {
-      _showSnackBar(context.tr('Please enter amount'), Colors.orange);
+      _showSnackBar(context, context.tr('Please enter amount'), Colors.orange);
       return;
     }
 
     final amount = double.tryParse(amountStr);
     if (amount == null || amount <= 0) {
-      _showSnackBar(context.tr('Please enter a valid amount'), Colors.orange);
+      _showSnackBar(context, context.tr('Please enter a valid amount'), Colors.orange);
       return;
     }
 
-    final isPurchase = _selectedExpenseHead != null &&
-        (_selectedExpenseHead!['name'] ?? '').toString().toLowerCase().trim() == 'purchase';
+    final headName = (_selectedExpenseHeadNotifier.value!['name'] ?? '').toString().toLowerCase().trim();
+    final isPurchase = headName == 'purchase';
 
     if (isPurchase) {
       final paidAmountStr = _paidAmountController.text.trim();
       if (paidAmountStr.isEmpty) {
-        _showSnackBar(context.tr('Please enter paid amount'), Colors.orange);
+        _showSnackBar(context, context.tr('Please enter paid amount'), Colors.orange);
         return;
       }
       final paidAmount = double.tryParse(paidAmountStr);
       if (paidAmount == null || paidAmount < 0) {
-        _showSnackBar(context.tr('Please enter a valid paid amount'), Colors.orange);
+        _showSnackBar(context, context.tr('Please enter a valid paid amount'), Colors.orange);
         return;
       }
     }
 
-    setState(() => _isSaving = true);
+    _isSavingNotifier.value = true;
 
     try {
-      final formattedDate = DateFormat('yyyy-MM-dd').format(_selectedDate);
+      final formattedDate = DateFormat('yyyy-MM-dd').format(_selectedDateNotifier.value);
       final payload = {
-        'expense_head_id': _selectedExpenseHead!['id'],
+        'expense_head_id': _selectedExpenseHeadNotifier.value!['id'],
         'expense_name': expenseName,
         'amount': amount,
         'date': formattedDate,
         'remarks': _remarkController.text.trim(),
-        if (auth.isCompanyAdmin) 'branch_id': _selectedBranchId,
-        if (isPurchase) 'supplier_id': _selectedSupplierId,
+        if (auth.isCompanyAdmin) 'branch_id': _selectedBranchIdNotifier.value,
+        if (isPurchase) 'supplier_id': _selectedSupplierIdNotifier.value,
         if (isPurchase) 'paid_amount': double.tryParse(_paidAmountController.text.trim()),
       };
 
       final res = await ApiService.createExpenseEntry(token, payload);
       if (res['success'] == true) {
-        if (mounted) {
-          _showSnackBar(context.tr('Expense created successfully!'), Colors.green);
+        if (context.mounted) {
+          _showSnackBar(context, context.tr('Expense created successfully!'), Colors.green);
           Navigator.pop(context);
         }
       } else {
-        if (mounted) {
-          _showSnackBar(res['message'] ?? context.tr('Failed to create expense'), Colors.red);
-          setState(() => _isSaving = false);
+        if (context.mounted) {
+          _showSnackBar(context, res['message'] ?? context.tr('Failed to create expense'), Colors.red);
+          _isSavingNotifier.value = false;
         }
       }
     } catch (e) {
-      if (mounted) {
-        _showSnackBar(e.toString(), Colors.red);
-        setState(() => _isSaving = false);
-        print(e.toString());
+      if (context.mounted) {
+        _showSnackBar(context, e.toString(), Colors.red);
+        _isSavingNotifier.value = false;
       }
     }
   }
 
-  void _showSnackBar(String msg, Color bg) {
-    if (!mounted) return;
+  void _showSnackBar(BuildContext context, String msg, Color bg) {
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(msg), backgroundColor: bg),
     );
-    print(msg);
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.read<AuthProvider>();
-    final isPurchase = _selectedExpenseHead != null &&
-        (_selectedExpenseHead!['name'] ?? '').toString().toLowerCase().trim() == 'purchase';
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchInitialData(context);
+    });
 
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
@@ -291,23 +272,31 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage.isNotEmpty
-              ? Center(
+      body: ValueListenableBuilder<bool>(
+        valueListenable: _isLoadingNotifier,
+        builder: (context, isLoading, child) {
+          if (isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          return ValueListenableBuilder<String>(
+            valueListenable: _errorMessageNotifier,
+            builder: (context, errorMsg, child) {
+              if (errorMsg.isNotEmpty) {
+                return Center(
                   child: Padding(
                     padding: const EdgeInsets.all(20.0),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          _errorMessage,
+                          errorMsg,
                           style: const TextStyle(color: Colors.red),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 16),
                         ElevatedButton(
-                          onPressed: _fetchInitialData,
+                          onPressed: () => _fetchInitialData(context),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF000080),
                             foregroundColor: Colors.white,
@@ -317,210 +306,252 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                       ],
                     ),
                   ),
-                )
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildSection(
-                        title: context.tr('Expense Details'),
-                        icon: Icons.account_balance_wallet_outlined,
-                        children: [
-                          // Branch Selection (Company Admin only)
-                          if (auth.isCompanyAdmin) ...[
-                            _buildLabel(context.tr('Branch *')),
-                            const SizedBox(height: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: Colors.grey.shade300),
+                );
+              }
+
+              return ValueListenableBuilder<Map<String, dynamic>?>(
+                valueListenable: _selectedExpenseHeadNotifier,
+                builder: (context, selectedExpenseHead, child) {
+                  final headName = (selectedExpenseHead != null ? selectedExpenseHead['name'] ?? '' : '').toString().toLowerCase().trim();
+                  final isPurchase = headName == 'purchase';
+
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildSection(
+                          title: context.tr('Expense Details'),
+                          icon: Icons.account_balance_wallet_outlined,
+                          children: [
+                            // Branch Selection (Company Admin only)
+                            if (auth.isCompanyAdmin) ...[
+                              _buildLabel(context.tr('Branch *')),
+                              const SizedBox(height: 6),
+                              ValueListenableBuilder<List<dynamic>>(
+                                valueListenable: _branchesNotifier,
+                                builder: (context, branches, child) {
+                                  return ValueListenableBuilder<String?>(
+                                    valueListenable: _selectedBranchIdNotifier,
+                                    builder: (context, selectedBranchId, child) {
+                                      return Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(10),
+                                          border: Border.all(color: Colors.grey.shade300),
+                                        ),
+                                        child: DropdownButtonHideUnderline(
+                                          child: DropdownButton<String>(
+                                            isExpanded: true,
+                                            menuMaxHeight: 350,
+                                            value: selectedBranchId,
+                                            items: branches.map((b) {
+                                              final branch = Map<String, dynamic>.from(b as Map);
+                                              return DropdownMenuItem<String>(
+                                                value: branch['id']?.toString(),
+                                                child: Text(
+                                                  branch['name'] ?? '',
+                                                  style: GoogleFonts.inter(),
+                                                ),
+                                              );
+                                            }).toList(),
+                                            onChanged: (val) {
+                                              _selectedBranchIdNotifier.value = val;
+                                            },
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  );
+                                },
                               ),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  isExpanded: true,
-                                  menuMaxHeight: 350,
-                                  value: _selectedBranchId,
-                                  items: _branches.map((b) {
-                                    final branch = Map<String, dynamic>.from(b as Map);
-                                    return DropdownMenuItem<String>(
-                                      value: branch['id']?.toString(),
+                              const SizedBox(height: 14),
+                            ],
+
+                            // Date Selector
+                            _buildLabel(context.tr('Date *')),
+                            const SizedBox(height: 6),
+                            GestureDetector(
+                              onTap: () => _pickDate(context),
+                              child: ValueListenableBuilder<DateTime>(
+                                valueListenable: _selectedDateNotifier,
+                                builder: (context, selectedDate, child) {
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFAFAFA),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: Colors.grey.shade300),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.calendar_today, size: 20, color: Colors.grey.shade500),
+                                        const SizedBox(width: 10),
+                                        Text(
+                                          DateFormat('dd-MM-yyyy').format(selectedDate),
+                                          style: GoogleFonts.inter(
+                                            fontSize: 15,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                        const Spacer(),
+                                        Icon(Icons.arrow_drop_down, color: Colors.grey.shade600),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+
+                            // Expense Head (Searchable Dropdown)
+                            _buildLabel(context.tr('Expense Head *')),
+                            const SizedBox(height: 6),
+                            GestureDetector(
+                              onTap: () => _showExpenseHeadSelector(context),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFAFAFA),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: Colors.grey.shade300),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.search, size: 20, color: Colors.grey.shade500),
+                                    const SizedBox(width: 10),
+                                    Expanded(
                                       child: Text(
-                                        branch['name'] ?? '',
-                                        style: GoogleFonts.inter(),
+                                        selectedExpenseHead != null
+                                            ? selectedExpenseHead['name'] ?? ''
+                                            : context.tr('Select Expense Head'),
+                                        style: GoogleFonts.inter(
+                                          fontSize: 15,
+                                          color: selectedExpenseHead != null
+                                              ? Colors.black87
+                                              : Colors.grey.shade50,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                    );
-                                  }).toList(),
-                                  onChanged: (val) {
-                                    setState(() {
-                                      _selectedBranchId = val;
-                                    });
-                                  },
+                                    ),
+                                    Icon(Icons.arrow_drop_down, color: Colors.grey.shade600),
+                                  ],
                                 ),
                               ),
                             ),
                             const SizedBox(height: 14),
-                          ],
 
-                          // Date Selector
-                          _buildLabel(context.tr('Date *')),
-                          const SizedBox(height: 6),
-                          GestureDetector(
-                            onTap: _pickDate,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFAFAFA),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: Colors.grey.shade300),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.calendar_today, size: 20, color: Colors.grey.shade500),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    DateFormat('dd-MM-yyyy').format(_selectedDate),
-                                    style: GoogleFonts.inter(
-                                      fontSize: 15,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                  const Spacer(),
-                                  Icon(Icons.arrow_drop_down, color: Colors.grey.shade600),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 14),
+                            // Expense Name Dropdown or Text Field
+                            _buildExpenseNameField(context, selectedExpenseHead),
+                            const SizedBox(height: 14),
 
-                          // Expense Head (Searchable Dropdown)
-                          _buildLabel(context.tr('Expense Head *')),
-                          const SizedBox(height: 6),
-                          GestureDetector(
-                            onTap: _showExpenseHeadSelector,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFAFAFA),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: Colors.grey.shade300),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.search, size: 20, color: Colors.grey.shade500),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      _selectedExpenseHead != null
-                                          ? _selectedExpenseHead!['name'] ?? ''
-                                          : context.tr('Select Expense Head'),
-                                      style: GoogleFonts.inter(
-                                        fontSize: 15,
-                                        color: _selectedExpenseHead != null
-                                            ? Colors.black87
-                                            : Colors.grey.shade500,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  Icon(Icons.arrow_drop_down, color: Colors.grey.shade600),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-
-                          // Expense Name
-                          _buildExpenseNameField(),
-                          const SizedBox(height: 14),
-
-                          if (isPurchase) ...[
-                            _buildDropdownField(
-                              label: context.tr('Supplier (Optional)'),
-                              icon: Icons.business,
-                              hintText: context.tr('Select Supplier'),
-                              value: _selectedSupplierId,
-                              items: _suppliers.map((s) {
-                                final sup = Map<String, dynamic>.from(s as Map);
-                                return DropdownMenuItem<String>(
-                                  value: sup['id']?.toString(),
-                                  child: Text(
-                                    sup['name'] ?? '',
-                                    style: GoogleFonts.inter(fontSize: 15),
-                                  ),
+                            // Supplier (Optional)
+                            ValueListenableBuilder<List<dynamic>>(
+                              valueListenable: _suppliersNotifier,
+                              builder: (context, suppliers, child) {
+                                return ValueListenableBuilder<String?>(
+                                  valueListenable: _selectedSupplierIdNotifier,
+                                  builder: (context, selectedSupplierId, child) {
+                                    return _buildDropdownField(
+                                      context,
+                                      label: context.tr('Supplier (Optional)'),
+                                      icon: Icons.business,
+                                      hintText: context.tr('Select Supplier'),
+                                      value: selectedSupplierId,
+                                      items: suppliers.map((s) {
+                                        final sup = Map<String, dynamic>.from(s as Map);
+                                        return DropdownMenuItem<String>(
+                                          value: sup['id']?.toString(),
+                                          child: Text(
+                                            sup['name'] ?? '',
+                                            style: GoogleFonts.inter(fontSize: 15),
+                                          ),
+                                        );
+                                      }).toList(),
+                                      onChanged: (val) {
+                                        _selectedSupplierIdNotifier.value = val;
+                                      },
+                                    );
+                                  },
                                 );
-                              }).toList(),
-                              onChanged: (val) {
-                                setState(() {
-                                  _selectedSupplierId = val;
-                                });
                               },
                             ),
                             const SizedBox(height: 14),
-                          ],
 
-                          // Amount
-                          _buildTextField(
-                            _amountController,
-                            context.tr('Amount *'),
-                            Icons.money,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          ),
-                          const SizedBox(height: 14),
-
-                          if (isPurchase) ...[
+                            // Amount
                             _buildTextField(
-                              _paidAmountController,
-                              context.tr('Paid Amount *'),
+                              context,
+                              _amountController,
+                              context.tr('Amount *'),
                               Icons.money,
                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
                             ),
                             const SizedBox(height: 14),
-                          ],
 
-                          // Remark
-                          _buildTextField(
-                            _remarkController,
-                            context.tr('Remark'),
-                            Icons.comment_outlined,
-                            maxLines: 3,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 32),
-                      ElevatedButton(
-                        onPressed: _isSaving ? null : _save,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF000080),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          disabledBackgroundColor: Colors.grey.shade400,
+                            // Paid Amount
+                            _buildTextField(
+                              context,
+                              _paidAmountController,
+                              context.tr('Paid Amount'),
+                              Icons.money,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            ),
+                            const SizedBox(height: 14),
+
+                            // Remark
+                            _buildTextField(
+                              context,
+                              _remarkController,
+                              context.tr('Remark'),
+                              Icons.comment_outlined,
+                              maxLines: 3,
+                            ),
+                          ],
                         ),
-                        child: _isSaving
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
+                        const SizedBox(height: 32),
+                        ValueListenableBuilder<bool>(
+                          valueListenable: _isSavingNotifier,
+                          builder: (context, isSaving, child) {
+                            return ElevatedButton(
+                              onPressed: isSaving ? null : () => _save(context),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF000080),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                              )
-                            : Text(
-                                context.tr('Save Expense'),
-                                style: GoogleFonts.inter(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                disabledBackgroundColor: Colors.grey.shade400,
                               ),
-                      ),
-                    ],
-                  ),
-                ),
+                              child: isSaving
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : Text(
+                                      context.tr('Save Expense'),
+                                      style: GoogleFonts.inter(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              );
+            },
+          );
+        },
+      ),
     );
   }
 
@@ -578,6 +609,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
   }
 
   Widget _buildTextField(
+    BuildContext context,
     TextEditingController ctrl,
     String label,
     IconData icon, {
@@ -616,7 +648,8 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     );
   }
 
-  Widget _buildDisabledField({
+  Widget _buildDisabledField(
+    BuildContext context, {
     required String label,
     required IconData icon,
     required String hintText,
@@ -649,7 +682,8 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     );
   }
 
-  Widget _buildDropdownField({
+  Widget _buildDropdownField(
+    BuildContext context, {
     required String label,
     required IconData icon,
     required String? value,
@@ -695,138 +729,208 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     );
   }
 
-  Widget _buildExpenseNameField() {
-    if (_selectedExpenseHead == null) {
+  Widget _buildExpenseNameField(BuildContext context, Map<String, dynamic>? selectedExpenseHead) {
+    if (selectedExpenseHead == null) {
       return _buildDisabledField(
+        context,
         label: context.tr('Expense Name *'),
         icon: Icons.edit_note,
         hintText: context.tr('Select Expense Head first'),
       );
     }
 
-    final headName = (_selectedExpenseHead!['name'] ?? '').toString().toLowerCase().trim();
+    final headName = (selectedExpenseHead['name'] ?? '').toString().toLowerCase().trim();
     final isSalary = headName == 'salary' || headName.contains('salary');
 
     if (isSalary) {
-      final String? currentValue = _staffs.any((s) {
-        final staff = Map<String, dynamic>.from(s as Map);
-        return (staff['name'] ?? '').toString() == _expenseNameController.text;
-      }) ? _expenseNameController.text : null;
+      return ValueListenableBuilder<List<dynamic>>(
+        valueListenable: _staffsNotifier,
+        builder: (context, staffs, child) {
+          final String? currentValue = staffs.any((s) {
+            final staff = Map<String, dynamic>.from(s as Map);
+            return (staff['name'] ?? '').toString() == _expenseNameController.text;
+          }) ? _expenseNameController.text : null;
 
-      return _buildDropdownField(
-        label: context.tr('Select Employee *'),
-        icon: Icons.person_outline,
-        hintText: context.tr('Select Employee'),
-        value: currentValue,
-        items: _staffs.map((s) {
-          final staff = Map<String, dynamic>.from(s as Map);
-          final name = (staff['name'] ?? '').toString();
-          return DropdownMenuItem<String>(
-            value: name,
-            child: Text(
-              name,
-              style: GoogleFonts.inter(fontSize: 15),
-            ),
+          return _buildDropdownField(
+            context,
+            label: context.tr('Select Employee *'),
+            icon: Icons.person_outline,
+            hintText: context.tr('Select Employee'),
+            value: currentValue,
+            items: staffs.map((s) {
+              final staff = Map<String, dynamic>.from(s as Map);
+              final name = (staff['name'] ?? '').toString();
+              return DropdownMenuItem<String>(
+                value: name,
+                child: Text(
+                  name,
+                  style: GoogleFonts.inter(fontSize: 15),
+                ),
+              );
+            }).toList(),
+            onChanged: (val) {
+              _expenseNameController.text = val ?? '';
+            },
           );
-        }).toList(),
-        onChanged: (val) {
-          setState(() {
-            _expenseNameController.text = val ?? '';
-          });
         },
       );
-    } else {
-      final filteredStocks = _stocks.where((s) {
-        final stock = Map<String, dynamic>.from(s as Map);
-        return stock['expense_head_id']?.toString() == _selectedExpenseHead!['id']?.toString();
-      }).toList();
+    }
 
-      if (filteredStocks.isNotEmpty) {
-        final String? currentValue = filteredStocks.any((s) {
-          final stock = Map<String, dynamic>.from(s as Map);
-          return (stock['item_name'] ?? '').toString() == _expenseNameController.text;
-        }) ? _expenseNameController.text : null;
-
-        return _buildDropdownField(
-          label: context.tr('Select Stock Item *'),
-          icon: Icons.shopping_bag_outlined,
-          hintText: context.tr('Select Stock Item'),
-          value: currentValue,
-          items: filteredStocks.map((s) {
-            final stock = Map<String, dynamic>.from(s as Map);
-            final name = (stock['item_name'] ?? '').toString();
-            return DropdownMenuItem<String>(
-              value: name,
-              child: Text(
-                name,
-                style: GoogleFonts.inter(fontSize: 15),
+    return ValueListenableBuilder<bool>(
+      valueListenable: _isLoadingHeadItemsNotifier,
+      builder: (context, isLoadingItems, child) {
+        if (isLoadingItems) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildLabel(context.tr('Select Expense / Stock Item *')),
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFAFAFA),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Row(
+                  children: [
+                    const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF000080)),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      context.tr('Loading expense items...'),
+                      style: GoogleFonts.inter(fontSize: 14, color: Colors.grey.shade600),
+                    ),
+                  ],
+                ),
               ),
+            ],
+          );
+        }
+
+        return ValueListenableBuilder<List<String>>(
+          valueListenable: _headItemsNotifier,
+          builder: (context, headItems, child) {
+            return ValueListenableBuilder<bool>(
+              valueListenable: _isCustomExpenseNameNotifier,
+              builder: (context, isCustom, child) {
+                final List<dynamic> stocks = _stocksNotifier.value;
+                final stockNames = stocks.where((s) {
+                  final stock = Map<String, dynamic>.from(s as Map);
+                  return stock['expense_head_id']?.toString() == selectedExpenseHead['id']?.toString();
+                }).map((s) => (s['item_name'] ?? '').toString()).where((n) => n.isNotEmpty).toList();
+
+                final combinedSet = <String>{...headItems, ...stockNames};
+                final combinedItems = combinedSet.toList()..sort();
+
+                if (combinedItems.isNotEmpty && !isCustom) {
+                  final String? currentValue = combinedItems.contains(_expenseNameController.text)
+                      ? _expenseNameController.text
+                      : null;
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildDropdownField(
+                        context,
+                        label: context.tr('Select Expense / Stock Item *'),
+                        icon: Icons.shopping_bag_outlined,
+                        hintText: context.tr('Select Expense Item'),
+                        value: currentValue,
+                        items: [
+                          ...combinedItems.map((name) => DropdownMenuItem<String>(
+                                value: name,
+                                child: Text(
+                                  name,
+                                  style: GoogleFonts.inter(fontSize: 15),
+                                ),
+                              )),
+                          DropdownMenuItem<String>(
+                            value: '__CUSTOM__',
+                            child: Text(
+                              '+ ${context.tr("Custom Expense Name")}',
+                              style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: const Color(0xFF000080)),
+                            ),
+                          ),
+                        ],
+                        onChanged: (val) {
+                          if (val == '__CUSTOM__') {
+                            _expenseNameController.clear();
+                            _isCustomExpenseNameNotifier.value = true;
+                          } else {
+                            _expenseNameController.text = val ?? '';
+                          }
+                        },
+                      ),
+                    ],
+                  );
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildTextField(
+                      context,
+                      _expenseNameController,
+                      context.tr('Expense Name *'),
+                      Icons.edit_note,
+                    ),
+                    if (combinedItems.isNotEmpty)
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          onPressed: () {
+                            _expenseNameController.clear();
+                            _isCustomExpenseNameNotifier.value = false;
+                          },
+                          icon: const Icon(Icons.list, size: 16),
+                          label: Text(context.tr('Select from list')),
+                        ),
+                      ),
+                  ],
+                );
+              },
             );
-          }).toList(),
-          onChanged: (val) {
-            setState(() {
-              _expenseNameController.text = val ?? '';
-            });
           },
         );
-      } else {
-        return _buildTextField(
-          _expenseNameController,
-          context.tr('Expense Name *'),
-          Icons.edit_note,
-        );
-      }
-    }
+      },
+    );
   }
 }
 
-class _ExpenseHeadBottomSheet extends StatefulWidget {
+class _ExpenseHeadBottomSheet extends StatelessWidget {
   final List<dynamic> expenseHeads;
   final ValueChanged<Map<String, dynamic>> onSelected;
   final ValueChanged<Map<String, dynamic>> onHeadCreated;
 
-  const _ExpenseHeadBottomSheet({
+  _ExpenseHeadBottomSheet({
     required this.expenseHeads,
     required this.onSelected,
     required this.onHeadCreated,
-  });
-
-  @override
-  State<_ExpenseHeadBottomSheet> createState() => _ExpenseHeadBottomSheetState();
-}
-
-class _ExpenseHeadBottomSheetState extends State<_ExpenseHeadBottomSheet> {
-  final _searchController = TextEditingController();
-  List<dynamic> _filteredHeads = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _filteredHeads = List.from(widget.expenseHeads);
+  }) {
+    _filteredHeadsNotifier.value = List.from(expenseHeads);
     _searchController.addListener(_filter);
   }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
+  final TextEditingController _searchController = TextEditingController();
+  final ValueNotifier<List<dynamic>> _filteredHeadsNotifier = ValueNotifier([]);
 
   void _filter() {
     final query = _searchController.text.toLowerCase().trim();
-    setState(() {
-      if (query.isEmpty) {
-        _filteredHeads = List.from(widget.expenseHeads);
-      } else {
-        _filteredHeads = widget.expenseHeads.where((h) {
-          final name = (h['name'] ?? '').toString().toLowerCase();
-          return name.contains(query);
-        }).toList();
-      }
-    });
+    if (query.isEmpty) {
+      _filteredHeadsNotifier.value = List.from(expenseHeads);
+    } else {
+      _filteredHeadsNotifier.value = expenseHeads.where((h) {
+        final name = (h['name'] ?? '').toString().toLowerCase();
+        return name.contains(query);
+      }).toList();
+    }
   }
 
-  Future<void> _addNewExpenseHead() async {
+  Future<void> _addNewExpenseHead(BuildContext context) async {
     final auth = context.read<AuthProvider>();
     final token = auth.token;
     if (token == null) return;
@@ -837,65 +941,72 @@ class _ExpenseHeadBottomSheetState extends State<_ExpenseHeadBottomSheet> {
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (ctx) {
-        bool isCreating = false;
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: Text(
-                context.tr('Add Expense Head'),
-                style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: const Color(0xFF000080)),
+        final ValueNotifier<bool> isCreatingNotifier = ValueNotifier(false);
+
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(
+            ctx.tr('Add Expense Head'),
+            style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: const Color(0xFF000080)),
+          ),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: controller,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: ctx.tr('Expense Head Name *'),
+                labelStyle: GoogleFonts.inter(),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
               ),
-              content: Form(
-                key: formKey,
-                child: TextFormField(
-                  controller: controller,
-                  autofocus: true,
-                  decoration: InputDecoration(
-                    labelText: context.tr('Expense Head Name *'),
-                    labelStyle: GoogleFonts.inter(),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return context.tr('Please enter a name');
-                    }
-                    return null;
-                  },
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isCreating ? null : () => Navigator.pop(context),
-                  child: Text(context.tr('Cancel'), style: GoogleFonts.inter(color: Colors.grey)),
-                ),
-                ElevatedButton(
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return ctx.tr('Please enter a name');
+                }
+                return null;
+              },
+            ),
+          ),
+          actions: [
+            ValueListenableBuilder<bool>(
+              valueListenable: isCreatingNotifier,
+              builder: (context, isCreating, child) {
+                return TextButton(
+                  onPressed: isCreating ? null : () => Navigator.pop(ctx),
+                  child: Text(ctx.tr('Cancel'), style: GoogleFonts.inter(color: Colors.grey)),
+                );
+              },
+            ),
+            ValueListenableBuilder<bool>(
+              valueListenable: isCreatingNotifier,
+              builder: (context, isCreating, child) {
+                return ElevatedButton(
                   onPressed: isCreating
                       ? null
                       : () async {
                           if (formKey.currentState!.validate()) {
-                            setDialogState(() => isCreating = true);
+                            isCreatingNotifier.value = true;
                             try {
                               final res = await ApiService.createExpenseHead(
                                 token,
                                 controller.text.trim(),
                               );
                               if (res['success'] == true && res['expense_head'] != null) {
-                                Navigator.pop(context, Map<String, dynamic>.from(res['expense_head']));
+                                Navigator.pop(ctx, Map<String, dynamic>.from(res['expense_head']));
                               } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                ScaffoldMessenger.of(ctx).showSnackBar(
                                   SnackBar(
-                                    content: Text(res['message'] ?? context.tr('Failed to create expense head')),
+                                    content: Text(res['message'] ?? ctx.tr('Failed to create expense head')),
                                     backgroundColor: Colors.red,
                                   ),
                                 );
-                                setDialogState(() => isCreating = false);
+                                isCreatingNotifier.value = false;
                               }
                             } catch (e) {
-                              ScaffoldMessenger.of(context).showSnackBar(
+                              ScaffoldMessenger.of(ctx).showSnackBar(
                                 SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
                               );
-                              setDialogState(() => isCreating = false);
+                              isCreatingNotifier.value = false;
                             }
                           }
                         },
@@ -910,17 +1021,17 @@ class _ExpenseHeadBottomSheetState extends State<_ExpenseHeadBottomSheet> {
                           width: 18,
                           child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                         )
-                      : Text(context.tr('Add')),
-                ),
-              ],
-            );
-          },
+                      : Text(ctx.tr('Add')),
+                );
+              },
+            ),
+          ],
         );
       },
     );
 
     if (result != null) {
-      widget.onHeadCreated(result);
+      onHeadCreated(result);
       Navigator.pop(context); // Close bottom sheet
     }
   }
@@ -953,7 +1064,7 @@ class _ExpenseHeadBottomSheetState extends State<_ExpenseHeadBottomSheet> {
                 children: [
                   if (context.read<AuthProvider>().isCompanyAdmin)
                     IconButton(
-                      onPressed: _addNewExpenseHead,
+                      onPressed: () => _addNewExpenseHead(context),
                       icon: const Icon(Icons.add, color: Color(0xFF000080)),
                       tooltip: context.tr('Add Expense Head'),
                     ),
@@ -982,32 +1093,39 @@ class _ExpenseHeadBottomSheetState extends State<_ExpenseHeadBottomSheet> {
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: _filteredHeads.isEmpty
-                ? Center(
+            child: ValueListenableBuilder<List<dynamic>>(
+              valueListenable: _filteredHeadsNotifier,
+              builder: (context, filteredHeads, child) {
+                if (filteredHeads.isEmpty) {
+                  return Center(
                     child: Text(
                       context.tr('No expense heads found'),
                       style: GoogleFonts.inter(color: Colors.grey),
                     ),
-                  )
-                : ListView.builder(
-                    itemCount: _filteredHeads.length,
-                    itemBuilder: (context, index) {
-                      final head = Map<String, dynamic>.from(_filteredHeads[index] as Map);
-                      return ListTile(
-                        title: Text(
-                          head['name'] ?? '',
-                          style: GoogleFonts.inter(
-                            fontWeight: FontWeight.w500,
-                          ),
+                  );
+                }
+
+                return ListView.builder(
+                  itemCount: filteredHeads.length,
+                  itemBuilder: (context, index) {
+                    final head = Map<String, dynamic>.from(filteredHeads[index] as Map);
+                    return ListTile(
+                      title: Text(
+                        head['name'] ?? '',
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w500,
                         ),
-                        trailing: const Icon(Icons.chevron_right, size: 18),
-                        onTap: () {
-                          widget.onSelected(head);
-                          Navigator.pop(context);
-                        },
-                      );
-                    },
-                  ),
+                      ),
+                      trailing: const Icon(Icons.chevron_right, size: 18),
+                      onTap: () {
+                        onSelected(head);
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                );
+              },
+            ),
           ),
         ],
       ),

@@ -338,15 +338,15 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
     }
   }
 
-  DateTime _fromDate = DateTime.now(); // Changed to today
-  DateTime _toDate = DateTime.now();
-  bool _isLoading = false;
-  bool _isGeneratingPdf = false;
-  Map<String, dynamic>? _data;
-  String _error = '';
-  List<dynamic> _branches = [];
-  String? _selectedBranchId;
-  String? _selectedPaymentMode;
+  final _fromDate = ValueNotifier<DateTime>(DateTime.now());
+  final _toDate = ValueNotifier<DateTime>(DateTime.now());
+  final _isLoading = ValueNotifier<bool>(false);
+  final _isGeneratingPdf = ValueNotifier<bool>(false);
+  final _data = ValueNotifier<Map<String, dynamic>?>(null);
+  final _error = ValueNotifier<String>('');
+  final _branches = ValueNotifier<List<dynamic>>([]);
+  final _selectedBranchId = ValueNotifier<String?>(null);
+  final _selectedPaymentMode = ValueNotifier<String?>(null);
 
   @override
   void initState() {
@@ -355,14 +355,26 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
     _load();
   }
 
-  String get _fromStr => DateFormat('dd-MM-yyyy').format(_fromDate);
-  String get _toStr => DateFormat('dd-MM-yyyy').format(_toDate);
+  @override
+  void dispose() {
+    _fromDate.dispose();
+    _toDate.dispose();
+    _isLoading.dispose();
+    _isGeneratingPdf.dispose();
+    _data.dispose();
+    _error.dispose();
+    _branches.dispose();
+    _selectedBranchId.dispose();
+    _selectedPaymentMode.dispose();
+    super.dispose();
+  }
+
+  String get _fromStr => DateFormat('dd-MM-yyyy').format(_fromDate.value);
+  String get _toStr => DateFormat('dd-MM-yyyy').format(_toDate.value);
 
   Future<void> _load() async {
-    setState(() {
-      _isLoading = true;
-      _error = '';
-    });
+    _isLoading.value = true;
+    _error.value = '';
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
     try {
@@ -374,7 +386,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
           subType,
           _fromStr,
           _toStr,
-          branchId: _selectedBranchId,
+          branchId: _selectedBranchId.value,
         );
       } else {
         switch (widget.reportType) {
@@ -383,7 +395,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               token,
               _fromStr,
               _toStr,
-              branchId: _selectedBranchId,
+              branchId: _selectedBranchId.value,
             );
             break;
           case 'scheme':
@@ -391,7 +403,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               token,
               _fromStr,
               _toStr,
-              branchId: _selectedBranchId,
+              branchId: _selectedBranchId.value,
             );
             break;
           case 'collection':
@@ -399,8 +411,8 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               token,
               _fromStr,
               _toStr,
-              branchId: _selectedBranchId,
-              paymentMode: _selectedPaymentMode,
+              branchId: _selectedBranchId.value,
+              paymentMode: _selectedPaymentMode.value,
             );
             break;
           case 'outstanding':
@@ -408,7 +420,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               token,
               _fromStr,
               _toStr,
-              branchId: _selectedBranchId,
+              branchId: _selectedBranchId.value,
             );
             break;
           case 'booking':
@@ -416,7 +428,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               token,
               _fromStr,
               _toStr,
-              branchId: _selectedBranchId,
+              branchId: _selectedBranchId.value,
             );
             break;
           case 'cancellation':
@@ -424,7 +436,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               token,
               _fromStr,
               _toStr,
-              branchId: _selectedBranchId,
+              branchId: _selectedBranchId.value,
             );
             break;
           case 'expense_head':
@@ -432,7 +444,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               token,
               _fromStr,
               _toStr,
-              branchId: _selectedBranchId,
+              branchId: _selectedBranchId.value,
             );
             break;
           case 'leave':
@@ -440,7 +452,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               token,
               _fromStr,
               _toStr,
-              branchId: _selectedBranchId,
+              branchId: _selectedBranchId.value,
             );
             break;
           case 'income':
@@ -448,7 +460,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               token,
               _fromStr,
               _toStr,
-              branchId: _selectedBranchId,
+              branchId: _selectedBranchId.value,
             );
             break;
           case 'oil_change_report':
@@ -456,7 +468,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               token,
               _fromStr,
               _toStr,
-              branchId: _selectedBranchId,
+              branchId: _selectedBranchId.value,
             );
             break;
           case 'tyre_change_report':
@@ -464,7 +476,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               token,
               _fromStr,
               _toStr,
-              branchId: _selectedBranchId,
+              branchId: _selectedBranchId.value,
             );
             break;
           case 'alignment_report':
@@ -472,7 +484,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               token,
               _fromStr,
               _toStr,
-              branchId: _selectedBranchId,
+              branchId: _selectedBranchId.value,
             );
             break;
           case 'oil_stock_ledger':
@@ -480,7 +492,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               token,
               _fromStr,
               _toStr,
-              branchId: _selectedBranchId,
+              branchId: _selectedBranchId.value,
             );
             break;
           default:
@@ -489,21 +501,15 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
       }
 
       if (res['success'] == true) {
-        setState(() {
-          _data = res;
-          _isLoading = false;
-        });
+        _data.value = res;
+        _isLoading.value = false;
       } else {
-        setState(() {
-          _error = res['message'] ?? 'Failed';
-          _isLoading = false;
-        });
+        _error.value = res['message'] ?? 'Failed';
+        _isLoading.value = false;
       }
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      _error.value = e.toString();
+      _isLoading.value = false;
     }
   }
 
@@ -514,7 +520,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
     try {
       final res = await ApiService.getCompanyBranches(auth.token!);
       if (!mounted || res['success'] != true) return;
-      setState(() => _branches = res['branches'] ?? []);
+      _branches.value = res['branches'] ?? [];
     } catch (_) {
       // Reports can still load company-wide if the branch list is unavailable.
     }
@@ -523,7 +529,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
   Future<void> _pickDate({required bool isFrom}) async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: isFrom ? _fromDate : _toDate,
+      initialDate: isFrom ? _fromDate.value : _toDate.value,
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
       builder: (ctx, child) => Theme(
@@ -534,32 +540,28 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
       ),
     );
     if (picked != null) {
-      setState(() {
-        if (isFrom)
-          _fromDate = picked;
-        else
-          _toDate = picked;
-      });
+      if (isFrom)
+        _fromDate.value = picked;
+      else
+        _toDate.value = picked;
       _load();
     }
   }
 
   Future<void> _downloadPdf() async {
-    if (_data == null ||
-        _data!['rows'] == null ||
-        (_data!['rows'] as List).isEmpty) {
+    if (_data.value == null ||
+        _data.value!['rows'] == null ||
+        (_data.value!['rows'] as List).isEmpty) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(context.tr('No data to generate PDF.'))));
       return;
     }
 
-    setState(() {
-      _isGeneratingPdf = true;
-    });
+    _isGeneratingPdf.value = true;
     try {
       final pdf = pw.Document();
-      final rows = _data!['rows'] as List<dynamic>;
+      final rows = _data.value!['rows'] as List<dynamic>;
 
       pdf.addPage(
         pw.MultiPage(
@@ -587,9 +589,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text(context.tr('Failed to generate PDF: $e'))));
     } finally {
-      setState(() {
-        _isGeneratingPdf = false;
-      });
+      _isGeneratingPdf.value = false;
     }
   }
 
@@ -607,7 +607,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
         ),
         pw.SizedBox(height: 8),
         pw.Text(
-          'Date Range: ${DateFormat('dd MMM yyyy').format(_fromDate)} - ${DateFormat('dd MMM yyyy').format(_toDate)}',
+          'Date Range: ${DateFormat('dd MMM yyyy').format(_fromDate.value)} - ${DateFormat('dd MMM yyyy').format(_toDate.value)}',
           style: const pw.TextStyle(fontSize: 14),
         ),
         pw.SizedBox(height: 4),
@@ -626,7 +626,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
   }
 
   pw.Widget _buildPdfSummary() {
-    final d = _data!;
+    final d = _data.value!;
     List<pw.Widget> items = [];
 
     switch (widget.reportType) {
@@ -1050,135 +1050,157 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
-      appBar: AppBar(
-        title: Text(
-          widget.title,
-          style: GoogleFonts.inter(fontWeight: FontWeight.w700),
-        ),
-        backgroundColor: const Color(0xFF000080),
-        foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          if (_data != null && (_data!['rows'] as List).isNotEmpty)
-            _isGeneratingPdf
-                ? const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
+    return ValueListenableBuilder<Map<String, dynamic>?>(
+      valueListenable: _data,
+      builder: (context, dataVal, _) => ValueListenableBuilder<bool>(
+        valueListenable: _isGeneratingPdf,
+        builder: (context, isGeneratingPdfVal, _) => ValueListenableBuilder<bool>(
+          valueListenable: _isLoading,
+          builder: (context, isLoadingVal, _) => ValueListenableBuilder<String>(
+            valueListenable: _error,
+            builder: (context, errorVal, _) => ValueListenableBuilder<DateTime>(
+              valueListenable: _fromDate,
+              builder: (context, fromDateVal, _) => ValueListenableBuilder<DateTime>(
+                valueListenable: _toDate,
+                builder: (context, toDateVal, _) {
+                  final rows = dataVal != null && dataVal['rows'] != null ? dataVal['rows'] as List : [];
+                  return Scaffold(
+                    backgroundColor: const Color(0xFFF1F5F9),
+                    appBar: AppBar(
+                      title: Text(
+                        widget.title,
+                        style: GoogleFonts.inter(fontWeight: FontWeight.w700),
                       ),
+                      backgroundColor: const Color(0xFF000080),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      actions: [
+                        if (rows.isNotEmpty)
+                          isGeneratingPdfVal
+                              ? const Padding(
+                                  padding: EdgeInsets.all(16),
+                                  child: SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                                )
+                              : IconButton(
+                                  icon: const Icon(Icons.picture_as_pdf),
+                                  tooltip: context.tr('Download PDF'),
+                                  onPressed: _downloadPdf,
+                                ),
+                      ],
                     ),
-                  )
-                : IconButton(
-                    icon: const Icon(Icons.picture_as_pdf),
-                    tooltip: context.tr('Download PDF'),
-                    onPressed: _downloadPdf,
-                  ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Date filter bar
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: _dateButton(
-                        'From',
-                        _fromDate,
-                        () => _pickDate(isFrom: true),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _dateButton(
-                        'To',
-                        _toDate,
-                        () => _pickDate(isFrom: false),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    ElevatedButton(
-                      onPressed: _load,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF000080),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 13,
-                        ),
-                      ),
-                      child: const Icon(Icons.refresh, size: 20),
-                    ),
-                  ],
-                ),
-                if (context.watch<AuthProvider>().isCompanyAdmin) ...[
-                  const SizedBox(height: 12),
-                  _branchDropdown(),
-                ],
-                if (widget.reportType == 'collection') ...[
-                  const SizedBox(height: 12),
-                  _paymentModeDropdown(),
-                ],
-              ],
-            ),
-          ),
-
-          // Body
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _error.isNotEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    body: Column(
                       children: [
-                        Icon(
-                          Icons.error_outline,
-                          size: 48,
-                          color: Colors.red.shade300,
+                        // Date filter bar
+                        Container(
+                          color: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          child: Column(
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _dateButton(
+                                      'From',
+                                      fromDateVal,
+                                      () => _pickDate(isFrom: true),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _dateButton(
+                                      'To',
+                                      toDateVal,
+                                      () => _pickDate(isFrom: false),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  ElevatedButton(
+                                    onPressed: _load,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF000080),
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                        vertical: 13,
+                                      ),
+                                    ),
+                                    child: const Icon(Icons.refresh, size: 20),
+                                  ),
+                                ],
+                              ),
+                              if (context.watch<AuthProvider>().isCompanyAdmin) ...[
+                                const SizedBox(height: 12),
+                                _branchDropdown(),
+                              ],
+                              if (widget.reportType == 'collection') ...[
+                                const SizedBox(height: 12),
+                                _paymentModeDropdown(),
+                              ],
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 12),
-                        Text(
-                          _error,
-                          style: GoogleFonts.inter(color: Colors.red.shade600),
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _load,
-                          child: Text(context.tr('Retry')),
+
+                        // Body
+                        Expanded(
+                          child: isLoadingVal
+                              ? const Center(child: CircularProgressIndicator())
+                              : errorVal.isNotEmpty
+                              ? Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.error_outline,
+                                        size: 48,
+                                        color: Colors.red.shade300,
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        errorVal,
+                                        style: GoogleFonts.inter(color: Colors.red.shade600),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      ElevatedButton(
+                                        onPressed: _load,
+                                        child: Text(context.tr('Retry')),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : dataVal == null
+                              ? const SizedBox()
+                              : _buildSingleBody(),
                         ),
                       ],
                     ),
-                  )
-                : _data == null
-                ? const SizedBox()
-                : _buildSingleBody(),
+                  );
+                },
+              ),
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
 
   String get _selectedBranchName {
-    if (_selectedBranchId == null || _selectedBranchId!.isEmpty) {
+    final selectedId = _selectedBranchId.value;
+    if (selectedId == null || selectedId.isEmpty) {
       return 'All branches';
     }
-    for (final branch in _branches) {
+    for (final branch in _branches.value) {
       final item = Map<String, dynamic>.from(branch as Map);
-      if (item['id']?.toString() == _selectedBranchId) {
+      if (item['id']?.toString() == selectedId) {
         return item['name']?.toString() ?? 'Selected branch';
       }
     }
@@ -1186,53 +1208,57 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
   }
 
   Widget _branchDropdown() {
-    return DropdownButtonFormField<String>(
-      value: _selectedBranchId,
-      isExpanded: true,
-      menuMaxHeight: 350,
-      decoration: InputDecoration(
-        labelText: context.tr('Branch'),
-        filled: true,
-        fillColor: const Color(0xFFF8FAFF),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 12,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(
-            color: const Color(0xFF000080).withOpacity(0.2),
+    return ValueListenableBuilder<List<dynamic>>(
+      valueListenable: _branches,
+      builder: (context, branchList, _) => ValueListenableBuilder<String?>(
+        valueListenable: _selectedBranchId,
+        builder: (context, selectedId, _) => DropdownButtonFormField<String>(
+          value: selectedId,
+          isExpanded: true,
+          menuMaxHeight: 350,
+          decoration: InputDecoration(
+            labelText: context.tr('Branch'),
+            filled: true,
+            fillColor: const Color(0xFFF8FAFF),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 12,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(
+                color: const Color(0xFF000080).withOpacity(0.2),
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(
+                color: const Color(0xFF000080).withOpacity(0.2),
+              ),
+            ),
           ),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(
-            color: const Color(0xFF000080).withOpacity(0.2),
-          ),
+          items: [
+            DropdownMenuItem<String>(value: '', child: Text(context.tr('All branches'))),
+            ...branchList.map((branch) {
+              final item = Map<String, dynamic>.from(branch as Map);
+              return DropdownMenuItem<String>(
+                value: item['id']?.toString() ?? '',
+                child: Text(item['name']?.toString() ?? ''),
+              );
+            }),
+          ],
+          onChanged: (value) {
+            _selectedBranchId.value = value == null || value.isEmpty ? null : value;
+            _load();
+          },
         ),
       ),
-      items: [
-        DropdownMenuItem<String>(value: '', child: Text(context.tr('All branches'))),
-        ..._branches.map((branch) {
-          final item = Map<String, dynamic>.from(branch as Map);
-          return DropdownMenuItem<String>(
-            value: item['id']?.toString() ?? '',
-            child: Text(item['name']?.toString() ?? ''),
-          );
-        }),
-      ],
-      onChanged: (value) {
-        setState(() {
-          _selectedBranchId = value == null || value.isEmpty ? null : value;
-        });
-        _load();
-      },
     );
   }
 
   Widget _paymentModeDropdown() {
     return DropdownButtonFormField<String>(
-      value: _selectedPaymentMode,
+      value: _selectedPaymentMode.value,
       isExpanded: true,
       menuMaxHeight: 350,
       decoration: InputDecoration(
@@ -1263,9 +1289,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
         DropdownMenuItem<String>(value: 'digital_payments', child: Text(context.tr('Digital payments'))),
       ],
       onChanged: (value) {
-        setState(() {
-          _selectedPaymentMode = value == null || value.isEmpty ? null : value;
-        });
+        _selectedPaymentMode.value = value == null || value.isEmpty ? null : value;
         _load();
       },
     );
@@ -1319,7 +1343,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
   // ─── Single body (Job / Scheme / Outstanding / Collection) ───
 
   Widget _buildSingleBody() {
-    final d = _data!;
+    final d = _data.value!;
     final rows = d['rows'] as List<dynamic>;
     return Column(
       children: [
@@ -1583,7 +1607,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
   // ─── Summary bar ─────────────────────────────────────────────
 
   Widget _buildSummaryBar() {
-    final d = _data!;
+    final d = _data.value!;
     final currencySymbol = context.read<AuthProvider>().currencySymbol;
     List<Map<String, dynamic>> items = [];
 
@@ -2368,9 +2392,9 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               builder: (_) => ExpenseHeadDetailScreen(
                 expenseHeadId: row['expense_head_id'] as String,
                 expenseHeadName: name,
-                fromDate: _fromDate,
-                toDate: _toDate,
-                branchId: _selectedBranchId,
+                fromDate: _fromDate.value,
+                toDate: _toDate.value,
+                branchId: _selectedBranchId.value,
               ),
             ),
           );
@@ -2448,9 +2472,9 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
             MaterialPageRoute(
               builder: (_) => IncomeVehicleBreakdownScreen(
                 serviceName: name,
-                fromDate: _fromDate,
-                toDate: _toDate,
-                branchId: _selectedBranchId,
+                fromDate: _fromDate.value,
+                toDate: _toDate.value,
+                branchId: _selectedBranchId.value,
               ),
             ),
           );
@@ -2832,15 +2856,24 @@ class ExpenseHeadDetailScreen extends StatefulWidget {
 }
 
 class _ExpenseHeadDetailScreenState extends State<ExpenseHeadDetailScreen> {
-  bool _isLoading = false;
-  bool _isGeneratingPdf = false;
-  Map<String, dynamic>? _data;
-  String _error = '';
+  final _isLoading = ValueNotifier<bool>(false);
+  final _isGeneratingPdf = ValueNotifier<bool>(false);
+  final _data = ValueNotifier<Map<String, dynamic>?>(null);
+  final _error = ValueNotifier<String>('');
 
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _isLoading.dispose();
+    _isGeneratingPdf.dispose();
+    _data.dispose();
+    _error.dispose();
+    super.dispose();
   }
 
   String get currencySymbol {
@@ -2855,10 +2888,8 @@ class _ExpenseHeadDetailScreenState extends State<ExpenseHeadDetailScreen> {
   String get _toStr => DateFormat('dd-MM-yyyy').format(widget.toDate);
 
   Future<void> _load() async {
-    setState(() {
-      _isLoading = true;
-      _error = '';
-    });
+    _isLoading.value = true;
+    _error.value = '';
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
     try {
@@ -2870,40 +2901,32 @@ class _ExpenseHeadDetailScreenState extends State<ExpenseHeadDetailScreen> {
         branchId: widget.branchId,
       );
       if (res['success'] == true) {
-        setState(() {
-          _data = res;
-          _isLoading = false;
-        });
+        _data.value = res;
+        _isLoading.value = false;
       } else {
-        setState(() {
-          _error = res['message'] ?? 'Failed';
-          _isLoading = false;
-        });
+        _error.value = res['message'] ?? 'Failed';
+        _isLoading.value = false;
       }
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      _error.value = e.toString();
+      _isLoading.value = false;
     }
   }
 
   Future<void> _downloadPdf() async {
-    if (_data == null ||
-        _data!['details'] == null ||
-        (_data!['details'] as List).isEmpty) {
+    if (_data.value == null ||
+        _data.value!['details'] == null ||
+        (_data.value!['details'] as List).isEmpty) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(context.tr('No data to generate PDF.'))));
       return;
     }
 
-    setState(() {
-      _isGeneratingPdf = true;
-    });
+    _isGeneratingPdf.value = true;
     try {
       final pdf = pw.Document();
-      final details = _data!['details'] as List<dynamic>;
+      final details = _data.value!['details'] as List<dynamic>;
 
       pdf.addPage(
         pw.MultiPage(
@@ -2982,9 +3005,7 @@ class _ExpenseHeadDetailScreenState extends State<ExpenseHeadDetailScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text(context.tr('Failed to generate PDF: $e'))));
     } finally {
-      setState(() {
-        _isGeneratingPdf = false;
-      });
+      _isGeneratingPdf.value = false;
     }
   }
 
@@ -3001,169 +3022,185 @@ class _ExpenseHeadDetailScreenState extends State<ExpenseHeadDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final details = _data != null && _data!['details'] != null
-        ? _data!['details'] as List<dynamic>
-        : [];
+    return ValueListenableBuilder<Map<String, dynamic>?>(
+      valueListenable: _data,
+      builder: (context, dataVal, _) {
+        final details = dataVal != null && dataVal['details'] != null
+            ? dataVal['details'] as List<dynamic>
+            : [];
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
-      appBar: AppBar(
-        title: Text(
-          widget.expenseHeadName,
-          style: GoogleFonts.inter(fontWeight: FontWeight.w700),
-        ),
-        backgroundColor: const Color(0xFF000080),
-        foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          if (details.isNotEmpty)
-            _isGeneratingPdf
-                ? const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
+        return ValueListenableBuilder<bool>(
+          valueListenable: _isGeneratingPdf,
+          builder: (context, isGeneratingPdf, _) => ValueListenableBuilder<bool>(
+            valueListenable: _isLoading,
+            builder: (context, isLoading, _) => ValueListenableBuilder<String>(
+              valueListenable: _error,
+              builder: (context, err, _) {
+                return Scaffold(
+                  backgroundColor: const Color(0xFFF1F5F9),
+                  appBar: AppBar(
+                    title: Text(
+                      widget.expenseHeadName,
+                      style: GoogleFonts.inter(fontWeight: FontWeight.w700),
                     ),
-                  )
-                : IconButton(
-                    icon: const Icon(Icons.picture_as_pdf),
-                    tooltip: context.tr('Download PDF'),
-                    onPressed: _downloadPdf,
-                  ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error.isNotEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.error_outline,
-                        size: 48,
-                        color: Colors.red.shade300,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        _error,
-                        style: GoogleFonts.inter(color: Colors.red.shade600),
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _load,
-                        child: Text(context.tr('Retry')),
-                      ),
+                    backgroundColor: const Color(0xFF000080),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    actions: [
+                      if (details.isNotEmpty)
+                        isGeneratingPdf
+                            ? const Padding(
+                                padding: EdgeInsets.all(16),
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              )
+                            : IconButton(
+                                icon: const Icon(Icons.picture_as_pdf),
+                                tooltip: context.tr('Download PDF'),
+                                onPressed: _downloadPdf,
+                              ),
                     ],
                   ),
-                )
-              : details.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.inbox_outlined,
-                            size: 56,
-                            color: Colors.grey.shade300,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            context.tr('No details for this head'),
-                            style: GoogleFonts.inter(
-                              color: Colors.grey.shade400,
-                              fontSize: 15,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
-                      child: Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.04),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Theme(
-                            data: Theme.of(context).copyWith(
-                              dividerColor: Colors.grey.shade200,
-                            ),
-                            child: DataTable(
-                              headingRowColor: MaterialStateProperty.all(const Color(0xFF000080)),
-                              headingTextStyle: GoogleFonts.inter(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
+                  body: isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : err.isNotEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.error_outline,
+                                    size: 48,
+                                    color: Colors.red.shade300,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    err,
+                                    style: GoogleFonts.inter(color: Colors.red.shade600),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  ElevatedButton(
+                                    onPressed: _load,
+                                    child: Text(context.tr('Retry')),
+                                  ),
+                                ],
                               ),
-                              dataTextStyle: GoogleFonts.inter(
-                                color: const Color(0xFF1E293B),
-                                fontSize: 12,
-                              ),
-                              columns: [
-                                DataColumn(label: Text(context.tr('SL'))),
-                                DataColumn(label: Text(context.tr('Expense Name'))),
-                                DataColumn(label: Text(context.tr('Amount'))),
-                                DataColumn(label: Text(context.tr('Date'))),
-                                DataColumn(label: Text(context.tr('Remarks'))),
-                              ],
-                              rows: List<DataRow>.generate(details.length, (i) {
-                                final row = details[i];
-                                final slNo = row['sl_no'] ?? (i + 1);
-                                final name = row['expense_name'] ?? '';
-                                final amount = row['amount'] ?? '0.00';
-                                final dateStr = row['date'] ?? '';
-                                final remarks = row['remarks'] ?? '';
-
-                                String formattedDate = '';
-                                if (dateStr.isNotEmpty) {
-                                  try {
-                                    final parsed = DateTime.parse(dateStr);
-                                    formattedDate = DateFormat('dd-MM-yyyy').format(parsed);
-                                  } catch (_) {
-                                    formattedDate = dateStr;
-                                  }
-                                }
-
-                                return DataRow(
-                                  color: MaterialStateProperty.resolveWith<Color?>((states) {
-                                    if (i.isEven) return Colors.grey.shade50;
-                                    return Colors.white;
-                                  }),
-                                  cells: [
-                                    DataCell(Text('#$slNo', style: const TextStyle(fontWeight: FontWeight.bold))),
-                                    DataCell(Text(name)),
-                                    DataCell(Text(
-                                      '$currencySymbol${_fmt(amount)}',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFFDC2626),
+                            )
+                          : details.isEmpty
+                              ? Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.inbox_outlined,
+                                        size: 56,
+                                        color: Colors.grey.shade300,
                                       ),
-                                    )),
-                                    DataCell(Text(formattedDate)),
-                                    DataCell(Text(remarks.toString().isNotEmpty ? remarks.toString() : '-')),
-                                  ],
-                                );
-                              }),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        context.tr('No details for this head'),
+                                        style: GoogleFonts.inter(
+                                          color: Colors.grey.shade400,
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : SingleChildScrollView(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Container(
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.04),
+                                          blurRadius: 6,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: SingleChildScrollView(
+                                      scrollDirection: Axis.horizontal,
+                                      child: Theme(
+                                        data: Theme.of(context).copyWith(
+                                          dividerColor: Colors.grey.shade200,
+                                        ),
+                                        child: DataTable(
+                                          headingRowColor: MaterialStateProperty.all(const Color(0xFF000080)),
+                                          headingTextStyle: GoogleFonts.inter(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                          ),
+                                          dataTextStyle: GoogleFonts.inter(
+                                            color: const Color(0xFF1E293B),
+                                            fontSize: 12,
+                                          ),
+                                          columns: [
+                                            DataColumn(label: Text(context.tr('SL'))),
+                                            DataColumn(label: Text(context.tr('Expense Name'))),
+                                            DataColumn(label: Text(context.tr('Amount'))),
+                                            DataColumn(label: Text(context.tr('Date'))),
+                                            DataColumn(label: Text(context.tr('Remarks'))),
+                                          ],
+                                          rows: List<DataRow>.generate(details.length, (i) {
+                                            final row = details[i];
+                                            final slNo = row['sl_no'] ?? (i + 1);
+                                            final name = row['expense_name'] ?? '';
+                                            final amount = row['amount'] ?? '0.00';
+                                            final dateStr = row['date'] ?? '';
+                                            final remarks = row['remarks'] ?? '';
+
+                                            String formattedDate = '';
+                                            if (dateStr.isNotEmpty) {
+                                              try {
+                                                final parsed = DateTime.parse(dateStr);
+                                                formattedDate = DateFormat('dd-MM-yyyy').format(parsed);
+                                              } catch (_) {
+                                                formattedDate = dateStr;
+                                              }
+                                            }
+
+                                            return DataRow(
+                                              color: MaterialStateProperty.resolveWith<Color?>((states) {
+                                                if (i.isEven) return Colors.grey.shade50;
+                                                return Colors.white;
+                                              }),
+                                              cells: [
+                                                DataCell(Text('#$slNo', style: const TextStyle(fontWeight: FontWeight.bold))),
+                                                DataCell(Text(name)),
+                                                DataCell(Text(
+                                                  '$currencySymbol${_fmt(amount)}',
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Color(0xFFDC2626),
+                                                  ),
+                                                )),
+                                                DataCell(Text(formattedDate)),
+                                                DataCell(Text(remarks.toString().isNotEmpty ? remarks.toString() : '-')),
+                                              ],
+                                            );
+                                          }),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                );
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -3191,15 +3228,24 @@ class IncomeDetailScreen extends StatefulWidget {
 }
 
 class _IncomeDetailScreenState extends State<IncomeDetailScreen> {
-  bool _isLoading = false;
-  bool _isGeneratingPdf = false;
-  Map<String, dynamic>? _data;
-  String _error = '';
+  final _isLoading = ValueNotifier<bool>(false);
+  final _isGeneratingPdf = ValueNotifier<bool>(false);
+  final _data = ValueNotifier<Map<String, dynamic>?>(null);
+  final _error = ValueNotifier<String>('');
 
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _isLoading.dispose();
+    _isGeneratingPdf.dispose();
+    _data.dispose();
+    _error.dispose();
+    super.dispose();
   }
 
   String get currencySymbol {
@@ -3214,10 +3260,8 @@ class _IncomeDetailScreenState extends State<IncomeDetailScreen> {
   String get _toStr => DateFormat('dd-MM-yyyy').format(widget.toDate);
 
   Future<void> _load() async {
-    setState(() {
-      _isLoading = true;
-      _error = '';
-    });
+    _isLoading.value = true;
+    _error.value = '';
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
     try {
@@ -3231,40 +3275,32 @@ class _IncomeDetailScreenState extends State<IncomeDetailScreen> {
         vehicleTypeModelId: widget.vehicleTypeModelId,
       );
       if (res['success'] == true) {
-        setState(() {
-          _data = res;
-          _isLoading = false;
-        });
+        _data.value = res;
+        _isLoading.value = false;
       } else {
-        setState(() {
-          _error = res['message'] ?? 'Failed';
-          _isLoading = false;
-        });
+        _error.value = res['message'] ?? 'Failed';
+        _isLoading.value = false;
       }
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      _error.value = e.toString();
+      _isLoading.value = false;
     }
   }
 
   Future<void> _downloadPdf() async {
-    if (_data == null ||
-        _data!['details'] == null ||
-        (_data!['details'] as List).isEmpty) {
+    if (_data.value == null ||
+        _data.value!['details'] == null ||
+        (_data.value!['details'] as List).isEmpty) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(context.tr('No data to generate PDF.'))));
       return;
     }
 
-    setState(() {
-      _isGeneratingPdf = true;
-    });
+    _isGeneratingPdf.value = true;
     try {
       final pdf = pw.Document();
-      final details = _data!['details'] as List<dynamic>;
+      final details = _data.value!['details'] as List<dynamic>;
 
       pdf.addPage(
         pw.MultiPage(
@@ -3347,9 +3383,7 @@ class _IncomeDetailScreenState extends State<IncomeDetailScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text(context.tr('Failed to generate PDF: $e'))));
     } finally {
-      setState(() {
-        _isGeneratingPdf = false;
-      });
+      _isGeneratingPdf.value = false;
     }
   }
 
@@ -3366,176 +3400,192 @@ class _IncomeDetailScreenState extends State<IncomeDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final details = _data != null && _data!['details'] != null
-        ? _data!['details'] as List<dynamic>
-        : [];
+    return ValueListenableBuilder<Map<String, dynamic>?>(
+      valueListenable: _data,
+      builder: (context, dataVal, _) {
+        final details = dataVal != null && dataVal['details'] != null
+            ? dataVal['details'] as List<dynamic>
+            : [];
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
-      appBar: AppBar(
-        title: Text(
-          widget.serviceName,
-          style: GoogleFonts.inter(fontWeight: FontWeight.w700),
-        ),
-        backgroundColor: const Color(0xFF000080),
-        foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          if (details.isNotEmpty)
-            _isGeneratingPdf
-                ? const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
+        return ValueListenableBuilder<bool>(
+          valueListenable: _isGeneratingPdf,
+          builder: (context, isGeneratingPdf, _) => ValueListenableBuilder<bool>(
+            valueListenable: _isLoading,
+            builder: (context, isLoading, _) => ValueListenableBuilder<String>(
+              valueListenable: _error,
+              builder: (context, err, _) {
+                return Scaffold(
+                  backgroundColor: const Color(0xFFF1F5F9),
+                  appBar: AppBar(
+                    title: Text(
+                      widget.serviceName,
+                      style: GoogleFonts.inter(fontWeight: FontWeight.w700),
                     ),
-                  )
-                : IconButton(
-                    icon: const Icon(Icons.picture_as_pdf),
-                    tooltip: context.tr('Download PDF'),
-                    onPressed: _downloadPdf,
-                  ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error.isNotEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.error_outline,
-                        size: 48,
-                        color: Colors.red.shade300,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        _error,
-                        style: GoogleFonts.inter(color: Colors.red.shade600),
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _load,
-                        child: Text(context.tr('Retry')),
-                      ),
+                    backgroundColor: const Color(0xFF000080),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    actions: [
+                      if (details.isNotEmpty)
+                        isGeneratingPdf
+                            ? const Padding(
+                                padding: EdgeInsets.all(16),
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              )
+                            : IconButton(
+                                icon: const Icon(Icons.picture_as_pdf),
+                                tooltip: context.tr('Download PDF'),
+                                onPressed: _downloadPdf,
+                              ),
                     ],
                   ),
-                )
-              : details.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.inbox_outlined,
-                            size: 56,
-                            color: Colors.grey.shade300,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            context.tr('No details for this service'),
-                            style: GoogleFonts.inter(
-                              color: Colors.grey.shade400,
-                              fontSize: 15,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
-                      child: Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.04),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Theme(
-                            data: Theme.of(context).copyWith(
-                              dividerColor: Colors.grey.shade200,
-                            ),
-                            child: DataTable(
-                              headingRowColor: MaterialStateProperty.all(const Color(0xFF000080)),
-                              headingTextStyle: GoogleFonts.inter(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
+                  body: isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : err.isNotEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.error_outline,
+                                    size: 48,
+                                    color: Colors.red.shade300,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    err,
+                                    style: GoogleFonts.inter(color: Colors.red.shade600),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  ElevatedButton(
+                                    onPressed: _load,
+                                    child: Text(context.tr('Retry')),
+                                  ),
+                                ],
                               ),
-                              dataTextStyle: GoogleFonts.inter(
-                                color: const Color(0xFF1E293B),
-                                fontSize: 12,
-                              ),
-                              columns: [
-                                DataColumn(label: Text(context.tr('SL'))),
-                                DataColumn(label: Text(context.tr('Date'))),
-                                DataColumn(label: Text(context.tr('Invoice No'))),
-                                DataColumn(label: Text(context.tr('Customer'))),
-                                DataColumn(label: Text(context.tr('Vehicle Type'))),
-                                DataColumn(label: Text(context.tr('Vehicle No'))),
-                                DataColumn(label: Text(context.tr('Amount'))),
-                              ],
-                              rows: List<DataRow>.generate(details.length, (i) {
-                                final row = details[i];
-                                final slNo = row['sl_no'] ?? (i + 1);
-                                final amount = row['amount'] ?? '0.00';
-                                final dateStr = row['date'] ?? '';
-                                final invoiceNo = row['invoice_number'] ?? '';
-                                final customerName = row['customer_name'] ?? '';
-                                final customerPhone = row['customer_phone'] ?? '';
-                                final vehicleType = row['vehicle_type'] ?? '';
-                                final vehicleNo = row['vehicle_number'] ?? '';
-
-                                String formattedDate = '';
-                                if (dateStr.isNotEmpty) {
-                                  try {
-                                    final parsed = DateTime.parse(dateStr);
-                                    formattedDate = DateFormat('dd-MM-yyyy').format(parsed);
-                                  } catch (_) {
-                                    formattedDate = dateStr;
-                                  }
-                                }
-
-                                return DataRow(
-                                  color: MaterialStateProperty.resolveWith<Color?>((states) {
-                                    if (i.isEven) return Colors.grey.shade50;
-                                    return Colors.white;
-                                  }),
-                                  cells: [
-                                    DataCell(Text('#$slNo', style: const TextStyle(fontWeight: FontWeight.bold))),
-                                    DataCell(Text(formattedDate)),
-                                    DataCell(Text(invoiceNo)),
-                                    DataCell(Text('$customerName ($customerPhone)')),
-                                    DataCell(Text(vehicleType.toString().isNotEmpty ? vehicleType.toString() : '-')),
-                                    DataCell(Text(vehicleNo.toString().isNotEmpty ? vehicleNo.toString() : '-')),
-                                    DataCell(Text(
-                                      '$currencySymbol${_fmt(amount)}',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF059669),
+                            )
+                          : details.isEmpty
+                              ? Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.inbox_outlined,
+                                        size: 56,
+                                        color: Colors.grey.shade300,
                                       ),
-                                    )),
-                                  ],
-                                );
-                              }),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        context.tr('No details for this service'),
+                                        style: GoogleFonts.inter(
+                                          color: Colors.grey.shade400,
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : SingleChildScrollView(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Container(
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.04),
+                                          blurRadius: 6,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: SingleChildScrollView(
+                                      scrollDirection: Axis.horizontal,
+                                      child: Theme(
+                                        data: Theme.of(context).copyWith(
+                                          dividerColor: Colors.grey.shade200,
+                                        ),
+                                        child: DataTable(
+                                          headingRowColor: MaterialStateProperty.all(const Color(0xFF000080)),
+                                          headingTextStyle: GoogleFonts.inter(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                          ),
+                                          dataTextStyle: GoogleFonts.inter(
+                                            color: const Color(0xFF1E293B),
+                                            fontSize: 12,
+                                          ),
+                                          columns: [
+                                            DataColumn(label: Text(context.tr('SL'))),
+                                            DataColumn(label: Text(context.tr('Date'))),
+                                            DataColumn(label: Text(context.tr('Invoice No'))),
+                                            DataColumn(label: Text(context.tr('Customer'))),
+                                            DataColumn(label: Text(context.tr('Vehicle Type'))),
+                                            DataColumn(label: Text(context.tr('Vehicle No'))),
+                                            DataColumn(label: Text(context.tr('Amount'))),
+                                          ],
+                                          rows: List<DataRow>.generate(details.length, (i) {
+                                            final row = details[i];
+                                            final slNo = row['sl_no'] ?? (i + 1);
+                                            final invNo = row['invoice_number'] ?? '';
+                                            final custName = row['customer_name'] ?? '';
+                                            final custPhone = row['customer_phone'] ?? '';
+                                            final vType = row['vehicle_type'] ?? '';
+                                            final vNo = row['vehicle_number'] ?? '';
+                                            final amount = row['amount'] ?? '0.00';
+                                            final dateStr = row['date'] ?? '';
+
+                                            String formattedDate = '';
+                                            if (dateStr.isNotEmpty) {
+                                              try {
+                                                final parsed = DateTime.parse(dateStr);
+                                                formattedDate = DateFormat('dd-MM-yyyy').format(parsed);
+                                              } catch (_) {
+                                                formattedDate = dateStr;
+                                              }
+                                            }
+
+                                            return DataRow(
+                                              color: MaterialStateProperty.resolveWith<Color?>((states) {
+                                                if (i.isEven) return Colors.grey.shade50;
+                                                return Colors.white;
+                                              }),
+                                              cells: [
+                                                DataCell(Text('#$slNo', style: const TextStyle(fontWeight: FontWeight.bold))),
+                                                DataCell(Text(formattedDate)),
+                                                DataCell(Text(invNo.toString())),
+                                                DataCell(Text('$custName ($custPhone)')),
+                                                DataCell(Text(vType.toString())),
+                                                DataCell(Text(vNo.toString())),
+                                                DataCell(Text(
+                                                  '$currencySymbol${_fmt(amount)}',
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Color(0xFF059669),
+                                                  ),
+                                                )),
+                                              ],
+                                            );
+                                          }),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                );
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -3560,15 +3610,24 @@ class IncomeVehicleBreakdownScreen extends StatefulWidget {
 }
 
 class _IncomeVehicleBreakdownScreenState extends State<IncomeVehicleBreakdownScreen> {
-  bool _isLoading = false;
-  bool _isGeneratingPdf = false;
-  Map<String, dynamic>? _data;
-  String _error = '';
+  final _isLoading = ValueNotifier<bool>(false);
+  final _isGeneratingPdf = ValueNotifier<bool>(false);
+  final _data = ValueNotifier<Map<String, dynamic>?>(null);
+  final _error = ValueNotifier<String>('');
 
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _isLoading.dispose();
+    _isGeneratingPdf.dispose();
+    _data.dispose();
+    _error.dispose();
+    super.dispose();
   }
 
   String get currencySymbol {
@@ -3583,10 +3642,8 @@ class _IncomeVehicleBreakdownScreenState extends State<IncomeVehicleBreakdownScr
   String get _toStr => DateFormat('dd-MM-yyyy').format(widget.toDate);
 
   Future<void> _load() async {
-    setState(() {
-      _isLoading = true;
-      _error = '';
-    });
+    _isLoading.value = true;
+    _error.value = '';
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
     try {
@@ -3598,40 +3655,32 @@ class _IncomeVehicleBreakdownScreenState extends State<IncomeVehicleBreakdownScr
         branchId: widget.branchId,
       );
       if (res['success'] == true) {
-        setState(() {
-          _data = res;
-          _isLoading = false;
-        });
+        _data.value = res;
+        _isLoading.value = false;
       } else {
-        setState(() {
-          _error = res['message'] ?? 'Failed';
-          _isLoading = false;
-        });
+        _error.value = res['message'] ?? 'Failed';
+        _isLoading.value = false;
       }
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      _error.value = e.toString();
+      _isLoading.value = false;
     }
   }
 
   Future<void> _downloadPdf() async {
-    if (_data == null ||
-        _data!['rows'] == null ||
-        (_data!['rows'] as List).isEmpty) {
+    if (_data.value == null ||
+        _data.value!['rows'] == null ||
+        (_data.value!['rows'] as List).isEmpty) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(context.tr('No data to generate PDF.'))));
       return;
     }
 
-    setState(() {
-      _isGeneratingPdf = true;
-    });
+    _isGeneratingPdf.value = true;
     try {
       final pdf = pw.Document();
-      final rows = _data!['rows'] as List<dynamic>;
+      final rows = _data.value!['rows'] as List<dynamic>;
 
       pdf.addPage(
         pw.MultiPage(
@@ -3700,9 +3749,7 @@ class _IncomeVehicleBreakdownScreenState extends State<IncomeVehicleBreakdownScr
         context,
       ).showSnackBar(SnackBar(content: Text(context.tr('Failed to generate PDF: $e'))));
     } finally {
-      setState(() {
-        _isGeneratingPdf = false;
-      });
+      _isGeneratingPdf.value = false;
     }
   }
 
@@ -3719,255 +3766,271 @@ class _IncomeVehicleBreakdownScreenState extends State<IncomeVehicleBreakdownScr
 
   @override
   Widget build(BuildContext context) {
-    final rows = _data != null && _data!['rows'] != null
-        ? _data!['rows'] as List<dynamic>
-        : [];
+    return ValueListenableBuilder<Map<String, dynamic>?>(
+      valueListenable: _data,
+      builder: (context, dataVal, _) {
+        final rows = dataVal != null && dataVal['rows'] != null
+            ? dataVal['rows'] as List<dynamic>
+            : [];
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
-      appBar: AppBar(
-        title: Text(
-          widget.serviceName,
-          style: GoogleFonts.inter(fontWeight: FontWeight.w700),
-        ),
-        backgroundColor: const Color(0xFF000080),
-        foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          if (rows.isNotEmpty)
-            _isGeneratingPdf
-                ? const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
+        return ValueListenableBuilder<bool>(
+          valueListenable: _isGeneratingPdf,
+          builder: (context, isGeneratingPdfVal, _) => ValueListenableBuilder<bool>(
+            valueListenable: _isLoading,
+            builder: (context, isLoadingVal, _) => ValueListenableBuilder<String>(
+              valueListenable: _error,
+              builder: (context, errorVal, _) {
+                return Scaffold(
+                  backgroundColor: const Color(0xFFF1F5F9),
+                  appBar: AppBar(
+                    title: Text(
+                      widget.serviceName,
+                      style: GoogleFonts.inter(fontWeight: FontWeight.w700),
                     ),
-                  )
-                : IconButton(
-                    icon: const Icon(Icons.picture_as_pdf),
-                    tooltip: context.tr('Download PDF'),
-                    onPressed: _downloadPdf,
-                  ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error.isNotEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.error_outline,
-                        size: 48,
-                        color: Colors.red.shade300,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        _error,
-                        style: GoogleFonts.inter(color: Colors.red.shade600),
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _load,
-                        child: Text(context.tr('Retry')),
-                      ),
+                    backgroundColor: const Color(0xFF000080),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    actions: [
+                      if (rows.isNotEmpty)
+                        isGeneratingPdfVal
+                            ? const Padding(
+                                padding: EdgeInsets.all(16),
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              )
+                            : IconButton(
+                                icon: const Icon(Icons.picture_as_pdf),
+                                tooltip: context.tr('Download PDF'),
+                                onPressed: _downloadPdf,
+                              ),
                     ],
                   ),
-                )
-              : rows.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.inbox_outlined,
-                            size: 56,
-                            color: Colors.grey.shade300,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            context.tr('No data for this service'),
-                            style: GoogleFonts.inter(
-                              color: Colors.grey.shade400,
-                              fontSize: 15,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          // Summary bar
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.04),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                            margin: const EdgeInsets.only(bottom: 16),
-                            child: Row(
-                              children: [
-                                Expanded(
+                  body: isLoadingVal
+                      ? const Center(child: CircularProgressIndicator())
+                      : errorVal.isNotEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.error_outline,
+                                    size: 48,
+                                    color: Colors.red.shade300,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    errorVal,
+                                    style: GoogleFonts.inter(color: Colors.red.shade600),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  ElevatedButton(
+                                    onPressed: _load,
+                                    child: Text(context.tr('Retry')),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : rows.isEmpty
+                              ? Center(
                                   child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Text(
-                                        '${_data?['total_count'] ?? 0}',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w800,
-                                          color: const Color(0xFF1E293B),
-                                        ),
+                                      Icon(
+                                        Icons.inbox_outlined,
+                                        size: 56,
+                                        color: Colors.grey.shade300,
                                       ),
-                                      const SizedBox(height: 3),
+                                      const SizedBox(height: 12),
                                       Text(
-                                        context.tr('Total Quantity'),
+                                        context.tr('No data for this service'),
                                         style: GoogleFonts.inter(
-                                          fontSize: 11,
-                                          color: Colors.grey.shade500,
-                                          fontWeight: FontWeight.w600,
+                                          color: Colors.grey.shade400,
+                                          fontSize: 15,
                                         ),
                                       ),
                                     ],
                                   ),
-                                ),
-                                Container(width: 1, height: 30, color: Colors.grey.shade200),
-                                Expanded(
+                                )
+                              : SingleChildScrollView(
+                                  padding: const EdgeInsets.all(16),
                                   child: Column(
                                     children: [
-                                      Text(
-                                        '$currencySymbol${_fmt(_data?['total_revenue'])}',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w800,
-                                          color: const Color(0xFF059669),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 3),
-                                      Text(
-                                        context.tr('Total Income'),
-                                        style: GoogleFonts.inter(
-                                          fontSize: 11,
-                                          color: Colors.grey.shade500,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          // Table
-                          Container(
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.04),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: Theme(
-                                data: Theme.of(context).copyWith(
-                                  dividerColor: Colors.grey.shade200,
-                                ),
-                                child: DataTable(
-                                  showCheckboxColumn: false,
-                                  headingRowColor: MaterialStateProperty.all(const Color(0xFF000080)),
-                                  headingTextStyle: GoogleFonts.inter(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
-                                  ),
-                                  dataTextStyle: GoogleFonts.inter(
-                                    color: const Color(0xFF1E293B),
-                                    fontSize: 12,
-                                  ),
-                                  columns: [
-                                    DataColumn(label: Text(context.tr('SL'))),
-                                    DataColumn(label: Text(context.tr('Vehicle Type / Model'))),
-                                    DataColumn(label: Text(context.tr('Count'))),
-                                    DataColumn(label: Text(context.tr('Amount'))),
-                                  ],
-                                  rows: List<DataRow>.generate(rows.length, (i) {
-                                    final row = rows[i];
-                                    final displayName = row['display_name'] ?? 'Other';
-                                    final count = row['count'] ?? 0;
-                                    final revenue = row['revenue'] ?? '0.00';
-
-                                    return DataRow(
-                                      color: MaterialStateProperty.resolveWith<Color?>((states) {
-                                        if (i.isEven) return Colors.grey.shade50;
-                                        return Colors.white;
-                                      }),
-                                      onSelectChanged: (_) {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => IncomeDetailScreen(
-                                              serviceName: widget.serviceName,
-                                              fromDate: widget.fromDate,
-                                              toDate: widget.toDate,
-                                              branchId: widget.branchId,
-                                              vehicleTypeId: row['vehicle_type_id'] != 'null' ? row['vehicle_type_id'] : 'null',
-                                              vehicleTypeModelId: row['vehicle_type_model_id'] != 'null' ? row['vehicle_type_model_id'] : 'null',
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                      cells: [
-                                        DataCell(Text('#${i + 1}', style: const TextStyle(fontWeight: FontWeight.bold))),
-                                        DataCell(Text(displayName.toString())),
-                                        DataCell(Text(count.toString())),
-                                        DataCell(Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(
-                                              '$currencySymbol${_fmt(revenue)}',
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                color: Color(0xFF059669),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Icon(
-                                              Icons.arrow_forward_ios,
-                                              size: 10,
-                                              color: Colors.grey.shade400,
+                                      // Summary bar
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(12),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withOpacity(0.04),
+                                              blurRadius: 6,
+                                              offset: const Offset(0, 2),
                                             ),
                                           ],
-                                        )),
-                                      ],
-                                    );
-                                  }),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                        margin: const EdgeInsets.only(bottom: 16),
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              child: Column(
+                                                children: [
+                                                  Text(
+                                                    '${dataVal?['total_count'] ?? 0}',
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 18,
+                                                      fontWeight: FontWeight.w800,
+                                                      color: const Color(0xFF1E293B),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 3),
+                                                  Text(
+                                                    context.tr('Total Quantity'),
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 11,
+                                                      color: Colors.grey.shade500,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            Container(width: 1, height: 30, color: Colors.grey.shade200),
+                                            Expanded(
+                                              child: Column(
+                                                children: [
+                                                  Text(
+                                                    '$currencySymbol${_fmt(dataVal?['total_revenue'])}',
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 18,
+                                                      fontWeight: FontWeight.w800,
+                                                      color: const Color(0xFF059669),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 3),
+                                                  Text(
+                                                    context.tr('Total Income'),
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 11,
+                                                      color: Colors.grey.shade500,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+
+                                      // Table
+                                      Container(
+                                        width: double.infinity,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(12),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withOpacity(0.04),
+                                              blurRadius: 6,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: SingleChildScrollView(
+                                          scrollDirection: Axis.horizontal,
+                                          child: Theme(
+                                            data: Theme.of(context).copyWith(
+                                              dividerColor: Colors.grey.shade200,
+                                            ),
+                                            child: DataTable(
+                                              showCheckboxColumn: false,
+                                              headingRowColor: MaterialStateProperty.all(const Color(0xFF000080)),
+                                              headingTextStyle: GoogleFonts.inter(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 13,
+                                              ),
+                                              dataTextStyle: GoogleFonts.inter(
+                                                color: const Color(0xFF1E293B),
+                                                fontSize: 12,
+                                              ),
+                                              columns: [
+                                                DataColumn(label: Text(context.tr('SL'))),
+                                                DataColumn(label: Text(context.tr('Vehicle Type / Model'))),
+                                                DataColumn(label: Text(context.tr('Count'))),
+                                                DataColumn(label: Text(context.tr('Amount'))),
+                                              ],
+                                              rows: List<DataRow>.generate(rows.length, (i) {
+                                                final row = rows[i];
+                                                final displayName = row['display_name'] ?? 'Other';
+                                                final count = row['count'] ?? 0;
+                                                final revenue = row['revenue'] ?? '0.00';
+
+                                                return DataRow(
+                                                  color: MaterialStateProperty.resolveWith<Color?>((states) {
+                                                    if (i.isEven) return Colors.grey.shade50;
+                                                    return Colors.white;
+                                                  }),
+                                                  onSelectChanged: (_) {
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (_) => IncomeDetailScreen(
+                                                          serviceName: widget.serviceName,
+                                                          fromDate: widget.fromDate,
+                                                          toDate: widget.toDate,
+                                                          branchId: widget.branchId,
+                                                          vehicleTypeId: row['vehicle_type_id'] != 'null' ? row['vehicle_type_id'] : 'null',
+                                                          vehicleTypeModelId: row['vehicle_type_model_id'] != 'null' ? row['vehicle_type_model_id'] : 'null',
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                                  cells: [
+                                                    DataCell(Text('#${i + 1}', style: const TextStyle(fontWeight: FontWeight.bold))),
+                                                    DataCell(Text(displayName.toString())),
+                                                    DataCell(Text(count.toString())),
+                                                    DataCell(Row(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        Text(
+                                                          '$currencySymbol${_fmt(revenue)}',
+                                                          style: const TextStyle(
+                                                            fontWeight: FontWeight.bold,
+                                                            color: Color(0xFF059669),
+                                                          ),
+                                                        ),
+                                                        const SizedBox(width: 8),
+                                                        Icon(
+                                                          Icons.arrow_forward_ios,
+                                                          size: 10,
+                                                          color: Colors.grey.shade400,
+                                                        ),
+                                                      ],
+                                                    )),
+                                                  ],
+                                                );
+                                              }),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                );
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -3981,20 +4044,33 @@ class ProfitReportScreen extends StatefulWidget {
 }
 
 class _ProfitReportScreenState extends State<ProfitReportScreen> {
-  DateTime _fromDate = DateTime.now();
-  DateTime _toDate = DateTime.now();
-  bool _isLoading = false;
-  bool _isGeneratingPdf = false;
-  Map<String, dynamic>? _data;
-  String _error = '';
-  List<dynamic> _branches = [];
-  String? _selectedBranchId;
+  final _fromDate = ValueNotifier<DateTime>(DateTime.now());
+  final _toDate = ValueNotifier<DateTime>(DateTime.now());
+  final _isLoading = ValueNotifier<bool>(false);
+  final _isGeneratingPdf = ValueNotifier<bool>(false);
+  final _data = ValueNotifier<Map<String, dynamic>?>(null);
+  final _error = ValueNotifier<String>('');
+  final _branches = ValueNotifier<List<dynamic>>([]);
+  final _selectedBranchId = ValueNotifier<String?>(null);
 
   @override
   void initState() {
     super.initState();
     _loadBranches();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _fromDate.dispose();
+    _toDate.dispose();
+    _isLoading.dispose();
+    _isGeneratingPdf.dispose();
+    _data.dispose();
+    _error.dispose();
+    _branches.dispose();
+    _selectedBranchId.dispose();
+    super.dispose();
   }
 
   String get currencySymbol {
@@ -4005,14 +4081,12 @@ class _ProfitReportScreenState extends State<ProfitReportScreen> {
     }
   }
 
-  String get _fromStr => DateFormat('dd-MM-yyyy').format(_fromDate);
-  String get _toStr => DateFormat('dd-MM-yyyy').format(_toDate);
+  String get _fromStr => DateFormat('dd-MM-yyyy').format(_fromDate.value);
+  String get _toStr => DateFormat('dd-MM-yyyy').format(_toDate.value);
 
   Future<void> _load() async {
-    setState(() {
-      _isLoading = true;
-      _error = '';
-    });
+    _isLoading.value = true;
+    _error.value = '';
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
     try {
@@ -4020,24 +4094,18 @@ class _ProfitReportScreenState extends State<ProfitReportScreen> {
         token,
         _fromStr,
         _toStr,
-        branchId: _selectedBranchId,
+        branchId: _selectedBranchId.value,
       );
       if (res['success'] == true) {
-        setState(() {
-          _data = res;
-          _isLoading = false;
-        });
+        _data.value = res;
+        _isLoading.value = false;
       } else {
-        setState(() {
-          _error = res['message'] ?? 'Failed';
-          _isLoading = false;
-        });
+        _error.value = res['message'] ?? 'Failed';
+        _isLoading.value = false;
       }
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      _error.value = e.toString();
+      _isLoading.value = false;
     }
   }
 
@@ -4047,14 +4115,14 @@ class _ProfitReportScreenState extends State<ProfitReportScreen> {
     try {
       final res = await ApiService.getCompanyBranches(auth.token!);
       if (!mounted || res['success'] != true) return;
-      setState(() => _branches = res['branches'] ?? []);
+      _branches.value = res['branches'] ?? [];
     } catch (_) {}
   }
 
   Future<void> _pickDate({required bool isFrom}) async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: isFrom ? _fromDate : _toDate,
+      initialDate: isFrom ? _fromDate.value : _toDate.value,
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
       builder: (ctx, child) => Theme(
@@ -4065,13 +4133,11 @@ class _ProfitReportScreenState extends State<ProfitReportScreen> {
       ),
     );
     if (picked != null) {
-      setState(() {
-        if (isFrom) {
-          _fromDate = picked;
-        } else {
-          _toDate = picked;
-        }
-      });
+      if (isFrom) {
+        _fromDate.value = picked;
+      } else {
+        _toDate.value = picked;
+      }
       _load();
     }
   }
@@ -4088,12 +4154,12 @@ class _ProfitReportScreenState extends State<ProfitReportScreen> {
   }
 
   String get _selectedBranchName {
-    if (_selectedBranchId == null || _selectedBranchId!.isEmpty) {
+    if (_selectedBranchId.value == null || _selectedBranchId.value!.isEmpty) {
       return 'All branches';
     }
-    for (final branch in _branches) {
+    for (final branch in _branches.value) {
       final item = Map<String, dynamic>.from(branch as Map);
-      if (item['id']?.toString() == _selectedBranchId) {
+      if (item['id']?.toString() == _selectedBranchId.value) {
         return item['name']?.toString() ?? 'Selected branch';
       }
     }
@@ -4101,19 +4167,17 @@ class _ProfitReportScreenState extends State<ProfitReportScreen> {
   }
 
   Future<void> _downloadPdf() async {
-    if (_data == null) return;
-    setState(() {
-      _isGeneratingPdf = true;
-    });
+    if (_data.value == null) return;
+    _isGeneratingPdf.value = true;
     try {
       final pdf = pw.Document();
-      final incomeRows = _data!['income_rows'] as List<dynamic>? ?? [];
-      final expenseRows = _data!['expense_rows'] as List<dynamic>? ?? [];
-      final double totalIncome = double.tryParse(_data!['total_income']?.toString() ?? '0') ?? 0;
-      final double totalExpense = double.tryParse(_data!['total_expense']?.toString() ?? '0') ?? 0;
-      final double netProfit = double.tryParse(_data!['net_profit']?.toString() ?? '0') ?? 0;
-      final double totalOutstanding = double.tryParse(_data!['total_outstanding']?.toString() ?? '0') ?? 0;
-      final double totalPayables = double.tryParse(_data!['total_payables']?.toString() ?? '0') ?? 0;
+      final incomeRows = _data.value!['income_rows'] as List<dynamic>? ?? [];
+      final expenseRows = _data.value!['expense_rows'] as List<dynamic>? ?? [];
+      final double totalIncome = double.tryParse(_data.value!['total_income']?.toString() ?? '0') ?? 0;
+      final double totalExpense = double.tryParse(_data.value!['total_expense']?.toString() ?? '0') ?? 0;
+      final double netProfit = double.tryParse(_data.value!['net_profit']?.toString() ?? '0') ?? 0;
+      final double totalOutstanding = double.tryParse(_data.value!['total_outstanding']?.toString() ?? '0') ?? 0;
+      final double totalPayables = double.tryParse(_data.value!['total_payables']?.toString() ?? '0') ?? 0;
       final bool isProfit = netProfit >= 0;
 
       pdf.addPage(
@@ -4135,7 +4199,7 @@ class _ProfitReportScreenState extends State<ProfitReportScreen> {
                   ),
                   pw.SizedBox(height: 8),
                   pw.Text(
-                    'Date Range: ${DateFormat('dd MMM yyyy').format(_fromDate)} - ${DateFormat('dd MMM yyyy').format(_toDate)}',
+                    'Date Range: ${DateFormat('dd MMM yyyy').format(_fromDate.value)} - ${DateFormat('dd MMM yyyy').format(_toDate.value)}',
                     style: const pw.TextStyle(fontSize: 14),
                   ),
                   pw.SizedBox(height: 4),
@@ -4246,130 +4310,143 @@ class _ProfitReportScreenState extends State<ProfitReportScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.tr('Failed to generate PDF: $e'))));
     } finally {
-      setState(() {
-        _isGeneratingPdf = false;
-      });
+      _isGeneratingPdf.value = false;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final incomeRows = _data != null && _data!['income_rows'] != null
-        ? _data!['income_rows'] as List<dynamic>
-        : [];
-    final expenseRows = _data != null && _data!['expense_rows'] != null
-        ? _data!['expense_rows'] as List<dynamic>
-        : [];
 
-    final double totalIncome = double.tryParse(_data?['total_income']?.toString() ?? '0') ?? 0;
-    final double totalExpense = double.tryParse(_data?['total_expense']?.toString() ?? '0') ?? 0;
-    final double netProfit = double.tryParse(_data?['net_profit']?.toString() ?? '0') ?? 0;
-    final double totalOutstanding = double.tryParse(_data?['total_outstanding']?.toString() ?? '0') ?? 0;
-    final double totalPayables = double.tryParse(_data?['total_payables']?.toString() ?? '0') ?? 0;
-    final bool isProfit = netProfit >= 0;
+    return ValueListenableBuilder<Map<String, dynamic>?>(
+      valueListenable: _data,
+      builder: (context, dataVal, _) {
+        final incomeRows = dataVal != null && dataVal['income_rows'] != null
+            ? dataVal['income_rows'] as List<dynamic>
+            : [];
+        final expenseRows = dataVal != null && dataVal['expense_rows'] != null
+            ? dataVal['expense_rows'] as List<dynamic>
+            : [];
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
-      appBar: AppBar(
-        title: Text(
-          context.tr('Profit Report'),
-          style: GoogleFonts.inter(fontWeight: FontWeight.w700),
-        ),
-        backgroundColor: const Color(0xFF000080),
-        foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          if (_data != null)
-            _isGeneratingPdf
-                ? const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    ),
-                  )
-                : IconButton(
-                    icon: const Icon(Icons.picture_as_pdf),
-                    tooltip: context.tr('Download PDF'),
-                    onPressed: _downloadPdf,
-                  ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Filter section (Date & branch selection)
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: _dateButton(
-                        'From',
-                        _fromDate,
-                        () => _pickDate(isFrom: true),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _dateButton(
-                        'To',
-                        _toDate,
-                        () => _pickDate(isFrom: false),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    ElevatedButton(
-                      onPressed: _load,
-                      style: ElevatedButton.styleFrom(
+        final double totalIncome = double.tryParse(dataVal?['total_income']?.toString() ?? '0') ?? 0;
+        final double totalExpense = double.tryParse(dataVal?['total_expense']?.toString() ?? '0') ?? 0;
+        final double netProfit = double.tryParse(dataVal?['net_profit']?.toString() ?? '0') ?? 0;
+        final double totalOutstanding = double.tryParse(dataVal?['total_outstanding']?.toString() ?? '0') ?? 0;
+        final double totalPayables = double.tryParse(dataVal?['total_payables']?.toString() ?? '0') ?? 0;
+        final bool isProfit = netProfit >= 0;
+
+        return ValueListenableBuilder<bool>(
+          valueListenable: _isGeneratingPdf,
+          builder: (context, isGeneratingPdfVal, _) => ValueListenableBuilder<bool>(
+            valueListenable: _isLoading,
+            builder: (context, isLoadingVal, _) => ValueListenableBuilder<String>(
+              valueListenable: _error,
+              builder: (context, errorVal, _) => ValueListenableBuilder<DateTime>(
+                valueListenable: _fromDate,
+                builder: (context, fromDateVal, _) => ValueListenableBuilder<DateTime>(
+                  valueListenable: _toDate,
+                  builder: (context, toDateVal, _) {
+                    return Scaffold(
+                      backgroundColor: const Color(0xFFF1F5F9),
+                      appBar: AppBar(
+                        title: Text(
+                          context.tr('Profit Report'),
+                          style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+                        ),
                         backgroundColor: const Color(0xFF000080),
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 13,
-                        ),
+                        elevation: 0,
+                        actions: [
+                          if (dataVal != null)
+                            isGeneratingPdfVal
+                                ? const Padding(
+                                    padding: EdgeInsets.all(16),
+                                    child: SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                  )
+                                : IconButton(
+                                    icon: const Icon(Icons.picture_as_pdf),
+                                    tooltip: context.tr('Download PDF'),
+                                    onPressed: _downloadPdf,
+                                  ),
+                        ],
                       ),
-                      child: const Icon(Icons.refresh, size: 20),
-                    ),
-                  ],
-                ),
-                if (auth.isCompanyAdmin) ...[
-                  const SizedBox(height: 12),
-                  _branchDropdown(),
-                ],
-              ],
-            ),
-          ),
-
-          // P&L Content
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _error.isNotEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
-                            const SizedBox(height: 12),
-                            Text(_error, style: GoogleFonts.inter(color: Colors.red.shade600)),
-                            const SizedBox(height: 16),
-                            ElevatedButton(onPressed: _load, child: Text(context.tr('Retry'))),
-                          ],
-                        ),
-                      )
-                    : Column(
+                      body: Column(
                         children: [
+                          // Filter section (Date & branch selection)
+                          Container(
+                            color: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            child: Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _dateButton(
+                                        'From',
+                                        fromDateVal,
+                                        () => _pickDate(isFrom: true),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: _dateButton(
+                                        'To',
+                                        toDateVal,
+                                        () => _pickDate(isFrom: false),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    ElevatedButton(
+                                      onPressed: _load,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFF000080),
+                                        foregroundColor: Colors.white,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 13,
+                                        ),
+                                      ),
+                                      child: const Icon(Icons.refresh, size: 20),
+                                    ),
+                                  ],
+                                ),
+                                if (auth.isCompanyAdmin) ...[
+                                  const SizedBox(height: 12),
+                                  _branchDropdown(),
+                                ],
+                              ],
+                            ),
+                          ),
+
+                          // P&L Content
+                          Expanded(
+                            child: isLoadingVal
+                                ? const Center(child: CircularProgressIndicator())
+                                : errorVal.isNotEmpty
+                                    ? Center(
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
+                                            const SizedBox(height: 12),
+                                            Text(errorVal, style: GoogleFonts.inter(color: Colors.red.shade600)),
+                                            const SizedBox(height: 16),
+                                            ElevatedButton(onPressed: _load, child: Text(context.tr('Retry'))),
+                                          ],
+                                        ),
+                                      )
+                                    : Column(
+                                        children: [
                           Expanded(
                             child: SingleChildScrollView(
                               padding: const EdgeInsets.all(12),
@@ -4575,43 +4652,55 @@ class _ProfitReportScreenState extends State<ProfitReportScreen> {
         ],
       ),
     );
+                  },
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Widget _branchDropdown() {
-    return DropdownButtonFormField<String>(
-      value: _selectedBranchId,
-      isExpanded: true,
-      menuMaxHeight: 350,
-      decoration: InputDecoration(
-        labelText: context.tr('Branch'),
-        filled: true,
-        fillColor: const Color(0xFFF8FAFF),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: const Color(0xFF000080).withOpacity(0.2)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: const Color(0xFF000080).withOpacity(0.2)),
+    return ValueListenableBuilder<List<dynamic>>(
+      valueListenable: _branches,
+      builder: (context, branchList, _) => ValueListenableBuilder<String?>(
+        valueListenable: _selectedBranchId,
+        builder: (context, selectedId, _) => DropdownButtonFormField<String>(
+          value: selectedId,
+          isExpanded: true,
+          menuMaxHeight: 350,
+          decoration: InputDecoration(
+            labelText: context.tr('Branch'),
+            filled: true,
+            fillColor: const Color(0xFFF8FAFF),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: const Color(0xFF000080).withOpacity(0.2)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: const Color(0xFF000080).withOpacity(0.2)),
+            ),
+          ),
+          items: [
+            DropdownMenuItem<String>(value: '', child: Text(context.tr('All branches'))),
+            ...branchList.map((branch) {
+              final item = Map<String, dynamic>.from(branch as Map);
+              return DropdownMenuItem<String>(
+                value: item['id']?.toString() ?? '',
+                child: Text(item['name']?.toString() ?? ''),
+              );
+            }),
+          ],
+          onChanged: (value) {
+            _selectedBranchId.value = value == null || value.isEmpty ? null : value;
+            _load();
+          },
         ),
       ),
-      items: [
-        DropdownMenuItem<String>(value: '', child: Text(context.tr('All branches'))),
-        ..._branches.map((branch) {
-          final item = Map<String, dynamic>.from(branch as Map);
-          return DropdownMenuItem<String>(
-            value: item['id']?.toString() ?? '',
-            child: Text(item['name']?.toString() ?? ''),
-          );
-        }),
-      ],
-      onChanged: (value) {
-        setState(() {
-          _selectedBranchId = value == null || value.isEmpty ? null : value;
-        });
-        _load();
-      },
     );
   }
 

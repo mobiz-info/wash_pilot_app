@@ -5,18 +5,28 @@ import '../providers/auth_provider.dart';
 import '../providers/language_provider.dart';
 import '../services/api_service.dart';
 
-class StockItemScreen extends StatefulWidget {
+class StockItemScreen extends StatelessWidget {
   const StockItemScreen({super.key});
 
   @override
-  State<StockItemScreen> createState() => _StockItemScreenState();
+  Widget build(BuildContext context) {
+    return const StockItemBodyView(showAppBar: true);
+  }
 }
 
-class _StockItemScreenState extends State<StockItemScreen> {
-  bool _isLoading = true;
-  String _errorMessage = '';
-  List<dynamic> _stocks = [];
-  List<dynamic> _filteredStocks = [];
+class StockItemBodyView extends StatefulWidget {
+  final bool showAppBar;
+  const StockItemBodyView({super.key, this.showAppBar = false});
+
+  @override
+  State<StockItemBodyView> createState() => _StockItemBodyViewState();
+}
+
+class _StockItemBodyViewState extends State<StockItemBodyView> {
+  final _isLoading = ValueNotifier<bool>(true);
+  final _errorMessage = ValueNotifier<String>('');
+  final _stocks = ValueNotifier<List<dynamic>>([]);
+  final _filteredStocks = ValueNotifier<List<dynamic>>([]);
   final _searchController = TextEditingController();
 
   @override
@@ -29,6 +39,10 @@ class _StockItemScreenState extends State<StockItemScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _isLoading.dispose();
+    _errorMessage.dispose();
+    _stocks.dispose();
+    _filteredStocks.dispose();
     super.dispose();
   }
 
@@ -36,45 +50,35 @@ class _StockItemScreenState extends State<StockItemScreen> {
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = '';
-    });
+    _isLoading.value = true;
+    _errorMessage.value = '';
 
     try {
       final res = await ApiService.getStockList(token);
       if (res['success'] == true) {
-        setState(() {
-          _stocks = res['stocks'] ?? [];
-          _filteredStocks = List.from(_stocks);
-          _isLoading = false;
-        });
+        _stocks.value = res['stocks'] ?? [];
+        _filteredStocks.value = List.from(_stocks.value);
+        _isLoading.value = false;
       } else {
-        setState(() {
-          _errorMessage = res['message'] ?? 'Failed to load stock items';
-          _isLoading = false;
-        });
+        _errorMessage.value = res['message'] ?? 'Failed to load stock items';
+        _isLoading.value = false;
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-        _isLoading = false;
-      });
+      _errorMessage.value = e.toString();
+      _isLoading.value = false;
     }
   }
 
   void _filter() {
     final query = _searchController.text.toLowerCase().trim();
-    setState(() {
-      if (query.isEmpty) {
-        _filteredStocks = List.from(_stocks);
-      } else {
-        _filteredStocks = _stocks.where((s) {
-          final name = (s['item_name'] ?? '').toString().toLowerCase();
-          return name.contains(query);
-        }).toList();
-      }
-    });
+    if (query.isEmpty) {
+      _filteredStocks.value = List.from(_stocks.value);
+    } else {
+      _filteredStocks.value = _stocks.value.where((s) {
+        final name = (s['item_name'] ?? '').toString().toLowerCase();
+        return name.contains(query);
+      }).toList();
+    }
   }
 
   Future<void> _addNewStockItem() async {
@@ -472,37 +476,25 @@ class _StockItemScreenState extends State<StockItemScreen> {
     );
 
     if (confirm == true) {
-      setState(() {
-        _isLoading = true;
-      });
+      _isLoading.value = true;
       try {
         final res = await ApiService.deleteStock(token, item['id']);
         if (res['success'] == true) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(context.tr('Stock item deleted successfully!')),
-              backgroundColor: Colors.green,
-            ),
+            SnackBar(content: Text(context.tr('Stock item deleted successfully!')), backgroundColor: Colors.green),
           );
           _fetchStocks();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(res['message'] ?? context.tr('Failed to delete stock item')),
-              backgroundColor: Colors.red,
-            ),
+            SnackBar(content: Text(res['message'] ?? context.tr('Failed to delete stock item')), backgroundColor: Colors.red),
           );
-          setState(() {
-            _isLoading = false;
-          });
+          _isLoading.value = false;
         }
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
         );
-        setState(() {
-          _isLoading = false;
-        });
+        _isLoading.value = false;
       }
     }
   }
@@ -511,21 +503,23 @@ class _StockItemScreenState extends State<StockItemScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
-      appBar: AppBar(
-        title: Text(
-          context.tr('Stock Items'),
-          style: GoogleFonts.inter(fontWeight: FontWeight.w700),
-        ),
-        backgroundColor: const Color(0xFF000080),
-        foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          IconButton(
-            onPressed: _fetchStocks,
-            icon: const Icon(Icons.refresh),
-          )
-        ],
-      ),
+      appBar: widget.showAppBar
+          ? AppBar(
+              title: Text(
+                context.tr('Stock Items'),
+                style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+              ),
+              backgroundColor: const Color(0xFF000080),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              actions: [
+                IconButton(
+                  onPressed: _fetchStocks,
+                  icon: const Icon(Icons.refresh),
+                )
+              ],
+            )
+          : null,
       body: Column(
         children: [
           Container(
@@ -547,134 +541,79 @@ class _StockItemScreenState extends State<StockItemScreen> {
             ),
           ),
           Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _errorMessage.isNotEmpty
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(20.0),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                _errorMessage,
-                                style: const TextStyle(color: Colors.red),
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: 16),
-                              ElevatedButton(
-                                onPressed: _fetchStocks,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF000080),
-                                  foregroundColor: Colors.white,
-                                ),
-                                child: Text(context.tr('Retry')),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                    : _filteredStocks.isEmpty
-                        ? Center(
-                            child: Text(
-                              context.tr('No stock items found'),
-                              style: GoogleFonts.inter(color: Colors.grey, fontSize: 15),
-                            ),
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.all(16),
-                            itemCount: _filteredStocks.length,
-                            itemBuilder: (ctx, i) {
-                              final item = Map<String, dynamic>.from(_filteredStocks[i] as Map);
-                              final name = item['item_name'] ?? '';
-                              final unitDisplay = item['unit_display'] ?? '';
-
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 10),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.02),
-                                      blurRadius: 6,
-                                      offset: const Offset(0, 3),
-                                    )
+            child: ValueListenableBuilder<bool>(
+              valueListenable: _isLoading,
+              builder: (context, loading, _) => ValueListenableBuilder<String>(
+                valueListenable: _errorMessage,
+                builder: (context, errMsg, _) => ValueListenableBuilder<List<dynamic>>(
+                  valueListenable: _filteredStocks,
+                  builder: (context, filtered, _) => loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : errMsg.isNotEmpty
+                          ? Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(20.0),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(errMsg, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
+                                    const SizedBox(height: 16),
+                                    ElevatedButton(
+                                      onPressed: _fetchStocks,
+                                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000080), foregroundColor: Colors.white),
+                                      child: Text(context.tr('Retry')),
+                                    ),
                                   ],
                                 ),
-                                child: ListTile(
-                                  leading: const CircleAvatar(
-                                    backgroundColor: Color(0xFFE0F2FE),
-                                    foregroundColor: Color(0xFF0284C7),
-                                    child: Icon(Icons.inventory_2_outlined),
-                                  ),
-                                  title: Text(
-                                    name,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                  subtitle: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        '${context.tr("Unit")}: $unitDisplay',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 12,
-                                          color: Colors.grey.shade600,
-                                        ),
+                              ),
+                            )
+                          : filtered.isEmpty
+                              ? Center(child: Text(context.tr('No stock items found'), style: GoogleFonts.inter(color: Colors.grey, fontSize: 15)))
+                              : ListView.builder(
+                                  padding: const EdgeInsets.all(16),
+                                  itemCount: filtered.length,
+                                  itemBuilder: (ctx, i) {
+                                    final item = Map<String, dynamic>.from(filtered[i] as Map);
+                                    final name = item['item_name'] ?? '';
+                                    final unitDisplay = item['unit_display'] ?? '';
+                                    return Container(
+                                      margin: const EdgeInsets.only(bottom: 10),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(12),
+                                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 6, offset: const Offset(0, 3))],
                                       ),
-                                      if (item['expense_head_name'] != null) ...[
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          '${context.tr("Expense Head")}: ${item['expense_head_name']}',
-                                          style: GoogleFonts.inter(
-                                            fontSize: 12,
-                                            color: Colors.blue.shade700,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                  trailing: PopupMenuButton<String>(
-                                    icon: const Icon(Icons.more_vert, color: Colors.grey),
-                                    onSelected: (value) {
-                                      if (value == 'edit') {
-                                        _editStockItem(item);
-                                      } else if (value == 'delete') {
-                                        _deleteStockItem(item);
-                                      }
-                                    },
-                                    itemBuilder: (context) => [
-                                      PopupMenuItem(
-                                        value: 'edit',
-                                        child: Row(
+                                      child: ListTile(
+                                        leading: const CircleAvatar(backgroundColor: Color(0xFFE0F2FE), foregroundColor: Color(0xFF0284C7), child: Icon(Icons.inventory_2_outlined)),
+                                        title: Text(name, style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black87)),
+                                        subtitle: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            const Icon(Icons.edit, size: 18, color: Colors.blue),
-                                            const SizedBox(width: 8),
-                                            Text(context.tr('Edit'), style: GoogleFonts.inter()),
+                                            Text('${context.tr("Unit")}: $unitDisplay', style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade600)),
+                                            if (item['expense_head_name'] != null) ...[
+                                              const SizedBox(height: 2),
+                                              Text('${context.tr("Expense Head")}: ${item['expense_head_name']}', style: GoogleFonts.inter(fontSize: 12, color: Colors.blue.shade700, fontWeight: FontWeight.w500)),
+                                            ],
+                                          ],
+                                        ),
+                                        trailing: PopupMenuButton<String>(
+                                          icon: const Icon(Icons.more_vert, color: Colors.grey),
+                                          onSelected: (value) {
+                                            if (value == 'edit') _editStockItem(item);
+                                            else if (value == 'delete') _deleteStockItem(item);
+                                          },
+                                          itemBuilder: (context) => [
+                                            PopupMenuItem(value: 'edit', child: Row(children: [const Icon(Icons.edit, size: 18, color: Colors.blue), const SizedBox(width: 8), Text(context.tr('Edit'), style: GoogleFonts.inter())])),
+                                            PopupMenuItem(value: 'delete', child: Row(children: [const Icon(Icons.delete, size: 18, color: Colors.red), const SizedBox(width: 8), Text(context.tr('Delete'), style: GoogleFonts.inter(color: Colors.red))])),
                                           ],
                                         ),
                                       ),
-                                      PopupMenuItem(
-                                        value: 'delete',
-                                        child: Row(
-                                          children: [
-                                            const Icon(Icons.delete, size: 18, color: Colors.red),
-                                            const SizedBox(width: 8),
-                                            Text(context.tr('Delete'), style: GoogleFonts.inter(color: Colors.red)),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                    );
+                                  },
                                 ),
-                              );
-                            },
-                          ),
+                ),
+              ),
+            ),
           ),
         ],
       ),

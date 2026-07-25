@@ -19,25 +19,25 @@ class CustomersScreen extends StatefulWidget {
 
 class _CustomersScreenState extends State<CustomersScreen> {
   // ─── Customer list state ─────────────────────────────────────
-  bool _isLoadingList = true;
-  List<dynamic> _allCustomers = [];
-  List<dynamic> _newCustomers = [];
-  List<dynamic> _inactiveCustomers = [];
+  final _isLoadingList = ValueNotifier<bool>(true);
+  final _allCustomers = ValueNotifier<List<dynamic>>([]);
+  final _newCustomers = ValueNotifier<List<dynamic>>([]);
+  final _inactiveCustomers = ValueNotifier<List<dynamic>>([]);
 
-  List<dynamic> _filteredAll = [];
-  List<dynamic> _filteredNew = [];
-  List<dynamic> _filteredInactive = [];
+  final _filteredAll = ValueNotifier<List<dynamic>>([]);
+  final _filteredNew = ValueNotifier<List<dynamic>>([]);
+  final _filteredInactive = ValueNotifier<List<dynamic>>([]);
 
   final _searchController = TextEditingController();
-  String _listError = '';
+  final _listError = ValueNotifier<String>('');
 
   // ─── Category Selection ──────────────────────────────────────
-  String? _selectedCategory; // null = grid, 'all', 'new', 'inactive'
+  final _selectedCategory = ValueNotifier<String?>(null); // null = grid, 'all', 'new', 'inactive'
 
   // ─── Edit form state ─────────────────────────────────────────
-  Map<String, dynamic>? _selectedCustomer;
-  bool _isLoadingEdit = false;
-  bool _isSaving = false;
+  final _selectedCustomer = ValueNotifier<Map<String, dynamic>?>(null);
+  final _isLoadingEdit = ValueNotifier<bool>(false);
+  final _isSaving = ValueNotifier<bool>(false);
 
   List<dynamic> _customerTypes = [];
   List<dynamic> _vehicleTypes = [];
@@ -51,17 +51,18 @@ class _CustomersScreenState extends State<CustomersScreen> {
   final _whatsappController = TextEditingController();
   final _emailController = TextEditingController();
   final _addressController = TextEditingController();
-  Map<String, dynamic>? _selectedCustomerType;
-  String _selectedPhoneCode = '+91';
-  String _selectedWhatsappCode = '+91';
-  String _phoneIso = 'IN';
-  String _whatsappIso = 'IN';
+  final _selectedCustomerType = ValueNotifier<Map<String, dynamic>?>(null);
+  final _selectedPhoneCode = ValueNotifier<String>('+91');
+  final _selectedWhatsappCode = ValueNotifier<String>('+91');
+  final _phoneIso = ValueNotifier<String>('IN');
+  final _whatsappIso = ValueNotifier<String>('IN');
 
   // Existing vehicles (editable)
   final List<Map<String, dynamic>> _existingVehicleRows = [];
 
   // New vehicles to add
   final List<Map<String, dynamic>> _newVehicleRows = [];
+  final _vehicleRowsNotifier = ValueNotifier<int>(0);
 
   @override
   void initState() {
@@ -84,6 +85,24 @@ class _CustomersScreenState extends State<CustomersScreen> {
     for (final row in _newVehicleRows) {
       (row['controller'] as TextEditingController).dispose();
     }
+    _isLoadingList.dispose();
+    _allCustomers.dispose();
+    _newCustomers.dispose();
+    _inactiveCustomers.dispose();
+    _filteredAll.dispose();
+    _filteredNew.dispose();
+    _filteredInactive.dispose();
+    _listError.dispose();
+    _selectedCategory.dispose();
+    _selectedCustomer.dispose();
+    _isLoadingEdit.dispose();
+    _isSaving.dispose();
+    _selectedCustomerType.dispose();
+    _selectedPhoneCode.dispose();
+    _selectedWhatsappCode.dispose();
+    _phoneIso.dispose();
+    _whatsappIso.dispose();
+    _vehicleRowsNotifier.dispose();
     super.dispose();
   }
 
@@ -117,34 +136,26 @@ class _CustomersScreenState extends State<CustomersScreen> {
 
   Future<void> _fetchCustomers() async {
     if (!mounted) return;
-    setState(() {
-      _isLoadingList = true;
-      _listError = '';
-    });
+    _isLoadingList.value = true;
+    _listError.value = '';
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
     try {
       final res = await ApiService.listCustomers(token);
       if (res['success'] == true) {
         if (!mounted) return;
-        setState(() {
-          _allCustomers = res['customers'] as List<dynamic>;
-          _categorizeAndFilter();
-          _isLoadingList = false;
-        });
+        _allCustomers.value = res['customers'] as List<dynamic>;
+        _categorizeAndFilter();
+        _isLoadingList.value = false;
       } else {
         if (!mounted) return;
-        setState(() {
-          _listError = res['message'] ?? 'Failed to load';
-          _isLoadingList = false;
-        });
+        _listError.value = res['message'] ?? 'Failed to load';
+        _isLoadingList.value = false;
       }
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _listError = e.toString();
-        _isLoadingList = false;
-      });
+      _listError.value = e.toString();
+      _isLoadingList.value = false;
     }
   }
 
@@ -156,7 +167,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
     final newCust = <dynamic>[];
     final inactiveCust = <dynamic>[];
 
-    for (final c in _allCustomers) {
+    for (final c in _allCustomers.value) {
       // 1. Check if New (registered in last 30 days)
       bool isNew = false;
       if (c['date_added'] != null && c['date_added'].toString().isNotEmpty) {
@@ -190,41 +201,37 @@ class _CustomersScreenState extends State<CustomersScreen> {
       }
     }
 
-    _newCustomers = newCust;
-    _inactiveCustomers = inactiveCust;
+    _newCustomers.value = newCust;
+    _inactiveCustomers.value = inactiveCust;
 
     // Apply Search filter
     final q = _searchController.text.trim().toLowerCase();
     if (q.isEmpty) {
-      _filteredAll = _allCustomers;
-      _filteredNew = _newCustomers;
-      _filteredInactive = _inactiveCustomers;
+      _filteredAll.value = _allCustomers.value;
+      _filteredNew.value = _newCustomers.value;
+      _filteredInactive.value = _inactiveCustomers.value;
     } else {
-      _filteredAll = _allCustomers.where((c) =>
+      _filteredAll.value = _allCustomers.value.where((c) =>
           (c['name'] as String).toLowerCase().contains(q) ||
           (c['phone'] as String).contains(q)).toList();
-      _filteredNew = _newCustomers.where((c) =>
+      _filteredNew.value = _newCustomers.value.where((c) =>
           (c['name'] as String).toLowerCase().contains(q) ||
           (c['phone'] as String).contains(q)).toList();
-      _filteredInactive = _inactiveCustomers.where((c) =>
+      _filteredInactive.value = _inactiveCustomers.value.where((c) =>
           (c['name'] as String).toLowerCase().contains(q) ||
           (c['phone'] as String).contains(q)).toList();
     }
   }
 
   void _onSearchChanged() {
-    setState(() {
-      _categorizeAndFilter();
-    });
+    _categorizeAndFilter();
   }
 
   // ─── Open edit ───────────────────────────────────────────────
 
   Future<void> _openEdit(Map<String, dynamic> listItem) async {
-    setState(() {
-      _isLoadingEdit = true;
-      _selectedCustomer = null;
-    });
+    _isLoadingEdit.value = true;
+    _selectedCustomer.value = null;
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
 
@@ -239,7 +246,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
 
       if (customerRes['success'] != true) {
         _showMsg(customerRes['message'] ?? 'Failed to load customer', isError: true);
-        setState(() => _isLoadingEdit = false);
+        _isLoadingEdit.value = false;
         return;
       }
 
@@ -327,24 +334,23 @@ class _CustomersScreenState extends State<CustomersScreen> {
         });
       }
 
-      setState(() {
-        _selectedCustomer = c;
-        _customerTypes = types;
-        _vehicleTypes = vehicleTypes;
-        _vehicleTypeModels = vehicleTypeModels;
-        _makes = makes;
-        _brandModels = brandModels;
-        _colors = colors;
-        _selectedCustomerType = selectedType as Map<String, dynamic>?;
-        _selectedPhoneCode = phoneCode;
-        _selectedWhatsappCode = whatsappCode;
-        _phoneIso = _isoFromDialCode(phoneCode);
-        _whatsappIso = _isoFromDialCode(whatsappCode);
-        _isLoadingEdit = false;
-      });
+      _customerTypes = types;
+      _vehicleTypes = vehicleTypes;
+      _vehicleTypeModels = vehicleTypeModels;
+      _makes = makes;
+      _brandModels = brandModels;
+      _colors = colors;
+      _selectedCustomerType.value = selectedType as Map<String, dynamic>?;
+      _selectedPhoneCode.value = phoneCode;
+      _selectedWhatsappCode.value = whatsappCode;
+      _phoneIso.value = _isoFromDialCode(phoneCode);
+      _whatsappIso.value = _isoFromDialCode(whatsappCode);
+      _selectedCustomer.value = c;
+      _isLoadingEdit.value = false;
+      _vehicleRowsNotifier.value++;
     } catch (e) {
       _showMsg(e.toString(), isError: true);
-      setState(() => _isLoadingEdit = false);
+      _isLoadingEdit.value = false;
     }
   }
 
@@ -361,13 +367,13 @@ class _CustomersScreenState extends State<CustomersScreen> {
       _showMsg('Please enter phone number.', isError: true);
       return;
     }
-    if (_selectedCustomerType == null) {
+    if (_selectedCustomerType.value == null) {
       _showMsg('Please select a customer type.', isError: true);
       return;
     }
 
     // Combine country code + local number
-    final cleanPhoneCode = _selectedPhoneCode.replaceAll('+', '');
+    final cleanPhoneCode = _selectedPhoneCode.value.replaceAll('+', '');
     if (localPhone.startsWith('+')) localPhone = localPhone.replaceFirst('+', '');
     if (localPhone.startsWith(cleanPhoneCode)) localPhone = localPhone.substring(cleanPhoneCode.length);
     final phone = cleanPhoneCode + localPhone;
@@ -375,7 +381,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
     String localWhatsapp = _whatsappController.text.trim();
     String whatsappVal = '';
     if (localWhatsapp.isNotEmpty) {
-      final cleanWaCode = _selectedWhatsappCode.replaceAll('+', '');
+      final cleanWaCode = _selectedWhatsappCode.value.replaceAll('+', '');
       if (localWhatsapp.startsWith('+')) localWhatsapp = localWhatsapp.replaceFirst('+', '');
       if (localWhatsapp.startsWith(cleanWaCode)) localWhatsapp = localWhatsapp.substring(cleanWaCode.length);
       whatsappVal = cleanWaCode + localWhatsapp;
@@ -420,16 +426,16 @@ class _CustomersScreenState extends State<CustomersScreen> {
       }
     }
 
-    setState(() => _isSaving = true);
+    _isSaving.value = true;
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
 
     try {
       final res = await ApiService.editCustomer({
-        'customer_id': _selectedCustomer!['id'],
+        'customer_id': _selectedCustomer.value!['id'],
         'name': name,
         'phone': phone,
-        'customer_type_id': _selectedCustomerType!['id'],
+        'customer_type_id': _selectedCustomerType.value!['id'],
         'whatsapp_number': whatsappVal,
         'email': _emailController.text.trim(),
         'address': _addressController.text.trim(),
@@ -437,20 +443,19 @@ class _CustomersScreenState extends State<CustomersScreen> {
         'new_vehicles': newVehicles,
       }, token);
 
-      setState(() => _isSaving = false);
+      _isSaving.value = false;
 
       if (res['success'] == true) {
         _showMsg('Customer updated successfully!');
-        setState(() {
-          _selectedCustomer = null;
-          _newVehicleRows.clear();
-        });
+        _selectedCustomer.value = null;
+        _newVehicleRows.clear();
+        _vehicleRowsNotifier.value++;
         _fetchCustomers();
       } else {
         _showMsg(res['message'] ?? 'Update failed', isError: true);
       }
     } catch (e) {
-      setState(() => _isSaving = false);
+      _isSaving.value = false;
       _showMsg(e.toString(), isError: true);
     }
   }
@@ -477,27 +482,26 @@ class _CustomersScreenState extends State<CustomersScreen> {
     if (confirmed != true) return;
     if (!mounted) return;
 
-    setState(() => _isSaving = true);
+    _isSaving.value = true;
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
 
     try {
-      final res = await ApiService.deleteCustomer(_selectedCustomer!['id'], token);
+      final res = await ApiService.deleteCustomer(_selectedCustomer.value!['id'], token);
       if (!mounted) return;
-      setState(() => _isSaving = false);
+      _isSaving.value = false;
 
       if (res['success'] == true) {
         _showMsg(context.tr('Customer deleted successfully!'));
-        setState(() {
-          _selectedCustomer = null;
-          _newVehicleRows.clear();
-        });
+        _selectedCustomer.value = null;
+        _newVehicleRows.clear();
+        _vehicleRowsNotifier.value++;
         _fetchCustomers();
       } else {
         _showMsg(res['message'] ?? 'Failed to delete customer', isError: true);
       }
     } catch (e) {
-      setState(() => _isSaving = false);
+      _isSaving.value = false;
       _showMsg(e.toString(), isError: true);
     }
   }
@@ -524,14 +528,14 @@ class _CustomersScreenState extends State<CustomersScreen> {
     if (confirmed != true) return;
     if (!mounted) return;
 
-    setState(() => _isLoadingList = true);
+    _isLoadingList.value = true;
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
 
     try {
       final res = await ApiService.deleteCustomer(c['id'], token);
       if (!mounted) return;
-      setState(() => _isLoadingList = false);
+      _isLoadingList.value = false;
 
       if (res['success'] == true) {
         _showMsg(context.tr('Customer deleted successfully!'));
@@ -540,7 +544,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
         _showMsg(res['message'] ?? 'Failed to delete customer', isError: true);
       }
     } catch (e) {
-      if (mounted) setState(() => _isLoadingList = false);
+      if (mounted) _isLoadingList.value = false;
       _showMsg(e.toString(), isError: true);
     }
   }
@@ -557,158 +561,183 @@ class _CustomersScreenState extends State<CustomersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    String getTitle() {
-      if (_selectedCustomer != null) {
-        return 'Edit Customer';
-      }
-      switch (_selectedCategory) {
-        case 'all':
-          return 'All Customers';
-        case 'new':
-          return 'New Customers';
-        case 'inactive':
-          return 'Inactive Customers';
-        default:
-          return 'Customers';
-      }
-    }
+    return ValueListenableBuilder<Map<String, dynamic>?>(
+      valueListenable: _selectedCustomer,
+      builder: (context, selectedCust, _) => ValueListenableBuilder<String?>(
+        valueListenable: _selectedCategory,
+        builder: (context, categoryVal, _) => ValueListenableBuilder<bool>(
+          valueListenable: _isLoadingEdit,
+          builder: (context, loadingEdit, _) {
+            String getTitle() {
+              if (selectedCust != null) {
+                return 'Edit Customer';
+              }
+              switch (categoryVal) {
+                case 'all':
+                  return 'All Customers';
+                case 'new':
+                  return 'New Customers';
+                case 'inactive':
+                  return 'Inactive Customers';
+                default:
+                  return 'Customers';
+              }
+            }
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
-      appBar: AppBar(
-        title: Text(
-          getTitle(),
-          style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+            return Scaffold(
+              backgroundColor: const Color(0xFFF1F5F9),
+              appBar: AppBar(
+                title: Text(
+                  getTitle(),
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+                ),
+                backgroundColor: const Color(0xFF000080),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                leading: (selectedCust != null || categoryVal != null)
+                    ? IconButton(
+                        icon: const Icon(Icons.arrow_back),
+                        onPressed: () {
+                          if (selectedCust != null) {
+                            _selectedCustomer.value = null;
+                            for (final r in _existingVehicleRows) {
+                              (r['controller'] as TextEditingController).dispose();
+                            }
+                            _existingVehicleRows.clear();
+                            _newVehicleRows.clear();
+                            _vehicleRowsNotifier.value++;
+                          } else {
+                            _selectedCategory.value = null;
+                          }
+                        },
+                      )
+                    : null,
+                actions: [
+                  if (selectedCust == null)
+                    IconButton(
+                      icon: const Icon(Icons.person_add_alt_1),
+                      tooltip: context.tr('Add Customer'),
+                      onPressed: () async {
+                        final added = await Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const AddCustomerScreen()),
+                        );
+                        if (added != null) {
+                          _fetchCustomers();
+                        }
+                      },
+                    ),
+                ],
+              ),
+              body: loadingEdit
+                  ? const Center(child: CircularProgressIndicator())
+                  : selectedCust != null
+                      ? _buildEditForm()
+                      : categoryVal == null
+                          ? _buildGridDashboard()
+                          : _buildCustomerListScreen(),
+            );
+          },
         ),
-        backgroundColor: const Color(0xFF000080),
-        foregroundColor: Colors.white,
-        elevation: 0,
-        leading: (_selectedCustomer != null || _selectedCategory != null)
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () {
-                  setState(() {
-                    if (_selectedCustomer != null) {
-                      _selectedCustomer = null;
-                      for (final r in _existingVehicleRows) {
-                        (r['controller'] as TextEditingController).dispose();
-                      }
-                      _existingVehicleRows.clear();
-                      _newVehicleRows.clear();
-                    } else {
-                      _selectedCategory = null;
-                    }
-                  });
-                },
-              )
-            : null,
-        actions: [
-          if (_selectedCustomer == null)
-            IconButton(
-              icon: const Icon(Icons.person_add_alt_1),
-              tooltip: context.tr('Add Customer'),
-              onPressed: () async {
-                final added = await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AddCustomerScreen()),
-                );
-                if (added != null) {
-                  _fetchCustomers();
-                }
-              },
-            ),
-        ],
       ),
-      body: _isLoadingEdit
-          ? const Center(child: CircularProgressIndicator())
-          : _selectedCustomer != null
-              ? _buildEditForm()
-              : _selectedCategory == null
-                  ? _buildGridDashboard()
-                  : _buildCustomerListScreen(),
     );
   }
 
   // ─── Grid Dashboard ──────────────────────────────────────────
 
   Widget _buildGridDashboard() {
-    if (_isLoadingList) {
-      return const Center(child: CircularProgressIndicator());
-    }
+    return ValueListenableBuilder<bool>(
+      valueListenable: _isLoadingList,
+      builder: (context, loadingList, _) => ValueListenableBuilder<String>(
+        valueListenable: _listError,
+        builder: (context, listErr, _) => ValueListenableBuilder<List<dynamic>>(
+          valueListenable: _allCustomers,
+          builder: (context, allCusts, _) => ValueListenableBuilder<List<dynamic>>(
+            valueListenable: _newCustomers,
+            builder: (context, newCusts, _) => ValueListenableBuilder<List<dynamic>>(
+              valueListenable: _inactiveCustomers,
+              builder: (context, inactiveCusts, _) {
+                if (loadingList) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-    if (_listError.isNotEmpty && _allCustomers.isEmpty) {
-      return Center(
-          child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
-          const SizedBox(height: 12),
-          Text(_listError, style: GoogleFonts.inter(color: Colors.red.shade600)),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-              onPressed: _fetchCustomers,
-              icon: const Icon(Icons.refresh),
-              label: Text(context.tr('Retry'))),
-        ],
-      ));
-    }
+                if (listErr.isNotEmpty && allCusts.isEmpty) {
+                  return Center(
+                      child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
+                      const SizedBox(height: 12),
+                      Text(listErr, style: GoogleFonts.inter(color: Colors.red.shade600)),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                          onPressed: _fetchCustomers,
+                          icon: const Icon(Icons.refresh),
+                          label: Text(context.tr('Retry'))),
+                    ],
+                  ));
+                }
 
-    return SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // 1. All Customers Card (Full width)
-          _buildCategoryCard(
-            title: 'All Customers',
-            count: _allCustomers.length,
-            subtitle: 'Total Customers',
-            icon: Icons.people_outline,
-            color: const Color(0xFF000080),
-            isFullWidth: true,
-            onTap: () => setState(() {
-              _selectedCategory = 'all';
-              _searchController.clear();
-            }),
-          ),  
-          const SizedBox(height: 16),
+                return SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildCategoryCard(
+                        title: 'All Customers',
+                        count: allCusts.length,
+                        subtitle: 'Total Customers',
+                        icon: Icons.people_outline,
+                        color: const Color(0xFF000080),
+                        isFullWidth: true,
+                        onTap: () {
+                          _selectedCategory.value = 'all';
+                          _searchController.clear();
+                        },
+                      ),  
+                      const SizedBox(height: 16),
 
-          // 2. Row containing New and Inactive
-          Row(
-            children: [
-              Expanded(
-                child: _buildCategoryCard(
-                  title: 'New Customers',
-                  count: _newCustomers.length,
-                  subtitle: 'Registered last 30d',
-                  icon: Icons.group_add_outlined,
-                  color: const Color(0xFF10B981),
-                  isFullWidth: false,
-                  onTap: () => setState(() {
-                    _selectedCategory = 'new';
-                    _searchController.clear();
-                  }),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildCategoryCard(
-                  title: 'Inactive Customers',
-                  count: _inactiveCustomers.length,
-                  subtitle: '60+ days without jobs',
-                  icon: Icons.person_off_outlined,
-                  color: const Color(0xFFEF4444),
-                  isFullWidth: false,
-                  onTap: () => setState(() {
-                    _selectedCategory = 'inactive';
-                    _searchController.clear();
-                  }),
-                ),
-              ),
-            ],
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildCategoryCard(
+                              title: 'New Customers',
+                              count: newCusts.length,
+                              subtitle: 'Registered last 30d',
+                              icon: Icons.group_add_outlined,
+                              color: const Color(0xFF10B981),
+                              isFullWidth: false,
+                              onTap: () {
+                                _selectedCategory.value = 'new';
+                                _searchController.clear();
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _buildCategoryCard(
+                              title: 'Inactive Customers',
+                              count: inactiveCusts.length,
+                              subtitle: '60+ days without jobs',
+                              icon: Icons.person_off_outlined,
+                              color: const Color(0xFFEF4444),
+                              isFullWidth: false,
+                              onTap: () {
+                                _selectedCategory.value = 'inactive';
+                                _searchController.clear();
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -840,11 +869,11 @@ class _CustomersScreenState extends State<CustomersScreen> {
   Widget _buildCustomerListScreen() {
     List<dynamic> list;
     if (_selectedCategory == 'new') {
-      list = _filteredNew;
+      list = _filteredNew.value;
     } else if (_selectedCategory == 'inactive') {
-      list = _filteredInactive;
+      list = _filteredInactive.value;
     } else {
-      list = _filteredAll;
+      list = _filteredAll.value;
     }
 
     return Column(
@@ -1113,17 +1142,17 @@ class _CustomersScreenState extends State<CustomersScreen> {
                     borderRadius: BorderRadius.circular(12)),
                 child: Center(
                     child: Text(
-                  (_selectedCustomer!['name'] as String)[0].toUpperCase(),
+                  (_selectedCustomer.value!['name'] as String)[0].toUpperCase(),
                   style: GoogleFonts.inter(
                       fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white),
                 )),
               ),
               const SizedBox(width: 14),
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(_selectedCustomer!['name'],
+                Text(_selectedCustomer.value!['name'],
                     style: GoogleFonts.inter(
                         color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
-                Text(_selectedCustomer!['phone'],
+                Text(_selectedCustomer.value!['phone'],
                     style: GoogleFonts.inter(color: Colors.white70, fontSize: 13)),
               ]),
             ]),
@@ -1137,30 +1166,38 @@ class _CustomersScreenState extends State<CustomersScreen> {
             children: [
               _buildTextField(_nameController, 'Full Name *', Icons.badge_outlined),
               const SizedBox(height: 14),
-              _buildPhoneField(
-                controller: _phoneController,
-                label: 'Phone Number *',
-                countryIso: _phoneIso,
-                selectedCode: _selectedPhoneCode,
-                onCodeChanged: (dialCode, iso) {
-                  setState(() {
-                    _selectedPhoneCode = dialCode;
-                    _phoneIso = iso;
-                  });
-                },
+              ValueListenableBuilder<String>(
+                valueListenable: _phoneIso,
+                builder: (context, phoneIsoVal, _) => ValueListenableBuilder<String>(
+                  valueListenable: _selectedPhoneCode,
+                  builder: (context, phoneCodeVal, _) => _buildPhoneField(
+                    controller: _phoneController,
+                    label: 'Phone Number *',
+                    countryIso: phoneIsoVal,
+                    selectedCode: phoneCodeVal,
+                    onCodeChanged: (dialCode, iso) {
+                      _selectedPhoneCode.value = dialCode;
+                      _phoneIso.value = iso;
+                    },
+                  ),
+                ),
               ),
               const SizedBox(height: 14),
-              _buildPhoneField(
-                controller: _whatsappController,
-                label: 'WhatsApp Number',
-                countryIso: _whatsappIso,
-                selectedCode: _selectedWhatsappCode,
-                onCodeChanged: (dialCode, iso) {
-                  setState(() {
-                    _selectedWhatsappCode = dialCode;
-                    _whatsappIso = iso;
-                  });
-                },
+              ValueListenableBuilder<String>(
+                valueListenable: _whatsappIso,
+                builder: (context, whatsappIsoVal, _) => ValueListenableBuilder<String>(
+                  valueListenable: _selectedWhatsappCode,
+                  builder: (context, whatsappCodeVal, _) => _buildPhoneField(
+                    controller: _whatsappController,
+                    label: 'WhatsApp Number',
+                    countryIso: whatsappIsoVal,
+                    selectedCode: whatsappCodeVal,
+                    onCodeChanged: (dialCode, iso) {
+                      _selectedWhatsappCode.value = dialCode;
+                      _whatsappIso.value = iso;
+                    },
+                  ),
+                ),
               ),
               const SizedBox(height: 14),
               _buildTextField(_emailController, 'Email', Icons.email_outlined,
@@ -1180,17 +1217,20 @@ class _CustomersScreenState extends State<CustomersScreen> {
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: Colors.grey.shade300)),
                 child: DropdownButtonHideUnderline(
-                  child: DropdownButton<Map<String, dynamic>>(
-                    isExpanded: true,
-                    menuMaxHeight: 350,
-                    value: _selectedCustomerType,
-                    items: _customerTypes
-                        .map((ct) => DropdownMenuItem<Map<String, dynamic>>(
-                              value: ct as Map<String, dynamic>,
-                              child: Text(ct['name'], style: GoogleFonts.inter()),
-                            ))
-                        .toList(),
-                    onChanged: (val) => setState(() => _selectedCustomerType = val),
+                  child: ValueListenableBuilder<Map<String, dynamic>?>(
+                    valueListenable: _selectedCustomerType,
+                    builder: (context, custTypeVal, _) => DropdownButton<Map<String, dynamic>>(
+                      isExpanded: true,
+                      menuMaxHeight: 350,
+                      value: custTypeVal,
+                      items: _customerTypes
+                          .map((ct) => DropdownMenuItem<Map<String, dynamic>>(
+                                value: ct as Map<String, dynamic>,
+                                child: Text(ct['name'], style: GoogleFonts.inter()),
+                              ))
+                          .toList(),
+                      onChanged: (val) => _selectedCustomerType.value = val,
+                    ),
                   ),
                 ),
               ),
@@ -1228,7 +1268,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
           const SizedBox(height: 32),
 
           ElevatedButton(
-            onPressed: _isSaving ? null : _save,
+            onPressed: _isSaving.value ? null : _save,
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF000080),
               foregroundColor: Colors.white,
@@ -1236,7 +1276,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               disabledBackgroundColor: Colors.grey.shade400,
             ),
-            child: _isSaving
+            child: _isSaving.value
                 ? const SizedBox(
                     height: 20,
                     width: 20,
@@ -1247,7 +1287,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
           if (context.read<AuthProvider>().isCompanyAdmin) ...[
             const SizedBox(height: 12),
             OutlinedButton(
-              onPressed: _isSaving ? null : _confirmDeleteCustomer,
+              onPressed: _isSaving.value ? null : _confirmDeleteCustomer,
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.red.shade700,
                 side: BorderSide(color: Colors.red.shade300, width: 1.5),
@@ -1313,11 +1353,12 @@ class _CustomersScreenState extends State<CustomersScreen> {
                   onTap: () {
                     if (isNew) {
                       (_newVehicleRows[index]['controller'] as TextEditingController).dispose();
-                      setState(() => _newVehicleRows.removeAt(index));
+                      _newVehicleRows.removeAt(index);
                     } else {
                       (_existingVehicleRows[index]['controller'] as TextEditingController).dispose();
-                      setState(() => _existingVehicleRows.removeAt(index));
+                      _existingVehicleRows.removeAt(index);
                     }
+                    _vehicleRowsNotifier.value++;
                   },
                   child: Icon(Icons.remove_circle_outline, color: Colors.red.shade400, size: 22),
                 ),
@@ -1333,12 +1374,11 @@ class _CustomersScreenState extends State<CustomersScreen> {
               labelBuilder: (vt) => vt['name']?.toString() ?? '',
               hint: 'Select vehicle type',
               onChanged: (val) {
-                setState(() {
-                  row['vehicle_type'] = val;
-                  row['vehicle_type_model'] = null;
-                  row['make'] = null;
-                  row['brand_model'] = null;
-                });
+                row['vehicle_type'] = val;
+                row['vehicle_type_model'] = null;
+                row['make'] = null;
+                row['brand_model'] = null;
+                _vehicleRowsNotifier.value++;
               },
             ),
             const SizedBox(height: 12),
@@ -1352,11 +1392,10 @@ class _CustomersScreenState extends State<CustomersScreen> {
                 labelBuilder: (m) => m['name']?.toString() ?? '',
                 hint: segments.isEmpty ? 'No segments available' : 'Select segment',
                 onChanged: segments.isEmpty ? null : (val) {
-                  setState(() {
-                    row['vehicle_type_model'] = val;
-                    row['make'] = null;
-                    row['brand_model'] = null;
-                  });
+                  row['vehicle_type_model'] = val;
+                  row['make'] = null;
+                  row['brand_model'] = null;
+                  _vehicleRowsNotifier.value++;
                 },
               ),
               const SizedBox(height: 12),
@@ -1371,10 +1410,9 @@ class _CustomersScreenState extends State<CustomersScreen> {
                 labelBuilder: (m) => m['name']?.toString() ?? '',
                 hint: makes.isEmpty ? 'No makes available' : 'Select make',
                 onChanged: makes.isEmpty ? null : (val) {
-                  setState(() {
-                    row['make'] = val;
-                    row['brand_model'] = null;
-                  });
+                  row['make'] = val;
+                  row['brand_model'] = null;
+                  _vehicleRowsNotifier.value++;
                 },
               ),
               const SizedBox(height: 12),
@@ -1389,9 +1427,8 @@ class _CustomersScreenState extends State<CustomersScreen> {
                 labelBuilder: (b) => b['name']?.toString() ?? '',
                 hint: brands.isEmpty ? 'No brands available' : 'Select brand',
                 onChanged: brands.isEmpty ? null : (val) {
-                  setState(() {
-                    row['brand_model'] = val;
-                  });
+                  row['brand_model'] = val;
+                  _vehicleRowsNotifier.value++;
                 },
               ),
               const SizedBox(height: 12),
@@ -1405,9 +1442,8 @@ class _CustomersScreenState extends State<CustomersScreen> {
               labelBuilder: (c) => c['name']?.toString() ?? '',
               hint: 'Select color',
               onChanged: (val) {
-                setState(() {
-                  row['color'] = val;
-                });
+                row['color'] = val;
+                _vehicleRowsNotifier.value++;
               },
             ),
             const SizedBox(height: 12),
@@ -1498,16 +1534,15 @@ class _CustomersScreenState extends State<CustomersScreen> {
   }
 
   void _addNewVehicleRow() {
-    setState(() {
-      _newVehicleRows.add({
-        'controller': TextEditingController(),
-        'vehicle_type': _vehicleTypes.isNotEmpty ? _vehicleTypes.first : null,
-        'vehicle_type_model': null,
-        'make': null,
-        'brand_model': null,
-        'color': null,
-      });
+    _newVehicleRows.add({
+      'controller': TextEditingController(),
+      'vehicle_type': _vehicleTypes.isNotEmpty ? _vehicleTypes.first : null,
+      'vehicle_type_model': null,
+      'make': null,
+      'brand_model': null,
+      'color': null,
     });
+    _vehicleRowsNotifier.value++;
   }
 
   Widget _buildCard(

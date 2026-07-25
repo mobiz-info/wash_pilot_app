@@ -14,9 +14,9 @@ class StaffLeaveScreen extends StatefulWidget {
 }
 
 class _StaffLeaveScreenState extends State<StaffLeaveScreen> {
-  bool _isLoading = true;
-  String _errorMessage = '';
-  List<dynamic> _leaves = [];
+  final _isLoading = ValueNotifier<bool>(true);
+  final _errorMessage = ValueNotifier<String>('');
+  final _leaves = ValueNotifier<List<dynamic>>([]);
 
   @override
   void initState() {
@@ -24,33 +24,33 @@ class _StaffLeaveScreenState extends State<StaffLeaveScreen> {
     _fetchLeaves();
   }
 
+  @override
+  void dispose() {
+    _isLoading.dispose();
+    _errorMessage.dispose();
+    _leaves.dispose();
+    super.dispose();
+  }
+
   Future<void> _fetchLeaves() async {
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = '';
-    });
+    _isLoading.value = true;
+    _errorMessage.value = '';
 
     try {
       final res = await ApiService.getStaffLeaves(token);
       if (res['success'] == true) {
-        setState(() {
-          _leaves = res['leaves'] ?? [];
-          _isLoading = false;
-        });
+        _leaves.value = res['leaves'] ?? [];
+        _isLoading.value = false;
       } else {
-        setState(() {
-          _errorMessage = res['message'] ?? 'Failed to load leaves';
-          _isLoading = false;
-        });
+        _errorMessage.value = res['message'] ?? 'Failed to load leaves';
+        _isLoading.value = false;
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-        _isLoading = false;
-      });
+      _errorMessage.value = e.toString();
+      _isLoading.value = false;
     }
   }
 
@@ -83,47 +83,41 @@ class _StaffLeaveScreenState extends State<StaffLeaveScreen> {
           )
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage.isNotEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          _errorMessage,
-                          style: const TextStyle(color: Colors.red),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _fetchLeaves,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF000080),
-                            foregroundColor: Colors.white,
+      body: ValueListenableBuilder<bool>(
+        valueListenable: _isLoading,
+        builder: (context, loading, _) => ValueListenableBuilder<String>(
+          valueListenable: _errorMessage,
+          builder: (context, errMsg, _) => ValueListenableBuilder<List<dynamic>>(
+            valueListenable: _leaves,
+            builder: (context, leaves, _) => loading
+                ? const Center(child: CircularProgressIndicator())
+                : errMsg.isNotEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(20.0),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(errMsg, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
+                              const SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: _fetchLeaves,
+                                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000080), foregroundColor: Colors.white),
+                                child: Text(context.tr('Retry')),
+                              ),
+                            ],
                           ),
-                          child: Text(context.tr('Retry')),
                         ),
-                      ],
-                    ),
-                  ),
-                )
-              : _leaves.isEmpty
-                  ? Center(
-                      child: Text(
-                        context.tr('No staff leaves recorded'),
-                        style: GoogleFonts.inter(color: Colors.grey, fontSize: 15),
-                      ),
-                    )
-                  : RefreshIndicator(
-                      onRefresh: _fetchLeaves,
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _leaves.length,
-                        itemBuilder: (ctx, i) {
-                          final leave = Map<String, dynamic>.from(_leaves[i] as Map);
+                      )
+                    : leaves.isEmpty
+                        ? Center(child: Text(context.tr('No staff leaves recorded'), style: GoogleFonts.inter(color: Colors.grey, fontSize: 15)))
+                        : RefreshIndicator(
+                            onRefresh: _fetchLeaves,
+                            child: ListView.builder(
+                              padding: const EdgeInsets.all(16),
+                              itemCount: leaves.length,
+                              itemBuilder: (ctx, i) {
+                                final leave = Map<String, dynamic>.from(leaves[i] as Map);
                           final staffName = leave['staff_name'] ?? '';
                           final empId = leave['employee_id'] ?? '';
                           final branchName = leave['branch_name'] ?? '';
@@ -285,6 +279,9 @@ class _StaffLeaveScreenState extends State<StaffLeaveScreen> {
                         },
                       ),
                     ),
+                  ),
+                ),
+              ),
       floatingActionButton: FloatingActionButton(
         onPressed: _navigateToAddLeave,
         backgroundColor: const Color(0xFF000080),
@@ -303,17 +300,16 @@ class AddLeaveScreen extends StatefulWidget {
 }
 
 class _AddLeaveScreenState extends State<AddLeaveScreen> {
-  bool _isLoading = true;
-  bool _isSaving = false;
-  String _errorMessage = '';
-
-  List<dynamic> _staffs = [];
+  final _isLoading = ValueNotifier<bool>(true);
+  final _isSaving = ValueNotifier<bool>(false);
+  final _errorMessage = ValueNotifier<String>('');
+  final _staffs = ValueNotifier<List<dynamic>>([]);
 
   // Form fields
-  Map<String, dynamic>? _selectedStaff;
-  DateTime _startDate = DateTime.now();
-  DateTime _endDate = DateTime.now();
-  String _status = 'APPROVED';
+  final _selectedStaff = ValueNotifier<Map<String, dynamic>?>(null);
+  final _startDate = ValueNotifier<DateTime>(DateTime.now());
+  final _endDate = ValueNotifier<DateTime>(DateTime.now());
+  final _status = ValueNotifier<String>('APPROVED');
 
   final _reasonController = TextEditingController();
   final _remarksController = TextEditingController();
@@ -328,6 +324,14 @@ class _AddLeaveScreenState extends State<AddLeaveScreen> {
   void dispose() {
     _reasonController.dispose();
     _remarksController.dispose();
+    _isLoading.dispose();
+    _isSaving.dispose();
+    _errorMessage.dispose();
+    _staffs.dispose();
+    _status.dispose();
+    _selectedStaff.dispose();
+    _startDate.dispose();
+    _endDate.dispose();
     super.dispose();
   }
 
@@ -335,10 +339,8 @@ class _AddLeaveScreenState extends State<AddLeaveScreen> {
     final auth = context.read<AuthProvider>();
     final isStaff = auth.role != 'COMPANY_ADMIN' && auth.role != 'BRANCH_ADMIN';
     if (isStaff) {
-      setState(() {
-        _status = 'PENDING';
-        _isLoading = false;
-      });
+      _status.value = 'PENDING';
+      _isLoading.value = false;
       return;
     }
 
@@ -348,28 +350,22 @@ class _AddLeaveScreenState extends State<AddLeaveScreen> {
     try {
       final res = await ApiService.getStaffList(token);
       if (res['success'] == true) {
-        setState(() {
-          _staffs = res['staffs'] ?? [];
-          _isLoading = false;
-        });
+        _staffs.value = res['staffs'] ?? [];
+        _isLoading.value = false;
       } else {
-        setState(() {
-          _errorMessage = res['message'] ?? 'Failed to load staff list';
-          _isLoading = false;
-        });
+        _errorMessage.value = res['message'] ?? 'Failed to load staff list';
+        _isLoading.value = false;
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-        _isLoading = false;
-      });
+      _errorMessage.value = e.toString();
+      _isLoading.value = false;
     }
   }
 
   Future<void> _pickDate({required bool isStart}) async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: isStart ? _startDate : _endDate,
+      initialDate: isStart ? _startDate.value : _endDate.value,
       firstDate: DateTime(2025),
       lastDate: DateTime.now().add(const Duration(days: 365)),
       builder: (ctx, child) => Theme(
@@ -385,16 +381,14 @@ class _AddLeaveScreenState extends State<AddLeaveScreen> {
     );
 
     if (picked != null) {
-      setState(() {
-        if (isStart) {
-          _startDate = picked;
-          if (_endDate.isBefore(_startDate)) {
-            _endDate = _startDate;
-          }
-        } else {
-          _endDate = picked;
+      if (isStart) {
+        _startDate.value = picked;
+        if (_endDate.value.isBefore(_startDate.value)) {
+          _endDate.value = _startDate.value;
         }
-      });
+      } else {
+        _endDate.value = picked;
+      }
     }
   }
 
@@ -407,11 +401,9 @@ class _AddLeaveScreenState extends State<AddLeaveScreen> {
       ),
       builder: (context) {
         return _StaffSelectorBottomSheet(
-          staffs: _staffs,
+          staffs: _staffs.value,
           onSelected: (staff) {
-            setState(() {
-              _selectedStaff = staff;
-            });
+            _selectedStaff.value = staff;
           },
         );
       },
@@ -424,26 +416,26 @@ class _AddLeaveScreenState extends State<AddLeaveScreen> {
     final token = auth.token;
     if (token == null) return;
 
-    if (!isStaff && _selectedStaff == null) {
+    if (!isStaff && _selectedStaff.value == null) {
       _showSnackBar(context.tr('Please select a staff member'), Colors.orange);
       return;
     }
 
-    if (_endDate.isBefore(_startDate)) {
+    if (_endDate.value.isBefore(_startDate.value)) {
       _showSnackBar(context.tr('End date cannot be before start date'), Colors.orange);
       return;
     }
 
-    setState(() => _isSaving = true);
+    _isSaving.value = true;
 
     try {
       final payload = {
-        if (!isStaff) 'staff_id': _selectedStaff!['id'],
-        'start_date': DateFormat('yyyy-MM-dd').format(_startDate),
-        'end_date': DateFormat('yyyy-MM-dd').format(_endDate),
+        if (!isStaff) 'staff_id': _selectedStaff.value!['id'],
+        'start_date': DateFormat('yyyy-MM-dd').format(_startDate.value),
+        'end_date': DateFormat('yyyy-MM-dd').format(_endDate.value),
         'reason': _reasonController.text.trim(),
         'remarks': _remarksController.text.trim(),
-        'status': _status,
+        'status': _status.value,
       };
 
       final res = await ApiService.createStaffLeave(token, payload);
@@ -455,13 +447,13 @@ class _AddLeaveScreenState extends State<AddLeaveScreen> {
       } else {
         if (mounted) {
           _showSnackBar(res['message'] ?? context.tr('Failed to record leave'), Colors.red);
-          setState(() => _isSaving = false);
+          _isSaving.value = false;
         }
       }
     } catch (e) {
       if (mounted) {
         _showSnackBar(e.toString(), Colors.red);
-        setState(() => _isSaving = false);
+        _isSaving.value = false;
       }
     }
   }
@@ -478,42 +470,48 @@ class _AddLeaveScreenState extends State<AddLeaveScreen> {
     final auth = context.read<AuthProvider>();
     final isStaff = auth.role != 'COMPANY_ADMIN' && auth.role != 'BRANCH_ADMIN';
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
-      appBar: AppBar(
-        title: Text(
-          context.tr('Record Leave'),
-          style: GoogleFonts.inter(fontWeight: FontWeight.w700),
-        ),
-        backgroundColor: const Color(0xFF000080),
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage.isNotEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(_errorMessage, style: const TextStyle(color: Colors.red)),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _fetchStaffs,
-                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000080), foregroundColor: Colors.white),
-                          child: Text(context.tr('Retry')),
-                        )
-                      ],
-                    ),
-                  ),
-                )
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
+    return ValueListenableBuilder<bool>(
+      valueListenable: _isLoading,
+      builder: (context, loading, _) => ValueListenableBuilder<String>(
+        valueListenable: _errorMessage,
+        builder: (context, errMsg, _) => ValueListenableBuilder<bool>(
+          valueListenable: _isSaving,
+          builder: (context, saving, _) => ValueListenableBuilder<String>(
+            valueListenable: _status,
+            builder: (context, status, _) {
+              return Scaffold(
+                backgroundColor: const Color(0xFFF1F5F9),
+                appBar: AppBar(
+                  title: Text(context.tr('Record Leave'), style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+                  backgroundColor: const Color(0xFF000080),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                ),
+                body: loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : errMsg.isNotEmpty
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(20.0),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(errMsg, style: const TextStyle(color: Colors.red)),
+                                  const SizedBox(height: 16),
+                                  ElevatedButton(
+                                    onPressed: _fetchStaffs,
+                                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000080), foregroundColor: Colors.white),
+                                    child: Text(context.tr('Retry')),
+                                  )
+                                ],
+                              ),
+                            ),
+                          )
+                        : SingleChildScrollView(
+                            padding: const EdgeInsets.all(20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
                       Container(
                         padding: const EdgeInsets.all(18),
                         decoration: BoxDecoration(
@@ -565,16 +563,15 @@ class _AddLeaveScreenState extends State<AddLeaveScreen> {
                                       const SizedBox(width: 10),
                                       Expanded(
                                         child: Text(
-                                          _selectedStaff != null
-                                              ? '${_selectedStaff!['name']} (${_selectedStaff!['employee_id']})'
-                                              : context.tr('Select Staff Member'),
-                                          style: GoogleFonts.inter(
-                                            fontSize: 15,
-                                            color: _selectedStaff != null
-                                                ? Colors.black87
-                                                : Colors.grey.shade500,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
+                                           _selectedStaff.value != null
+                                               ? '${_selectedStaff.value!['name']} (${_selectedStaff.value!['employee_id']})'
+                                               : context.tr('Select Staff Member'),
+                                           style: GoogleFonts.inter(
+                                             fontSize: 15,
+                                             color: _selectedStaff.value != null
+                                                 ? Colors.black87
+                                                 : Colors.grey.shade500,
+                                           ),
                                         ),
                                       ),
                                       Icon(Icons.arrow_drop_down, color: Colors.grey.shade600),
@@ -602,7 +599,7 @@ class _AddLeaveScreenState extends State<AddLeaveScreen> {
                                     Icon(Icons.calendar_today, size: 20, color: Colors.grey.shade500),
                                     const SizedBox(width: 10),
                                     Text(
-                                      DateFormat('dd-MM-yyyy').format(_startDate),
+                                      DateFormat('dd-MM-yyyy').format(_startDate.value),
                                       style: GoogleFonts.inter(
                                         fontSize: 15,
                                         color: Colors.black87,
@@ -633,7 +630,7 @@ class _AddLeaveScreenState extends State<AddLeaveScreen> {
                                     Icon(Icons.calendar_today, size: 20, color: Colors.grey.shade500),
                                     const SizedBox(width: 10),
                                     Text(
-                                      DateFormat('dd-MM-yyyy').format(_endDate),
+                                      DateFormat('dd-MM-yyyy').format(_endDate.value),
                                       style: GoogleFonts.inter(
                                         fontSize: 15,
                                         color: Colors.black87,
@@ -678,7 +675,7 @@ class _AddLeaveScreenState extends State<AddLeaveScreen> {
                                 child: DropdownButtonHideUnderline(
                                   child: DropdownButton<String>(
                                     isExpanded: true,
-                                    value: _status,
+                                    value: _status.value,
                                     items: [
                                       DropdownMenuItem(
                                         value: 'APPROVED',
@@ -694,11 +691,9 @@ class _AddLeaveScreenState extends State<AddLeaveScreen> {
                                       ),
                                     ],
                                     onChanged: (val) {
-                                      if (val != null) {
-                                        setState(() {
-                                          _status = val;
-                                        });
-                                      }
+                                       if (val != null) {
+                                         _status.value = val;
+                                       }
                                     },
                                   ),
                                 ),
@@ -709,7 +704,7 @@ class _AddLeaveScreenState extends State<AddLeaveScreen> {
                       ),
                       const SizedBox(height: 32),
                       ElevatedButton(
-                        onPressed: _isSaving ? null : _save,
+                        onPressed: saving ? null : _save,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF000080),
                           foregroundColor: Colors.white,
@@ -719,7 +714,7 @@ class _AddLeaveScreenState extends State<AddLeaveScreen> {
                           ),
                           disabledBackgroundColor: Colors.grey.shade400,
                         ),
-                        child: _isSaving
+                        child: saving
                             ? const SizedBox(
                                 height: 20,
                                 width: 20,
@@ -739,6 +734,11 @@ class _AddLeaveScreenState extends State<AddLeaveScreen> {
                     ],
                   ),
                 ),
+              );
+            },
+          ),
+        ),
+      ),
     );
   }
 
@@ -808,34 +808,33 @@ class _StaffSelectorBottomSheet extends StatefulWidget {
 
 class _StaffSelectorBottomSheetState extends State<_StaffSelectorBottomSheet> {
   final _searchController = TextEditingController();
-  List<dynamic> _filteredStaffs = [];
+  late final ValueNotifier<List<dynamic>> _filteredStaffs;
 
   @override
   void initState() {
     super.initState();
-    _filteredStaffs = List.from(widget.staffs);
+    _filteredStaffs = ValueNotifier<List<dynamic>>(List.from(widget.staffs));
     _searchController.addListener(_filter);
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _filteredStaffs.dispose();
     super.dispose();
   }
 
   void _filter() {
     final query = _searchController.text.toLowerCase().trim();
-    setState(() {
-      if (query.isEmpty) {
-        _filteredStaffs = List.from(widget.staffs);
-      } else {
-        _filteredStaffs = widget.staffs.where((s) {
-          final name = (s['name'] ?? '').toString().toLowerCase();
-          final empId = (s['employee_id'] ?? '').toString().toLowerCase();
-          return name.contains(query) || empId.contains(query);
-        }).toList();
-      }
-    });
+    if (query.isEmpty) {
+      _filteredStaffs.value = List.from(widget.staffs);
+    } else {
+      _filteredStaffs.value = widget.staffs.where((s) {
+        final name = (s['name'] ?? '').toString().toLowerCase();
+        final empId = (s['employee_id'] ?? '').toString().toLowerCase();
+        return name.contains(query) || empId.contains(query);
+      }).toList();
+    }
   }
 
   @override
@@ -885,40 +884,43 @@ class _StaffSelectorBottomSheetState extends State<_StaffSelectorBottomSheet> {
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: _filteredStaffs.isEmpty
-                ? Center(
-                    child: Text(
-                      context.tr('No staff members found'),
-                      style: GoogleFonts.inter(color: Colors.grey),
-                    ),
-                  )
-                : ListView.builder(
-                    itemCount: _filteredStaffs.length,
-                    itemBuilder: (context, index) {
-                      final staff = Map<String, dynamic>.from(_filteredStaffs[index] as Map);
-                      return ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: const Color(0xFF000080).withValues(alpha: 0.1),
-                          child: const Icon(Icons.person, color: Color(0xFF000080)),
-                        ),
-                        title: Text(
-                          staff['name'] ?? '',
-                          style: GoogleFonts.inter(
-                            fontWeight: FontWeight.w600,
+            child: ValueListenableBuilder<List<dynamic>>(
+              valueListenable: _filteredStaffs,
+              builder: (context, filteredStaffs, _) => filteredStaffs.isEmpty
+                  ? Center(
+                      child: Text(
+                        context.tr('No staff members found'),
+                        style: GoogleFonts.inter(color: Colors.grey),
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: filteredStaffs.length,
+                      itemBuilder: (context, index) {
+                        final staff = Map<String, dynamic>.from(filteredStaffs[index] as Map);
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: const Color(0xFF000080).withValues(alpha: 0.1),
+                            child: const Icon(Icons.person, color: Color(0xFF000080)),
                           ),
-                        ),
-                        subtitle: Text(
-                          '${staff['employee_id'] ?? ''} • ${staff['branch_name'] ?? ''}',
-                          style: GoogleFonts.inter(fontSize: 12),
-                        ),
-                        trailing: const Icon(Icons.chevron_right, size: 18),
-                        onTap: () {
-                          widget.onSelected(staff);
-                          Navigator.pop(context);
-                        },
-                      );
-                    },
-                  ),
+                          title: Text(
+                            staff['name'] ?? '',
+                            style: GoogleFonts.inter(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          subtitle: Text(
+                            '${staff['employee_id'] ?? ''} • ${staff['branch_name'] ?? ''}',
+                            style: GoogleFonts.inter(fontSize: 12),
+                          ),
+                          trailing: const Icon(Icons.chevron_right, size: 18),
+                          onTap: () {
+                            widget.onSelected(staff);
+                            Navigator.pop(context);
+                          },
+                        );
+                      },
+                    ),
+            ),
           ),
         ],
       ),

@@ -33,6 +33,7 @@ import 'booking_settings_screen.dart';
 import 'customer_collection_screen.dart';
 import '../services/api_service.dart';
 import 'oil_stock_screen.dart';
+import 'stock_management_screen.dart';
 
 
 class MenuScreen extends StatefulWidget {
@@ -119,9 +120,9 @@ class _MenuScreenState extends State<MenuScreen> {
       'color': Color(0xFFF43F5E),
     },
     {
-      'title': 'Oil Stock',
-      'icon': Icons.oil_barrel_outlined,
-      'color': Color(0xFFD97706),
+      'title': 'Stock Management',
+      'icon': Icons.inventory_2_outlined,
+      'color': Color(0xFF0284C7),
     },
     {
       'title': 'Language',
@@ -201,7 +202,7 @@ class _MenuScreenState extends State<MenuScreen> {
       'color': Color(0xFF8B5CF6),
     },
     {
-      'title': 'Stock Items',
+      'title': 'Stock Management',
       'icon': Icons.inventory_2_outlined,
       'color': const Color(0xFF0284C7),
     },
@@ -222,11 +223,6 @@ class _MenuScreenState extends State<MenuScreen> {
       'color': Color(0xFF000080),
     },
     {
-      'title': 'Oil Stock',
-      'icon': Icons.oil_barrel_outlined,
-      'color': Color(0xFFD97706),
-    },
-    {
       'title': 'Notifications',
       'icon': Icons.notifications_outlined,
       'color': Color(0xFF00BFFF),
@@ -241,10 +237,10 @@ class _MenuScreenState extends State<MenuScreen> {
 
   void _navigate(BuildContext context, String title) {
     final routes = <String, Widget>{
-      'New Job': const NewJobScreen(),
-      'Book Now': const BookNowScreen(),
+      'New Job': NewJobScreen(),
+      'Book Now': BookNowScreen(),
       'Bookings': const BookingsListScreen(),
-      'Bill': const BillsScreen(),
+      'Bill': BillsScreen(),
       'Outstanding': const CollectionScreen(),
       'Collection': const CustomerCollectionScreen(),
       'Receipt': const ReceiptsScreen(),
@@ -253,19 +249,20 @@ class _MenuScreenState extends State<MenuScreen> {
       'Customers': const CustomersScreen(),
       'Reports': const ReportsScreen(),
       'Schemes': const SchemesScreen(),
-      'Notifications': const BroadcastScreen(),
+      'Notifications': BroadcastScreen(),
       'Complaints': const ComplaintsScreen(),
       'Language': const LanguageScreen(),
       'Country': const CountryScreen(),
-      'Expense': const ExpenseScreen(),
+      'Expense': ExpenseScreen(),
       'Suppliers': const SupplierScreen(),
       'Staff Leaves': const StaffLeaveScreen(),
       'Purchase': const PurchaseRequestScreen(),
       'Expense Heads': const ExpenseHeadScreen(),
-      'Stock Items': const StockItemScreen(),
+      'Stock Management': const StockManagementScreen(initialCategory: 'ALL'),
+      'Stock Items': const StockManagementScreen(initialCategory: 'GENERAL'),
+      'Oil Stock': const StockManagementScreen(initialCategory: 'OIL'),
       'Extras': const ExtrasScreen(),
       'Booking Settings': const BookingSettingsScreen(),
-      'Oil Stock': const OilStockScreen(),
     };
 
     final screen = routes[title];
@@ -364,7 +361,7 @@ class _MenuScreenState extends State<MenuScreen> {
                         Navigator.pop(context);
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const BillsScreen()),
+                          MaterialPageRoute(builder: (_) => BillsScreen()),
                         );
                       }),
                     ],
@@ -420,7 +417,7 @@ class _MenuScreenState extends State<MenuScreen> {
                       Navigator.pop(context);
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const ExpenseScreen()),
+                        MaterialPageRoute(builder: (_) => ExpenseScreen()),
                       );
                     }),
                     _drawerItem(Icons.business_outlined, 'Suppliers', () {
@@ -446,13 +443,6 @@ class _MenuScreenState extends State<MenuScreen> {
                           MaterialPageRoute(builder: (_) => const ExpenseHeadScreen()),
                         );
                       }),
-                      _drawerItem(Icons.inventory_2_outlined, 'Stock Items', () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const StockItemScreen()),
-                        );
-                      }),
                       _drawerItem(Icons.more_horiz_outlined, 'Extras', () {
                         Navigator.pop(context);
                         Navigator.push(
@@ -462,13 +452,13 @@ class _MenuScreenState extends State<MenuScreen> {
                       }),
                     ],
                     _drawerItem(
-                      Icons.oil_barrel_outlined,
-                      'Oil Stock',
+                      Icons.inventory_2_outlined,
+                      'Stock Management',
                       () {
                         Navigator.pop(context);
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const OilStockScreen()),
+                          MaterialPageRoute(builder: (_) => const StockManagementScreen()),
                         );
                       },
                     ),

@@ -538,6 +538,35 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> sendOilReminderGeneric({
+    required String phone,
+    required String vehicleNumber,
+    required String customerName,
+    required String nextOilChangeKm,
+    required String token,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/booking/oil-reminder/generic/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'phone': phone,
+        'vehicle_number': vehicleNumber,
+        'customer_name': customerName,
+        'next_oil_change_km': nextOilChangeKm,
+      }),
+    );
+    if (response.statusCode == 200 ||
+        response.statusCode == 400 ||
+        response.statusCode == 404) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to connect to the server.');
+    }
+  }
+
   static Future<Map<String, dynamic>> sendVehicleWelcomeMessageGeneric({
     required String phone,
     required String vehicleNumber,
@@ -1271,6 +1300,21 @@ class ApiService {
       return jsonDecode(response.body);
     } else {
       throw Exception('Failed to load expense heads.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getExpenseItemsByHead(String token, String headId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/expenses/items-by-head/?expense_head_id=$headId'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load expense items.');
     }
   }
 
@@ -2057,6 +2101,20 @@ class ApiService {
     throw Exception('Failed to load oil products.');
   }
 
+  static Future<Map<String, dynamic>> getOilFilters(String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/oil-filters/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to load oil filters.');
+  }
+
   static Future<Map<String, dynamic>> getTyreBrands(String token) async {
     final response = await http.get(
       Uri.parse('$baseUrl/tyre-brands/'),
@@ -2071,9 +2129,13 @@ class ApiService {
     throw Exception('Failed to load tyre brands.');
   }
 
-  static Future<Map<String, dynamic>> getOilStock(String token) async {
+  static Future<Map<String, dynamic>> getOilStock(String token, {String? branchId}) async {
+    var url = '$baseUrl/oil-stock/';
+    if (branchId != null && branchId.isNotEmpty) {
+      url += '?branch_id=$branchId';
+    }
     final response = await http.get(
-      Uri.parse('$baseUrl/oil-stock/'),
+      Uri.parse(url),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -2089,24 +2151,51 @@ class ApiService {
     String oilProductId,
     double quantity,
     String notes,
-    String token,
-  ) async {
+    String token, {
+    String? branchId,
+  }) async {
+    final bodyMap = <String, dynamic>{
+      'oil_product_id': oilProductId,
+      'quantity_litres': quantity,
+      'notes': notes,
+    };
+    if (branchId != null && branchId.isNotEmpty) {
+      bodyMap['branch_id'] = branchId;
+    }
     final response = await http.post(
       Uri.parse('$baseUrl/oil-stock/'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },
-      body: jsonEncode({
-        'oil_product_id': oilProductId,
-        'quantity_litres': quantity,
-        'notes': notes,
-      }),
+      body: jsonEncode(bodyMap),
     );
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     }
     throw Exception('Failed to update oil stock.');
+  }
+
+  static Future<Map<String, dynamic>> addOilFilterStock(
+    String oilFilterId,
+    int quantity,
+    String token,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/oil-filters/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'oil_filter_id': oilFilterId,
+        'quantity': quantity,
+      }),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to update filter stock.');
   }
 
   static Future<Map<String, dynamic>> getVehicleServiceHistory(

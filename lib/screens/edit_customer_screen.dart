@@ -17,16 +17,16 @@ class EditCustomerScreen extends StatefulWidget {
 
 class _EditCustomerScreenState extends State<EditCustomerScreen> {
   // ─── Customer list state ─────────────────────────────────────
-  bool _isLoadingList = true;
-  List<dynamic> _allCustomers = [];
-  List<dynamic> _filteredCustomers = [];
+  final _isLoadingList = ValueNotifier<bool>(true);
+  final _allCustomers = ValueNotifier<List<dynamic>>([]);
+  final _filteredCustomers = ValueNotifier<List<dynamic>>([]);
   final _searchController = TextEditingController();
-  String _listError = '';
+  final _listError = ValueNotifier<String>('');
 
   // ─── Edit form state ─────────────────────────────────────────
-  Map<String, dynamic>? _selectedCustomer;
-  bool _isLoadingEdit = false;
-  bool _isSaving = false;
+  final _selectedCustomer = ValueNotifier<Map<String, dynamic>?>(null);
+  final _isLoadingEdit = ValueNotifier<bool>(false);
+  final _isSaving = ValueNotifier<bool>(false);
 
   List<dynamic> _customerTypes = [];
   List<dynamic> _vehicleTypes = [];
@@ -40,17 +40,18 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
   final _whatsappController = TextEditingController();
   final _emailController = TextEditingController();
   final _addressController = TextEditingController();
-  Map<String, dynamic>? _selectedCustomerType;
-  String _selectedPhoneCode = CountryConfig.phoneDialCode;
-  String _selectedWhatsappCode = CountryConfig.phoneDialCode;
-  String _phoneIso = CountryConfig.phoneIsoCode;
-  String _whatsappIso = CountryConfig.phoneIsoCode;
+  final _selectedCustomerType = ValueNotifier<Map<String, dynamic>?>(null);
+  final _selectedPhoneCode = ValueNotifier<String>(CountryConfig.phoneDialCode);
+  final _selectedWhatsappCode = ValueNotifier<String>(CountryConfig.phoneDialCode);
+  final _phoneIso = ValueNotifier<String>(CountryConfig.phoneIsoCode);
+  final _whatsappIso = ValueNotifier<String>(CountryConfig.phoneIsoCode);
 
   // Existing vehicles (editable)
   final List<Map<String, dynamic>> _existingVehicleRows = [];
 
   // New vehicles to add
   final List<Map<String, dynamic>> _newVehicleRows = [];
+  final _vehicleRowsNotifier = ValueNotifier<int>(0);
 
   @override
   void initState() {
@@ -73,46 +74,59 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
     for (final row in _newVehicleRows) {
       (row['controller'] as TextEditingController).dispose();
     }
+    _isLoadingList.dispose();
+    _allCustomers.dispose();
+    _filteredCustomers.dispose();
+    _listError.dispose();
+    _selectedCustomer.dispose();
+    _isLoadingEdit.dispose();
+    _isSaving.dispose();
+    _selectedCustomerType.dispose();
+    _selectedPhoneCode.dispose();
+    _selectedWhatsappCode.dispose();
+    _phoneIso.dispose();
+    _whatsappIso.dispose();
+    _vehicleRowsNotifier.dispose();
     super.dispose();
   }
 
   // ─── List ────────────────────────────────────────────────────
 
   Future<void> _fetchCustomers() async {
-    setState(() { _isLoadingList = true; _listError = ''; });
+    _isLoadingList.value = true;
+    _listError.value = '';
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
     try {
       final res = await ApiService.listCustomers(token);
       if (res['success'] == true) {
-        setState(() {
-          _allCustomers = res['customers'] as List<dynamic>;
-          _filteredCustomers = _allCustomers;
-          _isLoadingList = false;
-        });
+        _allCustomers.value = res['customers'] as List<dynamic>;
+        _filteredCustomers.value = _allCustomers.value;
+        _isLoadingList.value = false;
       } else {
-        setState(() { _listError = res['message'] ?? 'Failed to load'; _isLoadingList = false; });
+        _listError.value = res['message'] ?? 'Failed to load';
+        _isLoadingList.value = false;
       }
     } catch (e) {
-      setState(() { _listError = e.toString(); _isLoadingList = false; });
+      _listError.value = e.toString();
+      _isLoadingList.value = false;
     }
   }
 
   void _filterCustomers() {
     final q = _searchController.text.trim().toLowerCase();
-    setState(() {
-      _filteredCustomers = q.isEmpty
-          ? _allCustomers
-          : _allCustomers.where((c) =>
-              (c['name'] as String).toLowerCase().contains(q) ||
-              (c['phone'] as String).contains(q)).toList();
-    });
+    _filteredCustomers.value = q.isEmpty
+        ? _allCustomers.value
+        : _allCustomers.value.where((c) =>
+            (c['name'] as String).toLowerCase().contains(q) ||
+            (c['phone'] as String).contains(q)).toList();
   }
 
   // ─── Open edit ───────────────────────────────────────────────
 
   Future<void> _openEdit(Map<String, dynamic> listItem) async {
-    setState(() { _isLoadingEdit = true; _selectedCustomer = null; });
+    _isLoadingEdit.value = true;
+    _selectedCustomer.value = null;
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
 
@@ -127,7 +141,7 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
 
       if (customerRes['success'] != true) {
         _showMsg(customerRes['message'] ?? 'Failed to load customer', isError: true);
-        setState(() => _isLoadingEdit = false);
+        _isLoadingEdit.value = false;
         return;
       }
 
@@ -154,7 +168,7 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
           break;
         }
       }
-      
+
       String rawWhatsapp = c['whatsapp_number'] ?? '';
       String whatsappCode = '+91';
       for (final code in ['971', '966', '965', '968', '974', '973', '91']) {
@@ -214,24 +228,23 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
         });
       }
 
-      setState(() {
-        _selectedCustomer = c;
-        _customerTypes = types;
-        _vehicleTypes = vehicleTypes;
-        _vehicleTypeModels = vehicleTypeModels;
-        _makes = makes;
-        _brandModels = brandModels;
-        _colors = colors;
-        _selectedCustomerType = selectedType as Map<String, dynamic>?;
-        _selectedPhoneCode = phoneCode;
-        _selectedWhatsappCode = whatsappCode;
-        _phoneIso = _isoFromDialCode(phoneCode);
-        _whatsappIso = _isoFromDialCode(whatsappCode);
-        _isLoadingEdit = false;
-      });
+      _customerTypes = types;
+      _vehicleTypes = vehicleTypes;
+      _vehicleTypeModels = vehicleTypeModels;
+      _makes = makes;
+      _brandModels = brandModels;
+      _colors = colors;
+      _selectedCustomerType.value = selectedType as Map<String, dynamic>?;
+      _selectedPhoneCode.value = phoneCode;
+      _selectedWhatsappCode.value = whatsappCode;
+      _phoneIso.value = _isoFromDialCode(phoneCode);
+      _whatsappIso.value = _isoFromDialCode(whatsappCode);
+      _selectedCustomer.value = c;
+      _isLoadingEdit.value = false;
+      _vehicleRowsNotifier.value++;
     } catch (e) {
       _showMsg(e.toString(), isError: true);
-      setState(() => _isLoadingEdit = false);
+      _isLoadingEdit.value = false;
     }
   }
 
@@ -242,9 +255,9 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
     String localPhone = _phoneController.text.trim();
     if (name.isEmpty) { _showMsg('Please enter customer name.', isError: true); return; }
     if (localPhone.isEmpty) { _showMsg('Please enter phone number.', isError: true); return; }
-    if (_selectedCustomerType == null) { _showMsg('Please select a customer type.', isError: true); return; }
+    if (_selectedCustomerType.value == null) { _showMsg('Please select a customer type.', isError: true); return; }
 
-    final cleanPhoneCode = _selectedPhoneCode.replaceAll('+', '');
+    final cleanPhoneCode = _selectedPhoneCode.value.replaceAll('+', '');
     if (localPhone.startsWith('+')) {
       localPhone = localPhone.replaceFirst('+', '');
     }
@@ -256,7 +269,7 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
     String localWhatsapp = _whatsappController.text.trim();
     String whatsappVal = '';
     if (localWhatsapp.isNotEmpty) {
-      final cleanWhatsappCode = _selectedWhatsappCode.replaceAll('+', '');
+      final cleanWhatsappCode = _selectedWhatsappCode.value.replaceAll('+', '');
       if (localWhatsapp.startsWith('+')) {
         localWhatsapp = localWhatsapp.replaceFirst('+', '');
       }
@@ -309,16 +322,16 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
       }
     }
 
-    setState(() => _isSaving = true);
+    _isSaving.value = true;
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
 
     try {
       final res = await ApiService.editCustomer({
-        'customer_id': _selectedCustomer!['id'],
+        'customer_id': _selectedCustomer.value!['id'],
         'name': name,
         'phone': phone,
-        'customer_type_id': _selectedCustomerType!['id'],
+        'customer_type_id': _selectedCustomerType.value!['id'],
         'whatsapp_number': whatsappVal,
         'email': _emailController.text.trim(),
         'address': _addressController.text.trim(),
@@ -326,17 +339,19 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
         'new_vehicles': newVehicles,
       }, token);
 
-      setState(() => _isSaving = false);
+      _isSaving.value = false;
 
       if (res['success'] == true) {
         _showMsg('Customer updated successfully!');
-        setState(() { _selectedCustomer = null; _newVehicleRows.clear(); });
+        _selectedCustomer.value = null;
+        _newVehicleRows.clear();
+        _vehicleRowsNotifier.value++;
         _fetchCustomers();
       } else {
         _showMsg(res['message'] ?? 'Update failed', isError: true);
       }
     } catch (e) {
-      setState(() => _isSaving = false);
+      _isSaving.value = false;
       _showMsg(e.toString(), isError: true);
     }
   }
@@ -363,27 +378,26 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
     if (confirmed != true) return;
     if (!mounted) return;
 
-    setState(() => _isSaving = true);
+    _isSaving.value = true;
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
 
     try {
-      final res = await ApiService.deleteCustomer(_selectedCustomer!['id'], token);
+      final res = await ApiService.deleteCustomer(_selectedCustomer.value!['id'], token);
       if (!mounted) return;
-      setState(() => _isSaving = false);
+      _isSaving.value = false;
 
       if (res['success'] == true) {
         _showMsg(context.tr('Customer deleted successfully!'));
-        setState(() {
-          _selectedCustomer = null;
-          _newVehicleRows.clear();
-        });
+        _selectedCustomer.value = null;
+        _newVehicleRows.clear();
+        _vehicleRowsNotifier.value++;
         _fetchCustomers();
       } else {
         _showMsg(res['message'] ?? 'Failed to delete customer', isError: true);
       }
     } catch (e) {
-      setState(() => _isSaving = false);
+      _isSaving.value = false;
       _showMsg(e.toString(), isError: true);
     }
   }
@@ -400,35 +414,47 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
-      appBar: AppBar(
-        title: Text(
-          _selectedCustomer == null ? 'Select Customer to Edit' : 'Edit Customer',
-          style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+    return ValueListenableBuilder<Map<String, dynamic>?>(
+      valueListenable: _selectedCustomer,
+      builder: (context, selectedCust, _) => ValueListenableBuilder<bool>(
+        valueListenable: _isLoadingEdit,
+        builder: (context, loadingEdit, _) => ValueListenableBuilder<bool>(
+          valueListenable: _isSaving,
+          builder: (context, saving, _) {
+            return Scaffold(
+              backgroundColor: const Color(0xFFF1F5F9),
+              appBar: AppBar(
+                title: Text(
+                  selectedCust == null ? 'Select Customer to Edit' : 'Edit Customer',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+                ),
+                backgroundColor: const Color(0xFF000080),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                leading: selectedCust != null
+                    ? IconButton(
+                        icon: const Icon(Icons.arrow_back),
+                        onPressed: () {
+                          _selectedCustomer.value = null;
+                          for (final r in _existingVehicleRows) {
+                            (r['controller'] as TextEditingController).dispose();
+                          }
+                          _existingVehicleRows.clear();
+                          _newVehicleRows.clear();
+                          _vehicleRowsNotifier.value++;
+                        },
+                      )
+                    : null,
+              ),
+              body: loadingEdit
+                  ? const Center(child: CircularProgressIndicator())
+                  : selectedCust == null
+                      ? _buildCustomerList()
+                      : _buildEditForm(saving),
+            );
+          },
         ),
-        backgroundColor: const Color(0xFF000080),
-        foregroundColor: Colors.white,
-        elevation: 0,
-        leading: _selectedCustomer != null
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () => setState(() {
-                  _selectedCustomer = null;
-                  for (final r in _existingVehicleRows) {
-                    (r['controller'] as TextEditingController).dispose();
-                  }
-                  _existingVehicleRows.clear();
-                  _newVehicleRows.clear();
-                }),
-              )
-            : null,
       ),
-      body: _isLoadingEdit
-          ? const Center(child: CircularProgressIndicator())
-          : _selectedCustomer == null
-              ? _buildCustomerList()
-              : _buildEditForm(),
     );
   }
 
@@ -461,30 +487,39 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
           ),
         ),
         Expanded(
-          child: _isLoadingList
-              ? const Center(child: CircularProgressIndicator())
-              : _listError.isNotEmpty
-                  ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                      Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
-                      const SizedBox(height: 12),
-                      Text(_listError, style: GoogleFonts.inter(color: Colors.red.shade600)),
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(onPressed: _fetchCustomers, icon: const Icon(Icons.refresh), label: Text(context.tr('Retry'))),
-                    ]))
-                  : _filteredCustomers.isEmpty
-                      ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                          Icon(Icons.person_search, size: 56, color: Colors.grey.shade400),
-                          const SizedBox(height: 12),
-                          Text(context.tr('No customers found'), style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 15)),
-                        ]))
-                      : RefreshIndicator(
-                          onRefresh: _fetchCustomers,
-                          child: ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                            itemCount: _filteredCustomers.length,
-                            itemBuilder: (context, i) => _buildCustomerTile(_filteredCustomers[i]),
-                          ),
-                        ),
+          child: ValueListenableBuilder<bool>(
+            valueListenable: _isLoadingList,
+            builder: (context, loadingList, _) => ValueListenableBuilder<String>(
+              valueListenable: _listError,
+              builder: (context, listErr, _) => ValueListenableBuilder<List<dynamic>>(
+                valueListenable: _filteredCustomers,
+                builder: (context, filteredCusts, _) => loadingList
+                    ? const Center(child: CircularProgressIndicator())
+                    : listErr.isNotEmpty
+                        ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                            Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
+                            const SizedBox(height: 12),
+                            Text(listErr, style: GoogleFonts.inter(color: Colors.red.shade600)),
+                            const SizedBox(height: 16),
+                            ElevatedButton.icon(onPressed: _fetchCustomers, icon: const Icon(Icons.refresh), label: Text(context.tr('Retry'))),
+                          ]))
+                        : filteredCusts.isEmpty
+                            ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                                Icon(Icons.person_search, size: 56, color: Colors.grey.shade400),
+                                const SizedBox(height: 12),
+                                Text(context.tr('No customers found'), style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 15)),
+                              ]))
+                            : RefreshIndicator(
+                                onRefresh: _fetchCustomers,
+                                child: ListView.builder(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                  itemCount: filteredCusts.length,
+                                  itemBuilder: (context, i) => _buildCustomerTile(filteredCusts[i]),
+                                ),
+                              ),
+              ),
+            ),
+          ),
         ),
       ],
     );
@@ -561,7 +596,8 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
 
   // ─── Edit Form ───────────────────────────────────────────────
 
-  Widget _buildEditForm() {
+  Widget _buildEditForm(bool isSaving) {
+    final cust = _selectedCustomer.value!;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -579,14 +615,14 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
                 width: 50, height: 50,
                 decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
                 child: Center(child: Text(
-                  (_selectedCustomer!['name'] as String)[0].toUpperCase(),
+                  (cust['name'] as String).isNotEmpty ? (cust['name'] as String)[0].toUpperCase() : '?',
                   style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white),
                 )),
               ),
               const SizedBox(width: 14),
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(_selectedCustomer!['name'], style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
-                Text(_selectedCustomer!['phone'], style: GoogleFonts.inter(color: Colors.white70, fontSize: 13)),
+                Text(cust['name'] ?? '', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
+                Text(cust['phone'] ?? '', style: GoogleFonts.inter(color: Colors.white70, fontSize: 13)),
               ]),
             ]),
           ),
@@ -599,32 +635,40 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
             children: [
               _buildTextField(_nameController, 'Full Name *', Icons.badge_outlined),
               const SizedBox(height: 14),
-              _buildPhoneField(
-                controller: _phoneController,
-                label: 'Phone Number *',
-                countryIso: _phoneIso,
-                selectedCode: _selectedPhoneCode,
-                onCodeChanged: (dialCode, iso) {
-                  setState(() {
-                    _selectedPhoneCode = dialCode;
-                    _phoneIso = iso;
-                  });
-                },
-                icon: Icons.phone_outlined,
+              ValueListenableBuilder<String>(
+                valueListenable: _phoneIso,
+                builder: (context, phoneIsoVal, _) => ValueListenableBuilder<String>(
+                  valueListenable: _selectedPhoneCode,
+                  builder: (context, phoneCodeVal, _) => _buildPhoneField(
+                    controller: _phoneController,
+                    label: 'Phone Number *',
+                    countryIso: phoneIsoVal,
+                    selectedCode: phoneCodeVal,
+                    onCodeChanged: (dialCode, iso) {
+                      _selectedPhoneCode.value = dialCode;
+                      _phoneIso.value = iso;
+                    },
+                    icon: Icons.phone_outlined,
+                  ),
+                ),
               ),
               const SizedBox(height: 14),
-              _buildPhoneField(
-                controller: _whatsappController,
-                label: 'WhatsApp Number',
-                countryIso: _whatsappIso,
-                selectedCode: _selectedWhatsappCode,
-                onCodeChanged: (dialCode, iso) {
-                  setState(() {
-                    _selectedWhatsappCode = dialCode;
-                    _whatsappIso = iso;
-                  });
-                },
-                icon: Icons.chat_outlined,
+              ValueListenableBuilder<String>(
+                valueListenable: _whatsappIso,
+                builder: (context, whatsappIsoVal, _) => ValueListenableBuilder<String>(
+                  valueListenable: _selectedWhatsappCode,
+                  builder: (context, whatsappCodeVal, _) => _buildPhoneField(
+                    controller: _whatsappController,
+                    label: 'WhatsApp Number',
+                    countryIso: whatsappIsoVal,
+                    selectedCode: whatsappCodeVal,
+                    onCodeChanged: (dialCode, iso) {
+                      _selectedWhatsappCode.value = dialCode;
+                      _whatsappIso.value = iso;
+                    },
+                    icon: Icons.chat_outlined,
+                  ),
+                ),
               ),
               const SizedBox(height: 14),
               _buildTextField(_emailController, 'Email', Icons.email_outlined, keyboardType: TextInputType.emailAddress),
@@ -637,15 +681,18 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.grey.shade300)),
                 child: DropdownButtonHideUnderline(
-                  child: DropdownButton<Map<String, dynamic>>(
-                    isExpanded: true,
-                    menuMaxHeight: 350,
-                    value: _selectedCustomerType,
-                    items: _customerTypes.map((ct) => DropdownMenuItem<Map<String, dynamic>>(
-                      value: ct as Map<String, dynamic>,
-                      child: Text(ct['name'], style: GoogleFonts.inter()),
-                    )).toList(),
-                    onChanged: (val) => setState(() => _selectedCustomerType = val),
+                  child: ValueListenableBuilder<Map<String, dynamic>?>(
+                    valueListenable: _selectedCustomerType,
+                    builder: (context, custTypeVal, _) => DropdownButton<Map<String, dynamic>>(
+                      isExpanded: true,
+                      menuMaxHeight: 350,
+                      value: custTypeVal,
+                      items: _customerTypes.map((ct) => DropdownMenuItem<Map<String, dynamic>>(
+                        value: ct as Map<String, dynamic>,
+                        child: Text(ct['name'], style: GoogleFonts.inter()),
+                      )).toList(),
+                      onChanged: (val) => _selectedCustomerType.value = val,
+                    ),
                   ),
                 ),
               ),
@@ -655,31 +702,34 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
           const SizedBox(height: 20),
 
           // ── Existing Vehicles (editable) ──
-          _buildCard(
-            title: 'Vehicles',
-            icon: Icons.directions_car_outlined,
-            trailing: TextButton.icon(
-              onPressed: _addNewVehicleRow,
-              icon: const Icon(Icons.add, size: 18),
-              label: Text(context.tr('Add New')),
-              style: TextButton.styleFrom(foregroundColor: const Color(0xFF000080)),
+          ValueListenableBuilder<int>(
+            valueListenable: _vehicleRowsNotifier,
+            builder: (context, _, __) => _buildCard(
+              title: 'Vehicles',
+              icon: Icons.directions_car_outlined,
+              trailing: TextButton.icon(
+                onPressed: _addNewVehicleRow,
+                icon: const Icon(Icons.add, size: 18),
+                label: Text(context.tr('Add New')),
+                style: TextButton.styleFrom(foregroundColor: const Color(0xFF000080)),
+              ),
+              children: [
+                if (_existingVehicleRows.isEmpty && _newVehicleRows.isEmpty)
+                  Center(child: Text(context.tr('No vehicles registered.'), style: GoogleFonts.inter(color: Colors.grey.shade500))),
+
+                // Existing
+                ...List.generate(_existingVehicleRows.length, (i) => _buildVehicleRow(i, isNew: false)),
+
+                // New
+                ...List.generate(_newVehicleRows.length, (i) => _buildVehicleRow(i, isNew: true)),
+              ],
             ),
-            children: [
-              if (_existingVehicleRows.isEmpty && _newVehicleRows.isEmpty)
-                Center(child: Text(context.tr('No vehicles registered.'), style: GoogleFonts.inter(color: Colors.grey.shade500))),
-
-              // Existing
-              ...List.generate(_existingVehicleRows.length, (i) => _buildVehicleRow(i, isNew: false)),
-
-              // New
-              ...List.generate(_newVehicleRows.length, (i) => _buildVehicleRow(i, isNew: true)),
-            ],
           ),
 
           const SizedBox(height: 32),
 
           ElevatedButton(
-            onPressed: _isSaving ? null : _save,
+            onPressed: isSaving ? null : _save,
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF000080),
               foregroundColor: Colors.white,
@@ -687,14 +737,14 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               disabledBackgroundColor: Colors.grey.shade400,
             ),
-            child: _isSaving
+            child: isSaving
                 ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                 : Text(context.tr('Save Changes'), style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold)),
           ),
           if (context.read<AuthProvider>().isCompanyAdmin) ...[
             const SizedBox(height: 12),
             OutlinedButton(
-              onPressed: _isSaving ? null : _confirmDeleteCustomer,
+              onPressed: isSaving ? null : _confirmDeleteCustomer,
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.red.shade700,
                 side: BorderSide(color: Colors.red.shade300, width: 1.5),
@@ -762,11 +812,12 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
                   onTap: () {
                     if (isNew) {
                       (_newVehicleRows[index]['controller'] as TextEditingController).dispose();
-                      setState(() => _newVehicleRows.removeAt(index));
+                      _newVehicleRows.removeAt(index);
                     } else {
                       (_existingVehicleRows[index]['controller'] as TextEditingController).dispose();
-                      setState(() => _existingVehicleRows.removeAt(index));
+                      _existingVehicleRows.removeAt(index);
                     }
+                    _vehicleRowsNotifier.value++;
                   },
                   child: Icon(Icons.remove_circle_outline, color: Colors.red.shade400, size: 22),
                 ),
@@ -782,12 +833,11 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
               labelBuilder: (vt) => vt['name']?.toString() ?? '',
               hint: 'Select vehicle type',
               onChanged: (val) {
-                setState(() {
-                  row['vehicle_type'] = val;
-                  row['vehicle_type_model'] = null;
-                  row['make'] = null;
-                  row['brand_model'] = null;
-                });
+                row['vehicle_type'] = val;
+                row['vehicle_type_model'] = null;
+                row['make'] = null;
+                row['brand_model'] = null;
+                _vehicleRowsNotifier.value++;
               },
             ),
             const SizedBox(height: 12),
@@ -801,11 +851,10 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
                 labelBuilder: (m) => m['name']?.toString() ?? '',
                 hint: segments.isEmpty ? 'No segments available' : 'Select segment',
                 onChanged: segments.isEmpty ? null : (val) {
-                  setState(() {
-                    row['vehicle_type_model'] = val;
-                    row['make'] = null;
-                    row['brand_model'] = null;
-                  });
+                  row['vehicle_type_model'] = val;
+                  row['make'] = null;
+                  row['brand_model'] = null;
+                  _vehicleRowsNotifier.value++;
                 },
               ),
               const SizedBox(height: 12),
@@ -820,10 +869,9 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
                 labelBuilder: (b) => b['name']?.toString() ?? '',
                 hint: makes.isEmpty ? 'No makes available' : 'Select make',
                 onChanged: makes.isEmpty ? null : (val) {
-                  setState(() {
-                    row['make'] = val;
-                    row['brand_model'] = null;
-                  });
+                  row['make'] = val;
+                  row['brand_model'] = null;
+                  _vehicleRowsNotifier.value++;
                 },
               ),
               const SizedBox(height: 12),
@@ -838,9 +886,8 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
                 labelBuilder: (b) => b['name']?.toString() ?? '',
                 hint: brands.isEmpty ? 'No brands available' : 'Select brand',
                 onChanged: brands.isEmpty ? null : (val) {
-                  setState(() {
-                    row['brand_model'] = val;
-                  });
+                  row['brand_model'] = val;
+                  _vehicleRowsNotifier.value++;
                 },
               ),
               const SizedBox(height: 12),
@@ -855,9 +902,8 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
                 labelBuilder: (c) => c['name']?.toString() ?? '',
                 hint: 'Select color',
                 onChanged: (val) {
-                  setState(() {
-                    row['color'] = (val?['id'] == '') ? null : val;
-                  });
+                  row['color'] = (val?['id'] == '') ? null : val;
+                  _vehicleRowsNotifier.value++;
                 },
               ),
               const SizedBox(height: 12),
@@ -949,16 +995,15 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
   }
 
   void _addNewVehicleRow() {
-    setState(() {
-      _newVehicleRows.add({
-        'controller': TextEditingController(),
-        'vehicle_type': _vehicleTypes.isNotEmpty ? _vehicleTypes.first : null,
-        'vehicle_type_model': null,
-        'make': null,
-        'brand_model': null,
-        'color': null,
-      });
+    _newVehicleRows.add({
+      'controller': TextEditingController(),
+      'vehicle_type': _vehicleTypes.isNotEmpty ? _vehicleTypes.first : null,
+      'vehicle_type_model': null,
+      'make': null,
+      'brand_model': null,
+      'color': null,
     });
+    _vehicleRowsNotifier.value++;
   }
 
   Widget _buildCard({required String title, required IconData icon, required List<Widget> children, Widget? trailing}) {

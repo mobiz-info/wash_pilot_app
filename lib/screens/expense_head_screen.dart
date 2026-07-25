@@ -13,10 +13,10 @@ class ExpenseHeadScreen extends StatefulWidget {
 }
 
 class _ExpenseHeadScreenState extends State<ExpenseHeadScreen> {
-  bool _isLoading = true;
-  String _errorMessage = '';
-  List<dynamic> _expenseHeads = [];
-  List<dynamic> _filteredHeads = [];
+  final _isLoading = ValueNotifier<bool>(true);
+  final _errorMessage = ValueNotifier<String>('');
+  final _expenseHeads = ValueNotifier<List<dynamic>>([]);
+  final _filteredHeads = ValueNotifier<List<dynamic>>([]);
   final _searchController = TextEditingController();
 
   @override
@@ -29,6 +29,10 @@ class _ExpenseHeadScreenState extends State<ExpenseHeadScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _isLoading.dispose();
+    _errorMessage.dispose();
+    _expenseHeads.dispose();
+    _filteredHeads.dispose();
     super.dispose();
   }
 
@@ -36,45 +40,35 @@ class _ExpenseHeadScreenState extends State<ExpenseHeadScreen> {
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = '';
-    });
+    _isLoading.value = true;
+    _errorMessage.value = '';
 
     try {
       final res = await ApiService.getExpenseHeads(token);
       if (res['success'] == true) {
-        setState(() {
-          _expenseHeads = res['expense_heads'] ?? [];
-          _filteredHeads = List.from(_expenseHeads);
-          _isLoading = false;
-        });
+        _expenseHeads.value = res['expense_heads'] ?? [];
+        _filteredHeads.value = List.from(_expenseHeads.value);
+        _isLoading.value = false;
       } else {
-        setState(() {
-          _errorMessage = res['message'] ?? 'Failed to load expense heads';
-          _isLoading = false;
-        });
+        _errorMessage.value = res['message'] ?? 'Failed to load expense heads';
+        _isLoading.value = false;
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-        _isLoading = false;
-      });
+      _errorMessage.value = e.toString();
+      _isLoading.value = false;
     }
   }
 
   void _filter() {
     final query = _searchController.text.toLowerCase().trim();
-    setState(() {
-      if (query.isEmpty) {
-        _filteredHeads = List.from(_expenseHeads);
-      } else {
-        _filteredHeads = _expenseHeads.where((h) {
-          final name = (h['name'] ?? '').toString().toLowerCase();
-          return name.contains(query);
-        }).toList();
-      }
-    });
+    if (query.isEmpty) {
+      _filteredHeads.value = List.from(_expenseHeads.value);
+    } else {
+      _filteredHeads.value = _expenseHeads.value.where((h) {
+        final name = (h['name'] ?? '').toString().toLowerCase();
+        return name.contains(query);
+      }).toList();
+    }
   }
 
   Future<void> _addNewExpenseHead() async {
@@ -310,37 +304,25 @@ class _ExpenseHeadScreenState extends State<ExpenseHeadScreen> {
     );
 
     if (confirm == true) {
-      setState(() {
-        _isLoading = true;
-      });
+      _isLoading.value = true;
       try {
         final res = await ApiService.deleteExpenseHead(token, head['id']);
         if (res['success'] == true) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(context.tr('Expense head deleted successfully!')),
-              backgroundColor: Colors.green,
-            ),
+            SnackBar(content: Text(context.tr('Expense head deleted successfully!')), backgroundColor: Colors.green),
           );
           _fetchExpenseHeads();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(res['message'] ?? context.tr('Failed to delete expense head')),
-              backgroundColor: Colors.red,
-            ),
+            SnackBar(content: Text(res['message'] ?? context.tr('Failed to delete expense head')), backgroundColor: Colors.red),
           );
-          setState(() {
-            _isLoading = false;
-          });
+          _isLoading.value = false;
         }
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
         );
-        setState(() {
-          _isLoading = false;
-        });
+        _isLoading.value = false;
       }
     }
   }
@@ -385,112 +367,77 @@ class _ExpenseHeadScreenState extends State<ExpenseHeadScreen> {
             ),
           ),
           Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _errorMessage.isNotEmpty
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(20.0),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                _errorMessage,
-                                style: const TextStyle(color: Colors.red),
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: 16),
-                              ElevatedButton(
-                                onPressed: _fetchExpenseHeads,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF000080),
-                                  foregroundColor: Colors.white,
-                                ),
-                                child: Text(context.tr('Retry')),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                    : _filteredHeads.isEmpty
-                        ? Center(
-                            child: Text(
-                              context.tr('No expense heads found'),
-                              style: GoogleFonts.inter(color: Colors.grey, fontSize: 15),
-                            ),
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.all(16),
-                            itemCount: _filteredHeads.length,
-                            itemBuilder: (ctx, i) {
-                              final head = Map<String, dynamic>.from(_filteredHeads[i] as Map);
-                              final name = head['name'] ?? '';
-
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 10),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.02),
-                                      blurRadius: 6,
-                                      offset: const Offset(0, 3),
-                                    )
+            child: ValueListenableBuilder<bool>(
+              valueListenable: _isLoading,
+              builder: (context, loading, _) => ValueListenableBuilder<String>(
+                valueListenable: _errorMessage,
+                builder: (context, errMsg, _) => ValueListenableBuilder<List<dynamic>>(
+                  valueListenable: _filteredHeads,
+                  builder: (context, filtered, _) => loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : errMsg.isNotEmpty
+                          ? Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(20.0),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(errMsg, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
+                                    const SizedBox(height: 16),
+                                    ElevatedButton(
+                                      onPressed: _fetchExpenseHeads,
+                                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000080), foregroundColor: Colors.white),
+                                      child: Text(context.tr('Retry')),
+                                    ),
                                   ],
                                 ),
-                                child: ListTile(
-                                  leading: const CircleAvatar(
-                                    backgroundColor: Color(0xFFE0E0FF),
-                                    foregroundColor: Color(0xFF000080),
-                                    child: Icon(Icons.label_outline),
-                                  ),
-                                  title: Text(
-                                    name,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                  trailing: (head['is_deletable'] ?? true)
-                                      ? PopupMenuButton<String>(
-                                          icon: const Icon(Icons.more_vert, color: Colors.grey),
-                                          onSelected: (value) {
-                                            if (value == 'edit') {
-                                              _editExpenseHead(head);
-                                            } else if (value == 'delete') {
-                                              _deleteExpenseHead(head);
-                                            }
-                                          },
-                                          itemBuilder: (context) => [
-                                            PopupMenuItem(
-                                              value: 'edit',
-                                              child: Row(
-                                                children: [
-                                                  const Icon(Icons.edit, size: 18, color: Colors.blue),
-                                                  const SizedBox(width: 8),
-                                                  Text(context.tr('Edit'), style: GoogleFonts.inter()),
+                              ),
+                            )
+                          : filtered.isEmpty
+                              ? Center(child: Text(context.tr('No expense heads found'), style: GoogleFonts.inter(color: Colors.grey, fontSize: 15)))
+                              : ListView.builder(
+                                  padding: const EdgeInsets.all(16),
+                                  itemCount: filtered.length,
+                                  itemBuilder: (ctx, i) {
+                                    final head = Map<String, dynamic>.from(filtered[i] as Map);
+                                    final name = head['name'] ?? '';
+                                    return Container(
+                                      margin: const EdgeInsets.only(bottom: 10),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(12),
+                                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 6, offset: const Offset(0, 3))],
+                                      ),
+                                      child: ListTile(
+                                        leading: const CircleAvatar(
+                                          backgroundColor: Color(0xFFE0E0FF),
+                                          foregroundColor: Color(0xFF000080),
+                                          child: Icon(Icons.label_outline),
+                                        ),
+                                        title: Text(name, style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black87)),
+                                        trailing: (head['is_deletable'] ?? true)
+                                            ? PopupMenuButton<String>(
+                                                icon: const Icon(Icons.more_vert, color: Colors.grey),
+                                                onSelected: (value) {
+                                                  if (value == 'edit') {
+                                                    _editExpenseHead(head);
+                                                  } else if (value == 'delete') {
+                                                    _deleteExpenseHead(head);
+                                                  }
+                                                },
+                                                itemBuilder: (context) => [
+                                                  PopupMenuItem(value: 'edit', child: Row(children: [const Icon(Icons.edit, size: 18, color: Colors.blue), const SizedBox(width: 8), Text(context.tr('Edit'), style: GoogleFonts.inter())])),
+                                                  PopupMenuItem(value: 'delete', child: Row(children: [const Icon(Icons.delete, size: 18, color: Colors.red), const SizedBox(width: 8), Text(context.tr('Delete'), style: GoogleFonts.inter(color: Colors.red))])),
                                                 ],
-                                              ),
-                                            ),
-                                            PopupMenuItem(
-                                              value: 'delete',
-                                              child: Row(
-                                                children: [
-                                                  const Icon(Icons.delete, size: 18, color: Colors.red),
-                                                  const SizedBox(width: 8),
-                                                  Text(context.tr('Delete'), style: GoogleFonts.inter(color: Colors.red)),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        )
-                                      : null,
+                                              )
+                                            : null,
+                                      ),
+                                    );
+                                  },
                                 ),
-                              );
-                            },
-                          ),
+                ),
+              ),
+            ),
           ),
         ],
       ),

@@ -26,9 +26,9 @@ class AddCustomerScreen extends StatefulWidget {
 }
 
 class _AddCustomerScreenState extends State<AddCustomerScreen> {
-  bool _isLoadingForm = true;
-  bool _isSaving = false;
-  String _errorMessage = '';
+  final _isLoadingForm = ValueNotifier<bool>(true);
+  final _isSaving = ValueNotifier<bool>(false);
+  final _errorMessage = ValueNotifier<String>('');
 
   List<dynamic> _customerTypes = [];
 
@@ -45,23 +45,26 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   final _emailController = TextEditingController();
   final _addressController = TextEditingController();
 
-  Map<String, dynamic>? _selectedCustomerType;
+  final _selectedCustomerType = ValueNotifier<Map<String, dynamic>?>(null);
   List<dynamic> _branches = [];
-  Map<String, dynamic>? _selectedBranch;
+  final _selectedBranch = ValueNotifier<Map<String, dynamic>?>(null);
 
-  String _selectedPhoneCode = CountryConfig.phoneDialCode;
-  String _selectedWhatsappCode = CountryConfig.phoneDialCode;
-  String _phoneIso = CountryConfig.phoneIsoCode;
-  String _whatsappIso = CountryConfig.phoneIsoCode;
+  late final ValueNotifier<String> _selectedPhoneCode;
+  late final ValueNotifier<String> _selectedWhatsappCode;
+  late final ValueNotifier<String> _phoneIso;
+  late final ValueNotifier<String> _whatsappIso;
 
   // Each entry: {controller, vehicle_type, vehicle_type_model, make, brand_model, color}
   final List<Map<String, dynamic>> _vehicleRows = [];
+  final _vehicleRowsNotifier = ValueNotifier<int>(0);
 
   @override
   void initState() {
     super.initState();
-    // Resolve the effective ISO code — prefer explicit param, else use CountryConfig
     final effectiveIso = widget.initialCountryIso ?? CountryConfig.phoneIsoCode;
+    String initialPhoneCode = CountryConfig.phoneDialCode;
+    String initialWhatsappCode = CountryConfig.phoneDialCode;
+
     if (widget.phoneNumber != null) {
       String rawPhone = widget.phoneNumber!;
       String detectedCode = CountryConfig.phoneDialCode;
@@ -74,14 +77,15 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       }
       _phoneController.text = rawPhone;
       _whatsappController.text = rawPhone;
-      _selectedPhoneCode = detectedCode;
-      _selectedWhatsappCode = detectedCode;
-      _phoneIso = effectiveIso;
-      _whatsappIso = effectiveIso;
-    } else {
-      _phoneIso = effectiveIso;
-      _whatsappIso = effectiveIso;
+      initialPhoneCode = detectedCode;
+      initialWhatsappCode = detectedCode;
     }
+
+    _selectedPhoneCode = ValueNotifier<String>(initialPhoneCode);
+    _selectedWhatsappCode = ValueNotifier<String>(initialWhatsappCode);
+    _phoneIso = ValueNotifier<String>(effectiveIso);
+    _whatsappIso = ValueNotifier<String>(effectiveIso);
+
     _fetchFormData();
     _addVehicleRow();
   }
@@ -96,6 +100,16 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     for (final row in _vehicleRows) {
       (row['controller'] as TextEditingController).dispose();
     }
+    _isLoadingForm.dispose();
+    _isSaving.dispose();
+    _errorMessage.dispose();
+    _selectedCustomerType.dispose();
+    _selectedBranch.dispose();
+    _selectedPhoneCode.dispose();
+    _selectedWhatsappCode.dispose();
+    _phoneIso.dispose();
+    _whatsappIso.dispose();
+    _vehicleRowsNotifier.dispose();
     super.dispose();
   }
 
@@ -114,68 +128,61 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
         final colors = res['colors'] as List<dynamic>? ?? [];
         final branches = res['branches'] as List<dynamic>? ?? [];
 
-        setState(() {
-          _customerTypes = types;
-          _vehicleTypes = vehicleTypes;
-          _vehicleTypeModels = vehicleTypeModels;
-          _makes = makes;
-          _brandModels = brandModels;
-          _colors = colors;
-          _branches = branches;
-          if (types.isNotEmpty) _selectedCustomerType = types.first;
-          if (branches.isNotEmpty) {
-            if (widget.branchId != null) {
-              _selectedBranch = branches.firstWhere(
-                (b) => b['id']?.toString() == widget.branchId,
-                orElse: () => branches.first,
-              );
-            } else {
-              _selectedBranch = branches.first;
-            }
+        _customerTypes = types;
+        _vehicleTypes = vehicleTypes;
+        _vehicleTypeModels = vehicleTypeModels;
+        _makes = makes;
+        _brandModels = brandModels;
+        _colors = colors;
+        _branches = branches;
+        if (types.isNotEmpty) _selectedCustomerType.value = types.first;
+        if (branches.isNotEmpty) {
+          if (widget.branchId != null) {
+            _selectedBranch.value = branches.firstWhere(
+              (b) => b['id']?.toString() == widget.branchId,
+              orElse: () => branches.first,
+            );
+          } else {
+            _selectedBranch.value = branches.first;
           }
+        }
 
-          // Set default vehicle_type for existing rows
-          for (final row in _vehicleRows) {
-            if (vehicleTypes.isNotEmpty && row['vehicle_type'] == null) {
-              row['vehicle_type'] = vehicleTypes.first;
-            }
+        // Set default vehicle_type for existing rows
+        for (final row in _vehicleRows) {
+          if (vehicleTypes.isNotEmpty && row['vehicle_type'] == null) {
+            row['vehicle_type'] = vehicleTypes.first;
           }
+        }
 
-          _isLoadingForm = false;
-        });
+        _isLoadingForm.value = false;
+        _vehicleRowsNotifier.value++;
       } else {
-        setState(() {
-          _errorMessage = res['message'] ?? 'Failed to load form data';
-          _isLoadingForm = false;
-        });
+        _errorMessage.value = res['message'] ?? 'Failed to load form data';
+        _isLoadingForm.value = false;
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-        _isLoadingForm = false;
-      });
+      _errorMessage.value = e.toString();
+      _isLoadingForm.value = false;
     }
   }
 
   void _addVehicleRow() {
-    setState(() {
-      _vehicleRows.add({
-        'controller': TextEditingController(),
-        'vehicle_type': _vehicleTypes.isNotEmpty ? _vehicleTypes.first : null,
-        'vehicle_type_model': null,
-        'make': null,
-        'brand_model': null,
-        'color': null,
-      });
+    _vehicleRows.add({
+      'controller': TextEditingController(),
+      'vehicle_type': _vehicleTypes.isNotEmpty ? _vehicleTypes.first : null,
+      'vehicle_type_model': null,
+      'make': null,
+      'brand_model': null,
+      'color': null,
     });
+    _vehicleRowsNotifier.value++;
   }
 
   void _removeVehicleRow(int index) {
     if (_vehicleRows.length <= 1) return;
     ((_vehicleRows[index]['controller']) as TextEditingController).dispose();
-    setState(() {
-      _vehicleRows.removeAt(index);
-    });
+    _vehicleRows.removeAt(index);
+    _vehicleRowsNotifier.value++;
   }
 
   List<dynamic> _segmentsForType(String? vehicleTypeId) {
@@ -199,15 +206,20 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     return brandModelsInSegment.toList();
   }
 
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: Colors.red),
+    );
+  }
+
   Future<void> _save() async {
     final name = _nameController.text.trim();
     String localPhone = _phoneController.text.trim();
-
     if (name.isEmpty) { _showError('Please enter customer name.'); return; }
     if (localPhone.isEmpty) { _showError('Please enter phone number.'); return; }
-    if (_selectedCustomerType == null) { _showError('Please select a customer type.'); return; }
+    if (_selectedCustomerType.value == null) { _showError('Please select a customer type.'); return; }
 
-    final cleanPhoneCode = _selectedPhoneCode.replaceAll('+', '');
+    final cleanPhoneCode = _selectedPhoneCode.value.replaceAll('+', '');
     if (localPhone.startsWith('+')) localPhone = localPhone.replaceFirst('+', '');
     if (localPhone.startsWith(cleanPhoneCode)) localPhone = localPhone.substring(cleanPhoneCode.length);
     final phone = cleanPhoneCode + localPhone;
@@ -215,7 +227,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     String localWhatsapp = _whatsappController.text.trim();
     String whatsappVal = '';
     if (localWhatsapp.isNotEmpty) {
-      final cleanWhatsappCode = _selectedWhatsappCode.replaceAll('+', '');
+      final cleanWhatsappCode = _selectedWhatsappCode.value.replaceAll('+', '');
       if (localWhatsapp.startsWith('+')) localWhatsapp = localWhatsapp.replaceFirst('+', '');
       if (localWhatsapp.startsWith(cleanWhatsappCode)) localWhatsapp = localWhatsapp.substring(cleanWhatsappCode.length);
       whatsappVal = cleanWhatsappCode + localWhatsapp;
@@ -249,7 +261,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       return;
     }
 
-    setState(() => _isSaving = true);
+    _isSaving.value = true;
 
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
@@ -258,153 +270,176 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       final res = await ApiService.addCustomer({
         'name': name,
         'phone': phone,
-        'customer_type_id': _selectedCustomerType!['id'],
-        'whatsapp_number': whatsappVal,
+        if (whatsappVal.isNotEmpty) 'whatsapp_number': whatsappVal,
         'email': _emailController.text.trim(),
         'address': _addressController.text.trim(),
+        'customer_type_id': _selectedCustomerType.value!['id'],
+        if (_selectedBranch.value != null) 'branch_id': _selectedBranch.value!['id'],
         'vehicles': vehicles,
-        if (_selectedBranch != null) 'branch_id': _selectedBranch!['id'],
       }, token);
 
+      if (!mounted) return;
+
       if (res['success'] == true) {
-        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.tr('Customer added successfully!')), backgroundColor: Colors.green),
+          SnackBar(
+            content: Text(context.tr('Customer added successfully!')),
+            backgroundColor: Colors.green,
+          ),
         );
-
-        if (res['whatsapp_action'] == 'manual') {
-          final cust = res['customer'] ?? {};
-          final custName = cust['name'] ?? name;
-          final branchName = cust['branch_name'] ?? 'our branch';
-          final whatsappNum = cust['whatsapp_number'] ?? phone;
-          final message = "Dear $custName, Thank you for choosing $branchName.";
-          String cleanedPhone = whatsappNum.toString().replaceAll(RegExp(r'\D'), '');
-          if (cleanedPhone.length == 10) cleanedPhone = '91$cleanedPhone';
-          if (cleanedPhone.isNotEmpty) {
-            final whatsappUrl = Uri.parse("https://wa.me/$cleanedPhone?text=${Uri.encodeComponent(message)}");
-            try { await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication); } catch (_) {}
-          }
-        }
-
-        Navigator.pop(context, res['customer']);
+        final createdCustomer = res['customer'] as Map<String, dynamic>?;
+        Navigator.pop(context, createdCustomer ?? true);
       } else {
         _showError(res['message'] ?? 'Failed to add customer');
-        setState(() => _isSaving = false);
+        _isSaving.value = false;
       }
     } catch (e) {
       _showError(e.toString());
-      setState(() => _isSaving = false);
+      _isSaving.value = false;
     }
-  }
-
-  void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Colors.red),
-    );
-  }
-
-  @override
+  }  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
-      appBar: AppBar(
-        title: Text(context.tr('Add New Customer'), style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
-        backgroundColor: const Color(0xFF000080),
-        foregroundColor: Colors.white,
-        elevation: 0,
+    return ValueListenableBuilder<bool>(
+      valueListenable: _isLoadingForm,
+      builder: (context, loadingForm, _) => ValueListenableBuilder<String>(
+        valueListenable: _errorMessage,
+        builder: (context, errorMsg, _) => ValueListenableBuilder<bool>(
+          valueListenable: _isSaving,
+          builder: (context, saving, _) {
+            return Scaffold(
+              backgroundColor: const Color(0xFFF1F5F9),
+              appBar: AppBar(
+                title: Text(context.tr('Add New Customer'), style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+                backgroundColor: const Color(0xFF000080),
+                foregroundColor: Colors.white,
+                elevation: 0,
+              ),
+              body: loadingForm
+                  ? const Center(child: CircularProgressIndicator())
+                  : errorMsg.isNotEmpty
+                      ? Center(child: Text(errorMsg, style: const TextStyle(color: Colors.red)))
+                      : SingleChildScrollView(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _buildCard(
+                                title: 'Customer Info',
+                                icon: Icons.person,
+                                children: [
+                                  _buildTextField(_nameController, 'Customer Name *', Icons.person_outline),
+                                  const SizedBox(height: 14),
+                                  ValueListenableBuilder<String>(
+                                    valueListenable: _phoneIso,
+                                    builder: (context, phoneIsoVal, _) => _buildPhoneField(
+                                      controller: _phoneController,
+                                      label: 'Phone Number *',
+                                      countryIso: phoneIsoVal,
+                                      selectedCode: _selectedPhoneCode.value,
+                                      onCodeChanged: (dialCode, iso) {
+                                        _selectedPhoneCode.value = dialCode;
+                                        _phoneIso.value = iso;
+                                      },
+                                      icon: Icons.phone,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  ValueListenableBuilder<String>(
+                                    valueListenable: _whatsappIso,
+                                    builder: (context, whatsappIsoVal, _) => _buildPhoneField(
+                                      controller: _whatsappController,
+                                      label: 'WhatsApp Number (Optional)',
+                                      countryIso: whatsappIsoVal,
+                                      selectedCode: _selectedWhatsappCode.value,
+                                      onCodeChanged: (dialCode, iso) {
+                                        _selectedWhatsappCode.value = dialCode;
+                                        _whatsappIso.value = iso;
+                                      },
+                                      icon: Icons.chat,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  ValueListenableBuilder<Map<String, dynamic>?>(
+                                    valueListenable: _selectedCustomerType,
+                                    builder: (context, selectedCustType, _) => _buildDropdown<Map<String, dynamic>>(
+                                      label: 'Customer Type *',
+                                      value: selectedCustType,
+                                      items: _customerTypes.cast<Map<String, dynamic>>(),
+                                      labelBuilder: (t) => t['name'],
+                                      hint: 'Select customer type',
+                                      onChanged: (val) => _selectedCustomerType.value = val,
+                                    ),
+                                  ),
+                                  if (context.watch<AuthProvider>().isCompanyAdmin && _branches.isNotEmpty) ...[
+                                    const SizedBox(height: 14),
+                                    ValueListenableBuilder<Map<String, dynamic>?>(
+                                      valueListenable: _selectedBranch,
+                                      builder: (context, selectedBranchVal, _) => _buildDropdown<Map<String, dynamic>>(
+                                        label: 'Branch *',
+                                        value: selectedBranchVal,
+                                        items: _branches.cast<Map<String, dynamic>>(),
+                                        labelBuilder: (b) => b['name'],
+                                        hint: 'Select branch',
+                                        onChanged: (val) => _selectedBranch.value = val,
+                                      ),
+                                    ),
+                                  ],
+                                  const SizedBox(height: 14),
+                                  _buildTextField(_emailController, 'Email (Optional)', Icons.email_outlined, keyboardType: TextInputType.emailAddress),
+                                  const SizedBox(height: 14),
+                                  _buildTextField(_addressController, 'Address (Optional)', Icons.home_outlined, maxLines: 2),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              _buildCard(
+                                title: 'Vehicles',
+                                icon: Icons.directions_car,
+                                children: [
+                                  ValueListenableBuilder<int>(
+                                    valueListenable: _vehicleRowsNotifier,
+                                    builder: (context, _, __) => Column(
+                                      children: [
+                                        for (int i = 0; i < _vehicleRows.length; i++)
+                                          _buildVehicleRowWidget(i),
+                                        OutlinedButton.icon(
+                                          onPressed: _addVehicleRow,
+                                          icon: const Icon(Icons.add, color: Color(0xFF000080)),
+                                          label: Text('Add Another Vehicle', style: GoogleFonts.inter(color: const Color(0xFF000080), fontWeight: FontWeight.w600)),
+                                          style: OutlinedButton.styleFrom(
+                                            side: const BorderSide(color: Color(0xFF000080)),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                            padding: const EdgeInsets.symmetric(vertical: 12),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 24),
+                              ElevatedButton(
+                                onPressed: saving ? null : _save,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF000080),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
+                                child: saving
+                                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                    : Text('Save Customer', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold)),
+                              ),
+                            ],
+                          ),
+                        ),
+            );
+          },
+        ),
       ),
-      body: _isLoadingForm
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage.isNotEmpty && _customerTypes.isEmpty
-              ? Center(child: Text(_errorMessage, style: const TextStyle(color: Colors.red)))
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildSection(
-                        title: 'Customer Details',
-                        icon: Icons.person_outline,
-                        children: [
-                          _buildTextField(_nameController, 'Full Name *', Icons.badge_outlined),
-                          const SizedBox(height: 14),
-                          _buildPhoneField(
-                            controller: _phoneController,
-                            label: 'Phone Number *',
-                            countryIso: _phoneIso,
-                            selectedCode: _selectedPhoneCode,
-                            onCodeChanged: (dialCode, iso) => setState(() { _selectedPhoneCode = dialCode; _phoneIso = iso; }),
-                            icon: Icons.phone_outlined,
-                          ),
-                          const SizedBox(height: 14),
-                          _buildPhoneField(
-                            controller: _whatsappController,
-                            label: 'WhatsApp Number',
-                            countryIso: _whatsappIso,
-                            selectedCode: _selectedWhatsappCode,
-                            onCodeChanged: (dialCode, iso) => setState(() { _selectedWhatsappCode = dialCode; _whatsappIso = iso; }),
-                            icon: Icons.chat_outlined,
-                          ),
-                          const SizedBox(height: 14),
-                          _buildTextField(_emailController, 'Email', Icons.email_outlined, keyboardType: TextInputType.emailAddress),
-                          const SizedBox(height: 14),
-                          _buildTextField(_addressController, 'Address', Icons.location_on_outlined, maxLines: 2),
-                          const SizedBox(height: 14),
-                          _buildDropdown<Map<String, dynamic>>(
-                            label: 'Customer Type *',
-                            value: _selectedCustomerType,
-                            items: _customerTypes.cast<Map<String, dynamic>>(),
-                            labelBuilder: (ct) => ct['name'],
-                            onChanged: (val) => setState(() => _selectedCustomerType = val),
-                          ),
-                          if (_branches.isNotEmpty) ...[
-                            const SizedBox(height: 14),
-                            _buildDropdown<Map<String, dynamic>>(
-                              label: 'Branch *',
-                              value: _selectedBranch,
-                              items: _branches.cast<Map<String, dynamic>>(),
-                              labelBuilder: (b) => b['name'],
-                              onChanged: (val) => setState(() => _selectedBranch = val),
-                            ),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      _buildSection(
-                        title: 'Vehicles',
-                        icon: Icons.directions_car_outlined,
-                        trailing: TextButton.icon(
-                          onPressed: _addVehicleRow,
-                          icon: const Icon(Icons.add, size: 18),
-                          label: Text(context.tr('Add Vehicle')),
-                          style: TextButton.styleFrom(foregroundColor: const Color(0xFF000080)),
-                        ),
-                        children: [
-                          ...List.generate(_vehicleRows.length, (i) => _buildVehicleRow(i)),
-                        ],
-                      ),
-                      const SizedBox(height: 32),
-                      ElevatedButton(
-                        onPressed: _isSaving ? null : _save,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF000080),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          disabledBackgroundColor: Colors.grey.shade400,
-                        ),
-                        child: _isSaving
-                            ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                            : Text(context.tr('Save Customer'), style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold)),
-                      ),
-                      const SizedBox(height: 32),
-                    ],
-                  ),
-                ),
     );
   }
 
-  Widget _buildSection({
+  Widget _buildCard({
     required String title,
     required IconData icon,
     required List<Widget> children,
@@ -536,7 +571,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     );
   }
 
-  Widget _buildVehicleRow(int index) {
+  Widget _buildVehicleRowWidget(int index) {
     final row = _vehicleRows[index];
     final selectedType = row['vehicle_type'] as Map<String, dynamic>?;
     final selectedSegment = row['vehicle_type_model'] as Map<String, dynamic>?;
@@ -584,12 +619,11 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
               labelBuilder: (vt) => vt['name'],
               hint: 'Select vehicle type',
               onChanged: (val) {
-                setState(() {
-                  row['vehicle_type'] = val;
-                  row['vehicle_type_model'] = null;
-                  row['make'] = null;
-                  row['brand_model'] = null;
-                });
+                row['vehicle_type'] = val;
+                row['vehicle_type_model'] = null;
+                row['make'] = null;
+                row['brand_model'] = null;
+                _vehicleRowsNotifier.value++;
               },
             ),
             const SizedBox(height: 12),
@@ -603,11 +637,10 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                 labelBuilder: (m) => m['name'],
                 hint: segments.isEmpty ? 'No segments available' : 'Select segment',
                 onChanged: segments.isEmpty ? null : (val) {
-                  setState(() {
-                    row['vehicle_type_model'] = val;
-                    row['make'] = null;
-                    row['brand_model'] = null;
-                  });
+                  row['vehicle_type_model'] = val;
+                  row['make'] = null;
+                  row['brand_model'] = null;
+                  _vehicleRowsNotifier.value++;
                 },
               ),
               const SizedBox(height: 12),
@@ -622,16 +655,14 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                 labelBuilder: (b) => b['name'],
                 hint: makes.isEmpty ? 'No makes available' : 'Select make',
                 onChanged: makes.isEmpty ? null : (val) {
-                  setState(() {
-                    row['make'] = val;
-                    row['brand_model'] = null;
-                  });
+                  row['make'] = val;
+                  row['brand_model'] = null;
+                  _vehicleRowsNotifier.value++;
                 },
               ),
               const SizedBox(height: 12),
             ],
 
-            // Level 4 — Brand Model (Optional)
             // Level 4 — Brand Model (Optional, only show after Make is selected)
             if (selectedSegment != null && selectedMake != null) ...[
               _buildDropdown<Map<String, dynamic>>(
@@ -641,9 +672,8 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                 labelBuilder: (b) => b['name'],
                 hint: brands.isEmpty ? 'No brands available' : 'Select brand',
                 onChanged: brands.isEmpty ? null : (val) {
-                  setState(() {
-                    row['brand_model'] = val;
-                  });
+                  row['brand_model'] = val;
+                  _vehicleRowsNotifier.value++;
                 },
               ),
               const SizedBox(height: 12),
@@ -658,9 +688,8 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                 labelBuilder: (c) => c['name'],
                 hint: 'Select color',
                 onChanged: (val) {
-                  setState(() {
-                    row['color'] = (val?['id'] == '') ? null : val;
-                  });
+                  row['color'] = (val?['id'] == '') ? null : val;
+                  _vehicleRowsNotifier.value++;
                 },
               ),
               const SizedBox(height: 12),

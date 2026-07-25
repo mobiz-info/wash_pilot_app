@@ -39,11 +39,14 @@ class _ServiceRow {
   bool isLoadingOilPrice = false;
   final TextEditingController oilLitresController = TextEditingController();
   bool oilFilterChanged = false;
+  String? selectedOilFilterId;
+  double oilFilterPrice = 0.0;
+  int? selectedOilFilterRunKm;
   final TextEditingController odometerController = TextEditingController();
   final TextEditingController nextOilChangeKmController = TextEditingController();
 
   double get oilLitres => double.tryParse(oilLitresController.text) ?? 0.0;
-  double get oilTotalCharge => (oilPricePerLitre ?? 0.0) * oilLitres;
+  double get oilTotalCharge => ((oilPricePerLitre ?? 0.0) * oilLitres) + oilFilterPrice;
 
   // Tyre Change
   String? selectedTyreBrandId;
@@ -65,7 +68,7 @@ class _ServiceRow {
     final odo = int.tryParse(odometerController.text) ?? 0;
     if (odo > 0) {
       if (serviceCategory == 'oil_change') {
-        final runKm = selectedOilRunKm ?? 5000;
+        final runKm = selectedOilFilterRunKm ?? selectedOilRunKm ?? 5000;
         nextOilChangeKmController.text = (odo + runKm).toString();
       }
       if (serviceCategory == 'tyre_change' && nextTyreChangeKmController.text.isEmpty) {
@@ -77,18 +80,21 @@ class _ServiceRow {
 
   double get rate => (service['rate'] as num).toDouble();
 
+  double get subtotal {
+    double base = rate;
+    if (serviceCategory == 'oil_change') {
+      base += oilTotalCharge;
+    }
+    return base;
+  }
+
   double get effectiveDiscount {
     if (selectedScheme != null) return schemeDiscount;
     return double.tryParse(discountController.text) ?? 0.0;
   }
 
-  double get lineTotal {
-    double base = rate;
-    if (serviceCategory == 'oil_change') {
-      base += oilTotalCharge;
-    }
-    return (base - effectiveDiscount).clamp(0.0, double.infinity);
-  }
+  double get total => (subtotal - effectiveDiscount).clamp(0.0, double.infinity);
+  double get lineTotal => total;
 
   String get serviceId => service['id'] as String;
   String get serviceName => service['name'] as String;
@@ -153,8 +159,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
   // Selected extras
   final List<Map<String, dynamic>> _selectedExtras = [];
 
-  // Oil Products, Tyre Brands, and Enabled Categories
+  // Oil Products, Oil Filters, Tyre Brands, and Enabled Categories
   List<dynamic> _oilProducts = [];
+  List<dynamic> _oilFilters = [];
   List<dynamic> _tyreBrands = [];
   List<dynamic> _enabledCategories = [];
   String _selectedCategoryFilter = 'all';
@@ -200,34 +207,42 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
   // Subtotal = gross amount before discount
   double get subtotal =>
       (totalServicesAmount + totalExtrasAmount).clamp(0.0, double.infinity);
+
+  // Taxable Value = Subtotal after discount
+  double get taxableValue => (subtotal - totalDiscount).clamp(0.0, double.infinity);
+
+  // Tax Amount = calculated on Taxable Value (post-discount)
   double get taxAmount {
-    if (!_applyGst) return 0;
-    double t = 0;
+    if (!_applyGst) return 0.0;
+    double t = 0.0;
     for (final tax in _availableTaxes) {
       if (_selectedTaxIds.contains(tax['id'] as String)) {
-        t += subtotal * ((tax['percent'] as num).toDouble() / 100);
+        final pct = (tax['percent'] as num).toDouble();
+        t += taxableValue * (pct / 100.0);
       }
     }
     return t;
   }
 
-  // Total = subtotal - discount + tax
-  double get total => (subtotal - totalDiscount + taxAmount).clamp(0.0, double.infinity);
+  // Total = Taxable Value + Tax Amount
+  double get total => (taxableValue + taxAmount).clamp(0.0, double.infinity);
 
-  List<Map<String, dynamic>> get selectedTaxes => _applyGst
-      ? _availableTaxes
-          .where((t) => _selectedTaxIds.contains(t['id'] as String))
-          .map((t) {
-            final pct = (t['percent'] as num).toDouble();
-            return {
-              'id': t['id'],
-              'name': t['name'],
-              'percent': pct,
-              'amount': (subtotal * pct / 100).toStringAsFixed(2),
-            };
-          })
-          .toList()
-      : [];
+  List<Map<String, dynamic>> get selectedTaxes {
+    if (!_applyGst) return [];
+    return _availableTaxes
+        .where((t) => _selectedTaxIds.contains(t['id'] as String))
+        .map((t) {
+          final pct = (t['percent'] as num).toDouble();
+          final itemTaxAmount = taxableValue * (pct / 100.0);
+          return {
+            'id': t['id'],
+            'name': t['name'],
+            'percent': pct,
+            'amount': itemTaxAmount.toStringAsFixed(2),
+          };
+        })
+        .toList();
+  }
 
   // Determine if any row already uses a Quantity (free wash) scheme
   String? get _quantitySchemeUsedId {
@@ -240,19 +255,24 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
     return null;
   }
 
+  final _uiState = ValueNotifier<int>(0);
+  void _updateUi() {
+    _uiState.value++;
+  }
+
   @override
   void initState() {
     super.initState();
     _additionalDiscountController.addListener(() {
-      setState(() {
-        _syncAmountCollected();
-      });
+      _syncAmountCollected();
+      _updateUi();
     });
     _loadAll();
   }
 
   @override
   void dispose() {
+    _uiState.dispose();
     for (final row in _rows) {
       row.dispose();
     }
@@ -276,39 +296,42 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
       final extRes = await ApiService.getExtrasList(token);
 
       Map<String, dynamic>? oilRes;
+      Map<String, dynamic>? filterRes;
       Map<String, dynamic>? tyreRes;
       try {
         oilRes = await ApiService.getOilProducts(token);
+        filterRes = await ApiService.getOilFilters(token);
         tyreRes = await ApiService.getTyreBrands(token);
       } catch (_) {}
 
-      setState(() {
-        if (svcRes['success'] == true) {
-          _allServices = svcRes['services'] ?? [];
-          _enabledCategories = svcRes['enabled_categories'] ?? [];
-          final rawTaxes = svcRes['taxes'] as List<dynamic>? ?? [];
-          _availableTaxes =
-              rawTaxes.map((t) => Map<String, dynamic>.from(t as Map)).toList();
-          _selectedTaxIds =
-              _availableTaxes.map((t) => t['id'] as String).toSet();
-        }
-        if (extRes['success'] == true) {
-          _availableExtras = extRes['extras'] ?? [];
-        }
-        if (oilRes != null && oilRes['success'] == true) {
-          _oilProducts = oilRes['oil_products'] ?? [];
-        }
-        if (tyreRes != null && tyreRes['success'] == true) {
-          _tyreBrands = tyreRes['tyre_brands'] ?? [];
-        }
-        _isLoading = false;
-        _syncAmountCollected();
-      });
+      if (svcRes['success'] == true) {
+        _allServices = svcRes['services'] ?? [];
+        _enabledCategories = svcRes['enabled_categories'] ?? [];
+        final rawTaxes = svcRes['taxes'] as List<dynamic>? ?? [];
+        _availableTaxes =
+            rawTaxes.map((t) => Map<String, dynamic>.from(t as Map)).toList();
+        _selectedTaxIds =
+            _availableTaxes.map((t) => t['id'] as String).toSet();
+      }
+      if (extRes['success'] == true) {
+        _availableExtras = extRes['extras'] ?? [];
+      }
+      if (oilRes != null && oilRes['success'] == true) {
+        _oilProducts = oilRes['oil_products'] ?? [];
+      }
+      if (filterRes != null && filterRes['success'] == true) {
+        _oilFilters = filterRes['oil_filters'] ?? [];
+      }
+      if (tyreRes != null && tyreRes['success'] == true) {
+        _tyreBrands = tyreRes['tyre_brands'] ?? [];
+      }
+      _isLoading = false;
+      _syncAmountCollected();
+      _updateUi();
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-        _isLoading = false;
-      });
+      _errorMessage = e.toString();
+      _isLoading = false;
+      _updateUi();
     }
   }
 
@@ -319,21 +342,21 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
 
   // ── Add / Remove service rows ─────────────────────────────────────────────
   void _toggleService(Map<String, dynamic> svc) {
-    setState(() {
-      final idx = _rows.indexWhere((r) => r.serviceId == svc['id']);
-      if (idx >= 0) {
-        _rows[idx].dispose();
-        _rows.removeAt(idx);
-      } else {
-        final row = _ServiceRow(service: svc);
-        row.discountController.addListener(() => setState(() {
-              _syncAmountCollected();
-            }));
-        _rows.add(row);
-        _loadSchemesForRow(row);
-      }
-      _syncAmountCollected();
-    });
+    final idx = _rows.indexWhere((r) => r.serviceId == svc['id']);
+    if (idx >= 0) {
+      _rows[idx].dispose();
+      _rows.removeAt(idx);
+    } else {
+      final row = _ServiceRow(service: svc);
+      row.discountController.addListener(() {
+        _syncAmountCollected();
+        _updateUi();
+      });
+      _rows.insert(0, row);
+      _loadSchemesForRow(row);
+    }
+    _syncAmountCollected();
+    _updateUi();
   }
 
   bool _isServiceSelected(String serviceId) =>
@@ -343,7 +366,8 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
 
-    setState(() => row.isLoadingSchemes = true);
+    row.isLoadingSchemes = true;
+    _updateUi();
 
     try {
       final res = await ApiService.getAvailableSchemes(
@@ -353,24 +377,23 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
         token,
       );
       if (!mounted) return;
-      setState(() {
-        row.availableSchemes =
-            res['success'] == true ? res['schemes'] ?? [] : [];
-        row.isLoadingSchemes = false;
-      });
+      row.availableSchemes =
+          res['success'] == true ? res['schemes'] ?? [] : [];
+      row.isLoadingSchemes = false;
+      _updateUi();
     } catch (_) {
       if (!mounted) return;
-      setState(() {
-        row.availableSchemes = [];
-        row.isLoadingSchemes = false;
-      });
+      row.availableSchemes = [];
+      row.isLoadingSchemes = false;
+      _updateUi();
     }
   }
 
   Future<void> _fetchOilPriceForProduct(_ServiceRow row, String oilProductId) async {
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
-    setState(() => row.isLoadingOilPrice = true);
+    row.isLoadingOilPrice = true;
+    _updateUi();
 
     try {
       final res = await ApiService.getOilPrice(
@@ -380,89 +403,86 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
         vehicleTypeId: widget.vehicle['vehicle_type_id']?.toString(),
       );
       if (!mounted) return;
-      setState(() {
-        row.isLoadingOilPrice = false;
-        if (res['success'] == true) {
-          if (res['price_per_litre'] != null && (res['price_per_litre'] as num) > 0) {
-            row.oilPricePerLitre = (res['price_per_litre'] as num).toDouble();
-          }
+      row.isLoadingOilPrice = false;
+      if (res['success'] == true) {
+        if (res['price_per_litre'] != null && (res['price_per_litre'] as num) > 0) {
+          row.oilPricePerLitre = (res['price_per_litre'] as num).toDouble();
         }
-        _syncAmountCollected();
-      });
+      }
+      _syncAmountCollected();
+      _updateUi();
     } catch (_) {
       if (!mounted) return;
-      setState(() => row.isLoadingOilPrice = false);
+      row.isLoadingOilPrice = false;
+      _updateUi();
     }
   }
 
   // ── Scheme selection per row ─────────────────────────────────────────────
   void _selectScheme(_ServiceRow row, Map<String, dynamic>? scheme) {
-    setState(() {
-      row.selectedScheme = scheme;
-      row.schemeDiscount = 0.0;
-      row.voucherController.clear();
-      row.voucherError = null;
-      row.voucherSuccess = null;
-      row.validatedVoucherId = null;
-    });
+    row.selectedScheme = scheme;
+    row.schemeDiscount = 0.0;
+    row.voucherController.clear();
+    row.voucherError = null;
+    row.voucherSuccess = null;
+    row.validatedVoucherId = null;
 
     if (scheme == null) {
       _syncAmountCollected();
+      _updateUi();
       return;
     }
 
     final st = scheme['scheme_type'] as String;
     if (st == 'Discount') {
       final pct = (scheme['discount_percentage'] as num?)?.toDouble() ?? 0.0;
-      setState(() => row.schemeDiscount = row.rate * pct / 100);
+      row.schemeDiscount = row.rate * pct / 100;
     } else if (st == 'Quantity') {
       // Only apply full discount when the customer is eligible (reached paid_visits)
       // If not yet eligible, discount = 0 but scheme is still recorded for progress tracking
       if (scheme['is_eligible'] == true) {
-        setState(() => row.schemeDiscount = row.rate);
+        row.schemeDiscount = row.rate;
       }
       // else: schemeDiscount stays 0.0 — visit counts toward progress but no free wash yet
     }
     _syncAmountCollected();
+    _updateUi();
   }
 
   Future<void> _validateVoucher(_ServiceRow row) async {
     if (row.selectedScheme == null) return;
     final voucher = row.voucherController.text.trim();
     if (voucher.isEmpty) {
-      setState(() => row.voucherError = 'Please enter a voucher number');
+      row.voucherError = 'Please enter a voucher number';
+      _updateUi();
       return;
     }
 
     final token = context.read<AuthProvider>().token!;
-    setState(() {
-      row.voucherValidating = true;
-      row.voucherError = null;
-      row.voucherSuccess = null;
-    });
+    row.voucherValidating = true;
+    row.voucherError = null;
+    row.voucherSuccess = null;
+    _updateUi();
 
     try {
       final res =
           await ApiService.validateVoucher(row.selectedScheme!['id'], voucher, token);
       if (res['success'] == true) {
-        setState(() {
-          row.schemeDiscount = (res['discount'] as num).toDouble();
-          row.voucherSuccess = res['message'] ?? 'Voucher applied!';
-          row.validatedVoucherId = res['voucher_id'];
-          row.voucherValidating = false;
-        });
+        row.schemeDiscount = (res['discount'] as num).toDouble();
+        row.voucherSuccess = res['message'] ?? 'Voucher applied!';
+        row.validatedVoucherId = res['voucher_id'];
+        row.voucherValidating = false;
         _syncAmountCollected();
+        _updateUi();
       } else {
-        setState(() {
-          row.voucherError = res['message'] ?? 'Invalid voucher';
-          row.voucherValidating = false;
-        });
+        row.voucherError = res['message'] ?? 'Invalid voucher';
+        row.voucherValidating = false;
+        _updateUi();
       }
     } catch (e) {
-      setState(() {
-        row.voucherError = e.toString();
-        row.voucherValidating = false;
-      });
+      row.voucherError = e.toString();
+      row.voucherValidating = false;
+      _updateUi();
     }
   }
 
@@ -488,7 +508,8 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
 
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
-    setState(() => _isSaving = true);
+    _isSaving = true;
+    _updateUi();
 
     try {
       // Use the primary scheme from the first row that has one
@@ -501,11 +522,16 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
         ..._rows.map((r) {
           Map<String, dynamic>? detail;
           if (r.serviceCategory == 'oil_change') {
+            final p = _oilProducts.firstWhere((item) => item['id'] == r.selectedOilProductId, orElse: () => <String, dynamic>{});
+            final f = _oilFilters.firstWhere((item) => item['id'] == r.selectedOilFilterId, orElse: () => <String, dynamic>{});
             detail = {
               'service_category': 'oil_change',
               'oil_product_id': r.selectedOilProductId,
+              'oil_product': p,
               'oil_litres_used': double.tryParse(r.oilLitresController.text),
               'oil_filter_changed': r.oilFilterChanged,
+              'oil_filter_id': r.selectedOilFilterId,
+              'oil_filter_price': r.oilFilterPrice,
               'odometer_at_service': int.tryParse(r.odometerController.text),
               'next_oil_change_km': int.tryParse(r.nextOilChangeKmController.text),
             };
@@ -587,11 +613,13 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           ),
         );
       } else {
-        setState(() => _isSaving = false);
+        _isSaving = false;
+        _updateUi();
         _snack(response['message'] ?? 'Failed to save invoice', isError: true);
       }
     } catch (e) {
-      setState(() => _isSaving = false);
+      _isSaving = false;
+      _updateUi();
       _snack(e.toString(), isError: true);
     }
   }
@@ -608,64 +636,69 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
   // ── UI ────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
-      appBar: AppBar(
-        title: Text(
-          context.tr('Create Invoice'),
-          style: GoogleFonts.inter(fontWeight: FontWeight.w700),
-        ),
-        backgroundColor: const Color(0xFF000080),
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage.isNotEmpty && _allServices.isEmpty
-          ? Center(
-              child: Text(
-                _errorMessage,
-                style: const TextStyle(color: Colors.red),
-              ),
-            )
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _customerCard(),
-                  const SizedBox(height: 16),
-                  _serviceSelectionCard(),
-                 
-                  const SizedBox(height: 16),
-                  // Per-row scheme + discount sections
-                  for (final row in _rows) ...[
-                    _serviceRowCard(row),
-                    const SizedBox(height: 12),
-                  ],
-                  if (_availableTaxes.isNotEmpty) ...[
-                    _taxSelectionSection(),
-                    const SizedBox(height: 16),
-                  ],
-                  if (_availableExtras.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    _extrasCard(),
-                  ],
-                  if (_rows.isNotEmpty) ...[
-                    _additionalDiscountCard(),
-                    const SizedBox(height: 16),
-                    _billSummary(),
-                    const SizedBox(height: 16),
-                    _amountCollectedField(),
-                    const SizedBox(height: 16),
-                    _paymentModeField(),
-                    const SizedBox(height: 24),
-                    _saveBtn(),
-                    const SizedBox(height: 24),
-                  ],
-                ],
-              ),
+    return ValueListenableBuilder<int>(
+      valueListenable: _uiState,
+      builder: (context, _, __) {
+        return Scaffold(
+          backgroundColor: const Color(0xFFF1F5F9),
+          appBar: AppBar(
+            title: Text(
+              context.tr('Create Invoice'),
+              style: GoogleFonts.inter(fontWeight: FontWeight.w700),
             ),
+            backgroundColor: const Color(0xFF000080),
+            foregroundColor: Colors.white,
+            elevation: 0,
+          ),
+          body: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _errorMessage.isNotEmpty && _allServices.isEmpty
+              ? Center(
+                  child: Text(
+                    _errorMessage,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                )
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _customerCard(),
+                      const SizedBox(height: 16),
+                      _serviceSelectionCard(),
+                     
+                      const SizedBox(height: 16),
+                      // Per-row scheme + discount sections
+                      for (final row in _rows) ...[
+                        _serviceRowCard(row),
+                        const SizedBox(height: 12),
+                      ],
+                      if (_availableTaxes.isNotEmpty) ...[
+                        _taxSelectionSection(),
+                        const SizedBox(height: 16),
+                      ],
+                      if (_availableExtras.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        _extrasCard(),
+                      ],
+                      if (_rows.isNotEmpty) ...[
+                        _additionalDiscountCard(),
+                        const SizedBox(height: 16),
+                        _billSummary(),
+                        const SizedBox(height: 16),
+                        _amountCollectedField(),
+                        const SizedBox(height: 16),
+                        _paymentModeField(),
+                        const SizedBox(height: 24),
+                        _saveBtn(),
+                        const SizedBox(height: 24),
+                      ],
+                    ],
+                  ),
+                ),
+        );
+      },
     );
   }
 
@@ -755,9 +788,8 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         onSelected: (selected) {
           if (selected) {
-            setState(() {
-              _selectedCategoryFilter = category;
-            });
+            _selectedCategoryFilter = category;
+            _updateUi();
           }
         },
       ),
@@ -1020,38 +1052,83 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
             _voucherInput(row),
           ],
 
-          // Row subtotal
+          // Row subtotal, discount & total breakdown
           const SizedBox(height: 12),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
               color: const Color(0xFF000080).withValues(alpha: 0.04),
               borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFF000080).withValues(alpha: 0.12)),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
               children: [
-                Text(
-                  context.tr('Line Total'),
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                    color: const Color(0xFF1e293b),
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      context.tr('Subtotal'),
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w500,
+                        fontSize: 13,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                    Text(
+                      '$currencySymbol${row.subtotal.toStringAsFixed(2)}',
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: const Color(0xFF1e293b),
+                      ),
+                    ),
+                  ],
                 ),
-                if (row.effectiveDiscount > 0)
-                  Text(
-                    context.tr('$currencySymbol${row.rate.toStringAsFixed(2)} − $currencySymbol${row.effectiveDiscount.toStringAsFixed(2)} = '),
-                    style: GoogleFonts.inter(
-                        fontSize: 12, color: Colors.grey.shade600),
+                if (row.effectiveDiscount > 0) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        context.tr('Discount'),
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 13,
+                          color: Colors.red.shade700,
+                        ),
+                      ),
+                      Text(
+                        '− $currencySymbol${row.effectiveDiscount.toStringAsFixed(2)}',
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: Colors.red.shade700,
+                        ),
+                      ),
+                    ],
                   ),
-                Text(
-                  context.tr('$currencySymbol${row.lineTotal.toStringAsFixed(2)}'),
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
-                    color: const Color(0xFF000080),
-                  ),
+                ],
+                const Divider(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      context.tr('Total'),
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: const Color(0xFF1e293b),
+                      ),
+                    ),
+                    Text(
+                      '$currencySymbol${row.total.toStringAsFixed(2)}',
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                        color: const Color(0xFF000080),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -1106,18 +1183,23 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     ),
                   ],
                 ),
-                if (row.selectedOilProductId != null || row.oilLitresController.text.isNotEmpty)
+                if (row.selectedOilProductId != null || row.selectedOilFilterId != null || row.oilLitresController.text.isNotEmpty)
                   GestureDetector(
                     onTap: () {
-                      setState(() {
-                        row.selectedOilProductId = null;
-                        row.oilPricePerLitre = null;
-                        row.oilLitresController.clear();
-                        row.oilFilterChanged = false;
-                        row.odometerController.clear();
-                        row.nextOilChangeKmController.clear();
-                        _syncAmountCollected();
-                      });
+                      row.selectedOilProductId = null;
+                      row.selectedOilGroupKey = null;
+                      row.selectedOilVolume = null;
+                      row.selectedOilRunKm = null;
+                      row.oilPricePerLitre = null;
+                      row.oilLitresController.clear();
+                      row.selectedOilFilterId = null;
+                      row.oilFilterPrice = 0.0;
+                      row.selectedOilFilterRunKm = null;
+                      row.oilFilterChanged = false;
+                      row.odometerController.clear();
+                      row.nextOilChangeKmController.clear();
+                      _syncAmountCollected();
+                      _updateUi();
                     },
                     child: Text(
                       context.tr('Clear'),
@@ -1154,49 +1236,26 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    DropdownButtonFormField<String>(
-                      isExpanded: true,
-                      value: row.selectedOilGroupKey,
-                      decoration: InputDecoration(
-                        labelText: context.tr('Select Oil Product *'),
-                        labelStyle: const TextStyle(fontSize: 14),
-                        border: const OutlineInputBorder(),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      ),
-                      items: sortedGroupKeys.map<DropdownMenuItem<String>>((key) {
-                        return DropdownMenuItem<String>(
-                          value: key,
-                          child: Text(
-                            key,
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                            overflow: TextOverflow.ellipsis,
+                    InkWell(
+                      onTap: () => _showOilProductSearchPicker(row),
+                      child: InputDecorator(
+                        decoration: InputDecoration(
+                          labelText: context.tr('Select Oil Product *'),
+                          labelStyle: const TextStyle(fontSize: 14),
+                          border: const OutlineInputBorder(),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          suffixIcon: const Icon(Icons.search, color: Colors.amber),
+                        ),
+                        child: Text(
+                          row.selectedOilGroupKey ?? context.tr('Tap to search & select oil product...'),
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: row.selectedOilGroupKey != null ? FontWeight.w600 : FontWeight.normal,
+                            color: row.selectedOilGroupKey != null ? Colors.black87 : Colors.grey.shade600,
                           ),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        setState(() {
-                          row.selectedOilGroupKey = val;
-                          row.selectedOilVolume = null;
-                          row.selectedOilProductId = null;
-                          row.selectedOilRunKm = null;
-                          row.oilPricePerLitre = null;
-                          row.oilLitresController.clear();
-
-                          final variants = getVariantsForGroup(val);
-                          if (variants.length == 1) {
-                            final v = variants.first;
-                            final vol = (v['recommended_qty_litres'] as num).toDouble();
-                            row.selectedOilVolume = vol;
-                            row.selectedOilProductId = v['id'];
-                            row.selectedOilRunKm = v['oil_run_km'] as int?;
-                            row.oilPricePerLitre = (v['price_per_litre'] as num).toDouble();
-                            row.oilLitresController.text = vol.toString();
-                            row._onOdometerChanged();
-                            _fetchOilPriceForProduct(row, v['id']);
-                          }
-                          _syncAmountCollected();
-                        });
-                      },
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ),
                     if (row.selectedOilGroupKey != null) ...[
                       const SizedBox(height: 12),
@@ -1228,21 +1287,20 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                               );
                             }).toList(),
                             onChanged: (val) {
-                              setState(() {
-                                final v = variants.firstWhere(
-                                    (item) => (item['recommended_qty_litres'] as num).toDouble() == val,
-                                    orElse: () => {});
-                                if (v.isNotEmpty) {
-                                  row.selectedOilVolume = val;
-                                  row.selectedOilProductId = v['id'];
-                                  row.selectedOilRunKm = v['oil_run_km'] as int?;
-                                  row.oilPricePerLitre = (v['price_per_litre'] as num).toDouble();
-                                  row.oilLitresController.text = val.toString();
-                                  row._onOdometerChanged();
-                                  _fetchOilPriceForProduct(row, v['id']);
-                                }
-                                _syncAmountCollected();
-                              });
+                              final v = variants.firstWhere(
+                                  (item) => (item['recommended_qty_litres'] as num).toDouble() == val,
+                                  orElse: () => {});
+                              if (v.isNotEmpty) {
+                                row.selectedOilVolume = val;
+                                row.selectedOilProductId = v['id'];
+                                row.selectedOilRunKm = v['oil_run_km'] as int?;
+                                row.oilPricePerLitre = (v['price_per_litre'] as num).toDouble();
+                                row.oilLitresController.text = val.toString();
+                                row._onOdometerChanged();
+                                _fetchOilPriceForProduct(row, v['id']);
+                              }
+                              _syncAmountCollected();
+                              _updateUi();
                             },
                           );
                         },
@@ -1265,7 +1323,8 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                   final brand = p['brand']?.toString() ?? '';
                   final grade = p['grade']?.toString() ?? '';
                   final name = p['name']?.toString() ?? '';
-                  final stockVal = p['stock_qty'] != null ? (p['stock_qty'] as num).toInt() : 0;
+                  final fuelTypes = p['fuel_types_display']?.toString() ?? '';
+                  final runDays = p['oil_run_days'] ?? 180;
 
                   return Container(
                     padding: const EdgeInsets.all(10),
@@ -1320,6 +1379,19 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                                   style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey.shade800),
                                 ),
                               ),
+                            if (fuelTypes.isNotEmpty)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: Colors.purple.shade300),
+                                ),
+                                child: Text(
+                                  'Fuel: $fuelTypes',
+                                  style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.purple.shade900),
+                                ),
+                              ),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
@@ -1328,7 +1400,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                                 border: Border.all(color: Colors.teal.shade300),
                               ),
                               child: Text(
-                                'Stock: $stockVal units',
+                                'Duration: $runDays Days',
                                 style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.teal.shade900),
                               ),
                             ),
@@ -1344,7 +1416,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                             ),
                             if (row.oilLitres > 0)
                               Text(
-                                '${context.tr("Oil Charge")}: ${CountryConfig.currencySymbol}${row.oilTotalCharge.toStringAsFixed(2)}',
+                                '${context.tr("Oil Charge")}: ${CountryConfig.currencySymbol}${((row.oilPricePerLitre ?? 0.0) * row.oilLitres).toStringAsFixed(2)}',
                                 style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.green.shade800),
                               ),
                           ],
@@ -1356,22 +1428,6 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               ),
             ],
             const SizedBox(height: 10),
-            // Row(
-            //   children: [
-            //     Expanded(
-            //       child: Row(
-            //         children: [
-            //           Checkbox(
-            //             value: row.oilFilterChanged,
-            //             onChanged: (val) => setState(() => row.oilFilterChanged = val ?? false),
-            //           ),
-            //           Text(context.tr('Filter Changed'), style: const TextStyle(fontSize: 12)),
-            //         ],
-            //       ),
-            //     ),
-            //   ],
-            // ),
-            // const SizedBox(height: 10),
             Row(
               children: [
                 Expanded(
@@ -1401,6 +1457,84 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Checkbox(
+                  value: row.oilFilterChanged,
+                  onChanged: (val) {
+                    row.oilFilterChanged = val ?? false;
+                    if (!row.oilFilterChanged) {
+                      row.selectedOilFilterId = null;
+                      row.oilFilterPrice = 0.0;
+                      row.selectedOilFilterRunKm = null;
+                    }
+                    _syncAmountCollected();
+                    _updateUi();
+                  },
+                ),
+                Text(context.tr('Filter Changed'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+              ],
+            ),
+            // ── Oil Filter Searchable Selector (Only when Filter Changed is selected) ──
+            if (row.oilFilterChanged && _oilFilters.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Builder(
+                builder: (context) {
+                  String? filterDisplayName;
+                  if (row.selectedOilFilterId != null) {
+                    final f = _oilFilters.firstWhere((item) => item['id'] == row.selectedOilFilterId, orElse: () => {});
+                    if (f.isNotEmpty) {
+                      final b = f['brand_name']?.toString() ?? '';
+                      final n = f['name']?.toString() ?? '';
+                      final p = (f['price'] as num?)?.toDouble() ?? 0.0;
+                      final k = f['running_km'] ?? 5000;
+                      filterDisplayName = '$b - $n (${CountryConfig.currencySymbol}${p.toStringAsFixed(0)} · $k KM)';
+                    }
+                  }
+
+                  return InkWell(
+                    onTap: () => _showOilFilterSearchPicker(row),
+                    child: InputDecorator(
+                      decoration: InputDecoration(
+                        labelText: context.tr('Select Oil Filter (Optional)'),
+                        labelStyle: const TextStyle(fontSize: 14),
+                        border: const OutlineInputBorder(),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        suffixIcon: const Icon(Icons.search, color: Colors.blue),
+                      ),
+                      child: Text(
+                        filterDisplayName ?? context.tr('Tap to search & select oil filter...'),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: filterDisplayName != null ? FontWeight.w600 : FontWeight.normal,
+                          color: filterDisplayName != null ? Colors.black87 : Colors.grey.shade600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 8),
+              if (row.selectedOilFilterId != null && row.oilFilterPrice > 0) ...[
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${context.tr("Filter Price")}: ${CountryConfig.currencySymbol}${row.oilFilterPrice.toStringAsFixed(2)}',
+                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
+                    ),
+                    if (row.selectedOilFilterRunKm != null)
+                      Text(
+                        '${context.tr("Filter Run KM")}: ${row.selectedOilFilterRunKm} KM',
+                        style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.purple.shade900),
+                      ),
+                  ],
+                ),
+              ],
+            ],
           ],
         ),
       );
@@ -1440,7 +1574,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                   child: Text(tyre['brand'] as String, style: const TextStyle(fontSize: 13)),
                 );
               }).toList(),
-              onChanged: (val) => setState(() => row.selectedTyreBrandId = val),
+              onChanged: (val) {
+                row.selectedTyreBrandId = val;
+                _updateUi();
+              },
             ),
             const SizedBox(height: 10),
             Row(
@@ -1471,7 +1608,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                         child: Text(val.toString()),
                       );
                     }).toList(),
-                    onChanged: (val) => setState(() => row.tyresChangedCount = val ?? 4),
+                    onChanged: (val) {
+                      row.tyresChangedCount = val ?? 4;
+                      _updateUi();
+                    },
                   ),
                 ),
               ],
@@ -1537,7 +1677,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     children: [
                       Checkbox(
                         value: row.alignmentDone,
-                        onChanged: (val) => setState(() => row.alignmentDone = val ?? true),
+                        onChanged: (val) {
+                          row.alignmentDone = val ?? true;
+                          _updateUi();
+                        },
                       ),
                       Text(context.tr('Alignment Done'), style: const TextStyle(fontSize: 12)),
                     ],
@@ -1548,7 +1691,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     children: [
                       Checkbox(
                         value: row.balancingDone,
-                        onChanged: (val) => setState(() => row.balancingDone = val ?? true),
+                        onChanged: (val) {
+                          row.balancingDone = val ?? true;
+                          _updateUi();
+                        },
                       ),
                       Text(context.tr('Balancing Done'), style: const TextStyle(fontSize: 12)),
                     ],
@@ -1813,7 +1959,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            onChanged: (_) => setState(() => _syncAmountCollected()),
+            onChanged: (_) {
+              _syncAmountCollected();
+              _updateUi();
+            },
           ),
         ),
       ],
@@ -1919,10 +2068,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 value: _applyGst,
                 activeColor: const Color(0xFF000080),
                 onChanged: (val) {
-                  setState(() {
-                    _applyGst = val ?? false;
-                    _syncAmountCollected();
-                  });
+                  _applyGst = val ?? false;
+                  _syncAmountCollected();
+                  _updateUi();
                 },
               ),
               Expanded(
@@ -1953,14 +2101,13 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     value: isSelected,
                     activeColor: const Color(0xFF000080),
                     onChanged: (val) {
-                      setState(() {
-                        if (val == true) {
-                          _selectedTaxIds.add(id);
-                        } else {
-                          _selectedTaxIds.remove(id);
-                        }
-                        _syncAmountCollected();
-                      });
+                      if (val == true) {
+                        _selectedTaxIds.add(id);
+                      } else {
+                        _selectedTaxIds.remove(id);
+                      }
+                      _syncAmountCollected();
+                      _updateUi();
                     },
                   ),
                   Expanded(
@@ -1991,16 +2138,14 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
 
   // ── Bill summary ──────────────────────────────────────────────────────────
   Widget _billSummary() {
-    final selectedTaxRows = _applyGst
-        ? _availableTaxes
-            .where((t) => _selectedTaxIds.contains(t['id'] as String))
-            .map((t) {
-              final name = t['name'] as String;
-              final pct = (t['percent'] as num).toDouble();
-              return MapEntry(name, subtotal * pct / 100);
-            })
-            .toList()
-        : <MapEntry<String, double>>[];
+    final selectedTaxRows = selectedTaxes
+        .map((t) {
+          final name = t['name'] as String;
+          final pct = (t['percent'] as num).toDouble();
+          final amt = double.tryParse(t['amount'].toString()) ?? 0.0;
+          return MapEntry('$name (${pct.toStringAsFixed(1)}%)', amt);
+        })
+        .toList();
 
     return _card(
       title: 'Bill Summary',
@@ -2009,20 +2154,43 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           // Per-service lines
           for (final row in _rows) ...[
             _summaryRow(context.tr(row.serviceName), '$currencySymbol${row.rate.toStringAsFixed(2)}'),
-            if (row.serviceCategory == 'oil_change' && row.oilTotalCharge > 0) ...[
-              const SizedBox(height: 4),
+            if (row.serviceCategory == 'oil_change') ...[
               Builder(
                 builder: (context) {
+                  final oilCharge = (row.oilPricePerLitre ?? 0.0) * row.oilLitres;
+                  if (oilCharge <= 0) return const SizedBox.shrink();
                   final p = _oilProducts.firstWhere((item) => item['id'] == row.selectedOilProductId, orElse: () => {});
                   final brand = p['brand']?.toString() ?? '';
                   final grade = p['grade']?.toString() ?? '';
                   final oilLabel = brand.isNotEmpty
                       ? '  + Oil ($brand $grade ${row.oilLitres}L)'
                       : '  + Oil (${row.oilLitres}L)';
-                  return _summaryRow(
-                    oilLabel,
-                    '+$currencySymbol${row.oilTotalCharge.toStringAsFixed(2)}',
-                    valueColor: Colors.amber.shade900,
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 4.0),
+                    child: _summaryRow(
+                      oilLabel,
+                      '+$currencySymbol${oilCharge.toStringAsFixed(2)}',
+                      valueColor: Colors.amber.shade900,
+                    ),
+                  );
+                },
+              ),
+              Builder(
+                builder: (context) {
+                  if (!row.oilFilterChanged || row.oilFilterPrice <= 0) return const SizedBox.shrink();
+                  final f = _oilFilters.firstWhere((item) => item['id'] == row.selectedOilFilterId, orElse: () => {});
+                  final fBrand = f['brand_name']?.toString() ?? '';
+                  final fName = f['name']?.toString() ?? '';
+                  final filterLabel = (fBrand.isNotEmpty || fName.isNotEmpty)
+                      ? '  + Oil Filter ($fBrand $fName)'
+                      : '  + Oil Filter';
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 4.0),
+                    child: _summaryRow(
+                      filterLabel,
+                      '+$currencySymbol${row.oilFilterPrice.toStringAsFixed(2)}',
+                      valueColor: Colors.blue.shade900,
+                    ),
                   );
                 },
               ),
@@ -2164,10 +2332,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     groupValue: _usePercentageDiscount,
                     activeColor: const Color(0xFF000080),
                     onChanged: (val) {
-                      setState(() {
-                        _usePercentageDiscount = val ?? false;
-                        _syncAmountCollected();
-                      });
+                      _usePercentageDiscount = val ?? false;
+                      _syncAmountCollected();
+                      _updateUi();
                     },
                   ),
                   Text(
@@ -2189,10 +2356,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     groupValue: _usePercentageDiscount,
                     activeColor: const Color(0xFF000080),
                     onChanged: (val) {
-                      setState(() {
-                        _usePercentageDiscount = val ?? true;
-                        _syncAmountCollected();
-                      });
+                      _usePercentageDiscount = val ?? true;
+                      _syncAmountCollected();
+                      _updateUi();
                     },
                   ),
                   Text(
@@ -2254,9 +2420,8 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
     return Expanded(
       child: GestureDetector(
         onTap: () {
-          setState(() {
-            _selectedPaymentMode = mode;
-          });
+          _selectedPaymentMode = mode;
+          _updateUi();
         },
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -2378,18 +2543,20 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                           isDense: true,
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                         ),
-                        onChanged: (_) => setState(() => _syncAmountCollected()),
+                        onChanged: (_) {
+                          _syncAmountCollected();
+                          _updateUi();
+                        },
                       ),
                     ),
                     const SizedBox(width: 8),
                     IconButton(
                       icon: const Icon(Icons.delete_outline, color: Colors.red),
                       onPressed: () {
-                        setState(() {
-                          controller.dispose();
-                          _selectedExtras.remove(extraMap);
-                          _syncAmountCollected();
-                        });
+                        controller.dispose();
+                        _selectedExtras.remove(extraMap);
+                        _syncAmountCollected();
+                        _updateUi();
                       },
                     ),
                   ],
@@ -2454,17 +2621,17 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                       title: Text(ext['name'] ?? '', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
                       onTap: () {
                         Navigator.pop(ctx);
-                        setState(() {
-                          final controller = TextEditingController(text: '0');
-                          controller.addListener(() => setState(() {
-                                _syncAmountCollected();
-                              }));
-                          _selectedExtras.add({
-                            'extra': ext,
-                            'priceController': controller,
-                          });
+                        final controller = TextEditingController(text: '0');
+                        controller.addListener(() {
                           _syncAmountCollected();
+                          _updateUi();
                         });
+                        _selectedExtras.add({
+                          'extra': ext,
+                          'priceController': controller,
+                        });
+                        _syncAmountCollected();
+                        _updateUi();
                       },
                     );
                   },
@@ -2477,7 +2644,305 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
     );
   }
 
+  void _showOilProductSearchPicker(_ServiceRow row) {
+    final uniqueGroupKeys = <String>{};
+    for (var oil in _oilProducts) {
+      final brand = oil['brand']?.toString() ?? '';
+      final grade = oil['grade']?.toString() ?? '';
+      final name = oil['name']?.toString() ?? '';
+      final key = [brand, grade, name].where((s) => s.isNotEmpty).join(' • ');
+      uniqueGroupKeys.add(key);
+    }
+    final sortedGroupKeys = uniqueGroupKeys.toList()..sort();
+
+    List<dynamic> getVariantsForGroup(String? groupKey) {
+      if (groupKey == null) return [];
+      return _oilProducts.where((oil) {
+        final brand = oil['brand']?.toString() ?? '';
+        final grade = oil['grade']?.toString() ?? '';
+        final name = oil['name']?.toString() ?? '';
+        final key = [brand, grade, name].where((s) => s.isNotEmpty).join(' • ');
+        return key == groupKey;
+      }).toList();
+    }
+
+    final searchController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final query = searchController.text.trim().toLowerCase();
+            final filteredKeys = sortedGroupKeys.where((k) => k.toLowerCase().contains(query)).toList();
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.75,
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        context.tr('Select Oil Product'),
+                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: searchController,
+                    autofocus: false,
+                    decoration: InputDecoration(
+                      hintText: context.tr('Search brand, grade or product name...'),
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                searchController.clear();
+                                setModalState(() {});
+                              },
+                            )
+                          : null,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                    onChanged: (_) => setModalState(() {}),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: filteredKeys.isEmpty
+                        ? Center(
+                            child: Text(
+                              context.tr('No oil products found'),
+                              style: TextStyle(color: Colors.grey.shade600),
+                            ),
+                          )
+                        : ListView.separated(
+                            itemCount: filteredKeys.length,
+                            separatorBuilder: (_, __) => const Divider(height: 1),
+                            itemBuilder: (_, index) {
+                              final key = filteredKeys[index];
+                              final isSelected = row.selectedOilGroupKey == key;
+                              final variants = getVariantsForGroup(key);
+
+                              return ListTile(
+                                selected: isSelected,
+                                selectedTileColor: Colors.amber.shade50,
+                                leading: CircleAvatar(
+                                  backgroundColor: isSelected ? Colors.amber.shade700 : Colors.grey.shade200,
+                                  child: Icon(
+                                    Icons.oil_barrel,
+                                    size: 18,
+                                    color: isSelected ? Colors.white : Colors.amber.shade800,
+                                  ),
+                                ),
+                                title: Text(
+                                  key,
+                                  style: GoogleFonts.inter(
+                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  '${variants.length} volume variant(s)',
+                                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                ),
+                                trailing: isSelected
+                                    ? const Icon(Icons.check_circle, color: Colors.amber)
+                                    : const Icon(Icons.chevron_right, size: 18),
+                                onTap: () {
+                                  Navigator.pop(ctx);
+                                  row.selectedOilGroupKey = key;
+                                  row.selectedOilVolume = null;
+                                  row.selectedOilProductId = null;
+                                  row.selectedOilRunKm = null;
+                                  row.oilPricePerLitre = null;
+                                  row.oilLitresController.clear();
+
+                                  if (variants.length == 1) {
+                                    final v = variants.first;
+                                    final vol = (v['recommended_qty_litres'] as num).toDouble();
+                                    row.selectedOilVolume = vol;
+                                    row.selectedOilProductId = v['id'];
+                                    row.selectedOilRunKm = v['oil_run_km'] as int?;
+                                    row.oilPricePerLitre = (v['price_per_litre'] as num).toDouble();
+                                    row.oilLitresController.text = vol.toString();
+                                    row._onOdometerChanged();
+                                    _fetchOilPriceForProduct(row, v['id']);
+                                  }
+                                  _syncAmountCollected();
+                                  _updateUi();
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showOilFilterSearchPicker(_ServiceRow row) {
+    final searchController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final query = searchController.text.trim().toLowerCase();
+            final filteredFilters = _oilFilters.where((f) {
+              final brand = (f['brand_name']?.toString() ?? '').toLowerCase();
+              final name = (f['name']?.toString() ?? '').toLowerCase();
+              return brand.contains(query) || name.contains(query);
+            }).toList();
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.75,
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        context.tr('Select Oil Filter'),
+                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: searchController,
+                    autofocus: false,
+                    decoration: InputDecoration(
+                      hintText: context.tr('Search brand or filter part no...'),
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                searchController.clear();
+                                setModalState(() {});
+                              },
+                            )
+                          : null,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                    onChanged: (_) => setModalState(() {}),
+                  ),
+                  const SizedBox(height: 12),
+                  if (row.selectedOilFilterId != null) ...[
+                    ListTile(
+                      leading: const Icon(Icons.clear_all, color: Colors.red),
+                      title: Text(
+                        context.tr('Clear Filter Selection'),
+                        style: GoogleFonts.inter(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        row.selectedOilFilterId = null;
+                        row.oilFilterPrice = 0.0;
+                        row.selectedOilFilterRunKm = null;
+                        _syncAmountCollected();
+                        _updateUi();
+                      },
+                    ),
+                    const Divider(height: 1),
+                  ],
+                  Expanded(
+                    child: filteredFilters.isEmpty
+                        ? Center(
+                            child: Text(
+                              context.tr('No oil filters found'),
+                              style: TextStyle(color: Colors.grey.shade600),
+                            ),
+                          )
+                        : ListView.separated(
+                            itemCount: filteredFilters.length,
+                            separatorBuilder: (_, __) => const Divider(height: 1),
+                            itemBuilder: (_, index) {
+                              final filter = filteredFilters[index];
+                              final filterId = filter['id'] as String;
+                              final isSelected = row.selectedOilFilterId == filterId;
+                              final brand = filter['brand_name']?.toString() ?? '';
+                              final name = filter['name']?.toString() ?? '';
+                              final price = (filter['price'] as num?)?.toDouble() ?? 0.0;
+                              final km = filter['running_km'] ?? 5000;
+
+                              return ListTile(
+                                selected: isSelected,
+                                selectedTileColor: Colors.blue.shade50,
+                                leading: CircleAvatar(
+                                  backgroundColor: isSelected ? Colors.blue.shade700 : Colors.grey.shade200,
+                                  child: Icon(
+                                    Icons.filter_alt,
+                                    size: 18,
+                                    color: isSelected ? Colors.white : Colors.blue.shade800,
+                                  ),
+                                ),
+                                title: Text(
+                                  '$brand - $name',
+                                  style: GoogleFonts.inter(
+                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  'Price: ${CountryConfig.currencySymbol}${price.toStringAsFixed(2)}  •  Lifespan: $km KM',
+                                  style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                                ),
+                                trailing: isSelected
+                                    ? const Icon(Icons.check_circle, color: Colors.blue)
+                                    : null,
+                                onTap: () {
+                                  Navigator.pop(ctx);
+                                  row.selectedOilFilterId = filterId;
+                                  row.oilFilterPrice = price;
+                                  row.selectedOilFilterRunKm = km as int?;
+                                  row._onOdometerChanged();
+                                  _syncAmountCollected();
+                                  _updateUi();
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────────────
+
   Widget _card({
     required String title,
     required Widget child,

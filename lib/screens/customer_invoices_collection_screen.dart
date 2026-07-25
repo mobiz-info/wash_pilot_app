@@ -5,13 +5,13 @@ import 'package:google_fonts/google_fonts.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 
-class CustomerInvoicesCollectionScreen extends StatefulWidget {
+class CustomerInvoicesCollectionScreen extends StatelessWidget {
   final String customerId;
   final String customerName;
   final String customerPhone;
   final double totalOutstanding;
 
-  const CustomerInvoicesCollectionScreen({
+  CustomerInvoicesCollectionScreen({
     super.key,
     required this.customerId,
     required this.customerName,
@@ -19,73 +19,44 @@ class CustomerInvoicesCollectionScreen extends StatefulWidget {
     required this.totalOutstanding,
   });
 
-  @override
-  State<CustomerInvoicesCollectionScreen> createState() =>
-      _CustomerInvoicesCollectionScreenState();
-}
+  final ValueNotifier<List<dynamic>> _invoicesNotifier = ValueNotifier([]);
+  final ValueNotifier<bool> _loadingNotifier = ValueNotifier(true);
+  final ValueNotifier<String> _errorNotifier = ValueNotifier('');
+  final ValueNotifier<bool> _collectingNotifier = ValueNotifier(false);
+  final ValueNotifier<String> _paymentModeNotifier = ValueNotifier('digital_payments');
+  final TextEditingController _amountController = TextEditingController();
 
-class _CustomerInvoicesCollectionScreenState
-    extends State<CustomerInvoicesCollectionScreen> {
-  List<dynamic> _invoices = [];
-  bool _loading = true;
-  String _error = '';
-  bool _collecting = false;
+  Future<void> _fetchCustomerInvoices(BuildContext context) async {
+    _loadingNotifier.value = true;
+    _errorNotifier.value = '';
 
-  final _amountController = TextEditingController();
-  String _selectedPaymentMode = 'digital_payments'; // 'cash', 'card', 'digital_payments'
-
-  @override
-  void initState() {
-    super.initState();
-    _amountController.text = widget.totalOutstanding.toStringAsFixed(2);
-    _fetchCustomerInvoices();
-  }
-
-  @override
-  void dispose() {
-    _amountController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _fetchCustomerInvoices() async {
-    setState(() {
-      _loading = true;
-      _error = '';
-    });
     final token = context.read<AuthProvider>().token;
     if (token == null) {
-      setState(() {
-        _error = 'Not authenticated';
-        _loading = false;
-      });
+      _errorNotifier.value = 'Not authenticated';
+      _loadingNotifier.value = false;
       return;
     }
+
     try {
       final res = await ApiService.getOutstandingList(token);
       if (res['success'] == true) {
         final allInvoices = res['invoices'] as List<dynamic>? ?? [];
-        setState(() {
-          _invoices = allInvoices.where((inv) {
-            final cust = inv['customer'];
-            return cust != null && cust['id'] == widget.customerId;
-          }).toList();
-          _loading = false;
-        });
+        _invoicesNotifier.value = allInvoices.where((inv) {
+          final cust = inv['customer'];
+          return cust != null && cust['id'] == customerId;
+        }).toList();
+        _loadingNotifier.value = false;
       } else {
-        setState(() {
-          _error = res['message'] ?? 'Failed to load invoices';
-          _loading = false;
-        });
+        _errorNotifier.value = res['message'] ?? 'Failed to load invoices';
+        _loadingNotifier.value = false;
       }
     } catch (e) {
-      setState(() {
-        _error = 'Network error: $e';
-        _loading = false;
-      });
+      _errorNotifier.value = 'Network error: $e';
+      _loadingNotifier.value = false;
     }
   }
 
-  Future<void> _collectPayment() async {
+  Future<void> _collectPayment(BuildContext context) async {
     final amt = double.tryParse(_amountController.text.trim());
     if (amt == null || amt <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -97,7 +68,7 @@ class _CustomerInvoicesCollectionScreenState
       return;
     }
 
-    if (amt > widget.totalOutstanding) {
+    if (amt > totalOutstanding) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -109,31 +80,29 @@ class _CustomerInvoicesCollectionScreenState
       return;
     }
 
-    setState(() => _collecting = true);
+    _collectingNotifier.value = true;
     final token = context.read<AuthProvider>().token ?? '';
 
     try {
       final res = await ApiService.collectCustomerOutstanding(
-        customerId: widget.customerId,
+        customerId: customerId,
         amount: amt,
-        paymentMode: _selectedPaymentMode,
+        paymentMode: _paymentModeNotifier.value,
         token: token,
       );
-
-      if (!mounted) return;
 
       if (res['success'] == true) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              '✓ ${context.tr('Collected')} ${widget.totalOutstanding - amt == 0 ? 'full' : ''} payment of ${_amountController.text} successfully!',
+              '✓ ${context.tr('Collected')} ${totalOutstanding - amt == 0 ? 'full' : ''} payment of ${_amountController.text} successfully!',
             ),
             backgroundColor: Colors.green,
           ),
         );
         Navigator.pop(context, true);
       } else {
-        setState(() => _collecting = false);
+        _collectingNotifier.value = false;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(res['message'] ?? 'Failed to collect payment'),
@@ -142,7 +111,7 @@ class _CustomerInvoicesCollectionScreenState
         );
       }
     } catch (e) {
-      setState(() => _collecting = false);
+      _collectingNotifier.value = false;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(context.tr('Error: $e')),
@@ -155,6 +124,8 @@ class _CustomerInvoicesCollectionScreenState
   @override
   Widget build(BuildContext context) {
     final currencySymbol = context.watch<AuthProvider>().currencySymbol;
+    _amountController.text = totalOutstanding.toStringAsFixed(2);
+    _fetchCustomerInvoices(context);
 
     return Scaffold(
       backgroundColor: const Color(0xFFf8fafc),
@@ -185,10 +156,10 @@ class _CustomerInvoicesCollectionScreenState
               ),
               child: Row(
                 children: [
-                  CircleAvatar(
+                  const CircleAvatar(
                     radius: 24,
                     backgroundColor: Colors.white,
-                    child: const Icon(Icons.person, color: Color(0xFF000080)),
+                    child: Icon(Icons.person, color: Color(0xFF000080)),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -196,7 +167,7 @@ class _CustomerInvoicesCollectionScreenState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          widget.customerName,
+                          customerName,
                           style: GoogleFonts.inter(
                             fontWeight: FontWeight.w800,
                             fontSize: 16,
@@ -205,7 +176,7 @@ class _CustomerInvoicesCollectionScreenState
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          widget.customerPhone,
+                          customerPhone,
                           style: GoogleFonts.inter(
                             fontSize: 13,
                             color: Colors.white70,
@@ -226,7 +197,7 @@ class _CustomerInvoicesCollectionScreenState
                         ),
                       ),
                       Text(
-                        '$currencySymbol${widget.totalOutstanding.toStringAsFixed(2)}',
+                        '$currencySymbol${totalOutstanding.toStringAsFixed(2)}',
                         style: GoogleFonts.inter(
                           fontWeight: FontWeight.w900,
                           fontSize: 18,
@@ -242,21 +213,34 @@ class _CustomerInvoicesCollectionScreenState
 
           // Invoices List
           Expanded(
-            child: _loading
-                ? const Center(
+            child: ValueListenableBuilder<bool>(
+              valueListenable: _loadingNotifier,
+              builder: (context, isLoading, child) {
+                if (isLoading) {
+                  return const Center(
                     child: CircularProgressIndicator(
                       color: Color(0xFF000080),
                     ),
-                  )
-                : _error.isNotEmpty
-                    ? Center(
+                  );
+                }
+
+                return ValueListenableBuilder<String>(
+                  valueListenable: _errorNotifier,
+                  builder: (context, errorMsg, child) {
+                    if (errorMsg.isNotEmpty) {
+                      return Center(
                         child: Text(
-                          _error,
+                          errorMsg,
                           style: const TextStyle(color: Colors.red),
                         ),
-                      )
-                    : _invoices.isEmpty
-                        ? Center(
+                      );
+                    }
+
+                    return ValueListenableBuilder<List<dynamic>>(
+                      valueListenable: _invoicesNotifier,
+                      builder: (context, invoices, child) {
+                        if (invoices.isEmpty) {
+                          return Center(
                             child: Text(
                               context.tr('No outstanding invoices found.'),
                               style: GoogleFonts.inter(
@@ -264,127 +248,135 @@ class _CustomerInvoicesCollectionScreenState
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.all(16),
-                            itemCount: _invoices.length,
-                            itemBuilder: (context, index) {
-                              final inv = _invoices[index];
-                              final outstanding = double.tryParse(
-                                      inv['outstanding']?.toString() ?? '0') ??
-                                  0;
-                              final total = double.tryParse(
-                                      inv['total']?.toString() ?? '0') ??
-                                  0;
-                              final collected = double.tryParse(
-                                      inv['amount_collected']?.toString() ??
-                                          '0') ??
-                                  0;
+                          );
+                        }
 
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 12),
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(
-                                    color: Colors.grey.shade200,
-                                    width: 1,
+                        return ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: invoices.length,
+                          itemBuilder: (context, index) {
+                            final inv = invoices[index];
+                            final outstanding = double.tryParse(
+                                    inv['outstanding']?.toString() ?? '0') ??
+                                0;
+                            final total = double.tryParse(
+                                    inv['total']?.toString() ?? '0') ??
+                                0;
+                            final collected = double.tryParse(
+                                    inv['amount_collected']?.toString() ??
+                                        '0') ??
+                                0;
+
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: Colors.grey.shade200,
+                                  width: 1,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.02),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
                                   ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.02),
-                                      blurRadius: 6,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          'Invoice #${inv['invoice_number']}',
-                                          style: GoogleFonts.inter(
-                                            fontWeight: FontWeight.w800,
-                                            fontSize: 14,
-                                            color: const Color(0xFF1e293b),
-                                          ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'Invoice #${inv['invoice_number']}',
+                                        style: GoogleFonts.inter(
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 14,
+                                          color: const Color(0xFF1e293b),
                                         ),
-                                        Text(
-                                          '$currencySymbol${outstanding.toStringAsFixed(2)}',
-                                          style: GoogleFonts.inter(
-                                            fontWeight: FontWeight.w900,
-                                            fontSize: 14,
-                                            color: const Color(0xFFdc2626),
-                                          ),
+                                      ),
+                                      Text(
+                                        '$currencySymbol${outstanding.toStringAsFixed(2)}',
+                                        style: GoogleFonts.inter(
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 14,
+                                          color: const Color(0xFFdc2626),
                                         ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.directions_car_outlined,
-                                          size: 14,
-                                          color: Color(0xFF64748b),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.directions_car_outlined,
+                                        size: 14,
+                                        color: Color(0xFF64748b),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        inv['vehicle']['number'] ?? '',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 12,
+                                          color: const Color(0xFF64748b),
                                         ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          inv['vehicle']['number'] ?? '',
-                                          style: GoogleFonts.inter(
-                                            fontSize: 12,
-                                            color: const Color(0xFF64748b),
-                                          ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      const Icon(
+                                        Icons.calendar_today_outlined,
+                                        size: 14,
+                                        color: Color(0xFF64748b),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        inv['date'] ?? '',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 12,
+                                          color: const Color(0xFF64748b),
                                         ),
-                                        const SizedBox(width: 12),
-                                        const Icon(
-                                          Icons.calendar_today_outlined,
-                                          size: 14,
-                                          color: Color(0xFF64748b),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        context.tr(
+                                            'Collected: $currencySymbol${collected.toStringAsFixed(2)}'),
+                                        style: GoogleFonts.inter(
+                                          fontSize: 11,
+                                          color: const Color(0xFF16a34a),
+                                          fontWeight: FontWeight.w600,
                                         ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          inv['date'] ?? '',
-                                          style: GoogleFonts.inter(
-                                            fontSize: 12,
-                                            color: const Color(0xFF64748b),
-                                          ),
+                                      ),
+                                      Text(
+                                        context.tr(
+                                            'Total: $currencySymbol${total.toStringAsFixed(2)}'),
+                                        style: GoogleFonts.inter(
+                                          fontSize: 11,
+                                          color: const Color(0xFF64748b),
                                         ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          context.tr(
-                                              'Collected: $currencySymbol${collected.toStringAsFixed(2)}'),
-                                          style: GoogleFonts.inter(
-                                            fontSize: 11,
-                                            color: const Color(0xFF16a34a),
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                        Text(
-                                          context.tr(
-                                              'Total: $currencySymbol${total.toStringAsFixed(2)}'),
-                                          style: GoogleFonts.inter(
-                                            fontSize: 11,
-                                            color: const Color(0xFF64748b),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            ),
           ),
 
           // Bottom payment entry panel
@@ -472,40 +464,44 @@ class _CustomerInvoicesCollectionScreenState
                             ),
                           ),
                           const SizedBox(height: 6),
-                          DropdownButtonFormField<String>(
-                            value: _selectedPaymentMode,
-                            decoration: InputDecoration(
-                              filled: true,
-                              fillColor: const Color(0xFFf8fafc),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 12,
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: const BorderSide(
-                                    color: Color(0xFFd1d5db)),
-                              ),
-                            ),
-                            items: [
-                              DropdownMenuItem(
-                                value: 'digital_payments',
-                                child: Text(context.tr('Digital payments')),
-                              ),
-                              DropdownMenuItem(
-                                value: 'cash',
-                                child: Text(context.tr('Cash')),
-                              ),
-                              DropdownMenuItem(
-                                value: 'card',
-                                child: Text(context.tr('Card')),
-                              ),
-                              
-                            ],
-                            onChanged: (v) {
-                              if (v != null) {
-                                setState(() => _selectedPaymentMode = v);
-                              }
+                          ValueListenableBuilder<String>(
+                            valueListenable: _paymentModeNotifier,
+                            builder: (context, paymentMode, child) {
+                              return DropdownButtonFormField<String>(
+                                value: paymentMode,
+                                decoration: InputDecoration(
+                                  filled: true,
+                                  fillColor: const Color(0xFFf8fafc),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 12,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: const BorderSide(
+                                        color: Color(0xFFd1d5db)),
+                                  ),
+                                ),
+                                items: [
+                                  DropdownMenuItem(
+                                    value: 'digital_payments',
+                                    child: Text(context.tr('Digital payments')),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'cash',
+                                    child: Text(context.tr('Cash')),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'card',
+                                    child: Text(context.tr('Card')),
+                                  ),
+                                ],
+                                onChanged: (v) {
+                                  if (v != null) {
+                                    _paymentModeNotifier.value = v;
+                                  }
+                                },
+                              );
                             },
                           ),
                         ],
@@ -514,32 +510,37 @@ class _CustomerInvoicesCollectionScreenState
                   ],
                 ),
                 const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: _collecting ? null : _collectPayment,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF000080),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: _collecting
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: Colors.white,
-                          ),
-                        )
-                      : Text(
-                          context.tr('Collect Payment'),
-                          style: GoogleFonts.inter(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                          ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: _collectingNotifier,
+                  builder: (context, isCollecting, child) {
+                    return ElevatedButton(
+                      onPressed: isCollecting ? null : () => _collectPayment(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF000080),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
+                      ),
+                      child: isCollecting
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(
+                              context.tr('Collect Payment'),
+                              style: GoogleFonts.inter(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                    );
+                  },
                 ),
               ],
             ),

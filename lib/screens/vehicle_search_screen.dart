@@ -20,12 +20,12 @@ class VehicleSearchScreen extends StatefulWidget {
 
 class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
   final _vehicleController = TextEditingController();
-  bool _isLoading = false;
-  String _errorMessage = '';
-  Map<String, dynamic>? _result;
+  final _isLoading = ValueNotifier<bool>(false);
+  final _errorMessage = ValueNotifier<String>('');
+  final _result = ValueNotifier<Map<String, dynamic>?>( null);
   Timer? _debounce;
-  List<dynamic> _suggestions = [];
-  bool _isSuggesting = false;
+  final _suggestions = ValueNotifier<List<dynamic>>([]);
+  final _isSuggesting = ValueNotifier<bool>(false);
 
   @override
   void initState() {
@@ -41,11 +41,9 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
         _fetchSuggestions(text);
       });
     } else if (text.isEmpty) {
-      setState(() {
-        _result = null;
-        _suggestions = [];
-        _errorMessage = '';
-      });
+      _result.value = null;
+      _suggestions.value = [];
+      _errorMessage.value = '';
     }
   }
 
@@ -54,6 +52,11 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
     _debounce?.cancel();
     _vehicleController.removeListener(_onSearchChanged);
     _vehicleController.dispose();
+    _isLoading.dispose();
+    _errorMessage.dispose();
+    _result.dispose();
+    _suggestions.dispose();
+    _isSuggesting.dispose();
     super.dispose();
   }
 
@@ -61,29 +64,21 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
 
-    setState(() {
-      _isSuggesting = true;
-    });
+    _isSuggesting.value = true;
 
     try {
       final res = await ApiService.searchVehicleList(query, token);
       if (res['success'] == true) {
-        setState(() {
-          _suggestions = res['vehicles'] as List<dynamic>;
-          _errorMessage = '';
-          _isSuggesting = false;
-        });
+        _suggestions.value = res['vehicles'] as List<dynamic>;
+        _errorMessage.value = '';
+        _isSuggesting.value = false;
       } else {
-        setState(() {
-          _suggestions = [];
-          _isSuggesting = false;
-        });
+        _suggestions.value = [];
+        _isSuggesting.value = false;
       }
     } catch (e) {
-      setState(() {
-        _suggestions = [];
-        _isSuggesting = false;
-      });
+      _suggestions.value = [];
+      _isSuggesting.value = false;
     }
   }
 
@@ -99,12 +94,10 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
 
   Future<void> _search(String vehicleNumber) async {
     final number = vehicleNumber.replaceAll(' ', '');
-    setState(() {
-      _isLoading = true;
-      _errorMessage = '';
-      _result = null;
-      _suggestions = [];
-    });
+    _isLoading.value = true;
+    _errorMessage.value = '';
+    _result.value = null;
+    _suggestions.value = [];
 
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
@@ -112,21 +105,15 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
     try {
       final res = await ApiService.searchVehicle(number, token);
       if (res['success'] == true) {
-        setState(() {
-          _result = res;
-          _isLoading = false;
-        });
+        _result.value = res;
+        _isLoading.value = false;
       } else {
-        setState(() {
-          _errorMessage = res['message'] ?? 'Vehicle not found';
-          _isLoading = false;
-        });
+        _errorMessage.value = res['message'] ?? 'Vehicle not found';
+        _isLoading.value = false;
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-        _isLoading = false;
-      });
+      _errorMessage.value = e.toString();
+      _isLoading.value = false;
     }
   }
 
@@ -191,9 +178,7 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
 
-    setState(() {
-      _isLoading = true;
-    });
+    _isLoading.value = true;
 
     try {
       final phone = customer['phone'] ?? '';
@@ -212,57 +197,34 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
       if (res['success'] == true) {
         if (res['action'] == 'auto') {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(context.tr('✅ WhatsApp Ready Alert sent successfully!')),
-              backgroundColor: Colors.green,
-            ),
+            SnackBar(content: Text(context.tr('✅ WhatsApp Ready Alert sent successfully!')), backgroundColor: Colors.green),
           );
         } else {
-          // Manual WhatsApp chat opening fallback
           final message = "Hello $customerName, your vehicle ($vehicleNumber) is ready for pickup! Thank you for choosing our service.";
-          
           String cleanedPhone = phone.replaceAll(RegExp(r'\D'), '');
-          if (cleanedPhone.length == 10) {
-            cleanedPhone = '91$cleanedPhone';
-          }
-          
+          if (cleanedPhone.length == 10) cleanedPhone = '91$cleanedPhone';
           if (cleanedPhone.isNotEmpty) {
-            final whatsappUrl = Uri.parse(
-              "https://wa.me/$cleanedPhone?text=${Uri.encodeComponent(message)}"
-            );
+            final whatsappUrl = Uri.parse("https://wa.me/$cleanedPhone?text=${Uri.encodeComponent(message)}");
             await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(context.tr('No phone number available for this customer')),
-                backgroundColor: Colors.red,
-              ),
+              SnackBar(content: Text(context.tr('No phone number available for this customer')), backgroundColor: Colors.red),
             );
           }
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(res['message'] ?? context.tr('Failed to send Ready Alert.')),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(res['message'] ?? context.tr('Failed to send Ready Alert.')), backgroundColor: Colors.red),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString()),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
         );
       }
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) _isLoading.value = false;
     }
   }
 
@@ -320,27 +282,39 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
 
           // Body
           Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _errorMessage.isNotEmpty
-                    ? _buildEmptyState()
-                    : _result != null
-                        ? _buildResult()
-                        : _suggestions.isNotEmpty
-                            ? _buildSuggestionsList()
-                            : _buildHint(),
+            child: ValueListenableBuilder<bool>(
+              valueListenable: _isLoading,
+              builder: (context, loading, _) => ValueListenableBuilder<String>(
+                valueListenable: _errorMessage,
+                builder: (context, errMsg, _) => ValueListenableBuilder<Map<String, dynamic>?>(
+                  valueListenable: _result,
+                  builder: (context, result, _) => ValueListenableBuilder<List<dynamic>>(
+                    valueListenable: _suggestions,
+                    builder: (context, suggestions, _) => loading
+                        ? const Center(child: CircularProgressIndicator())
+                        : errMsg.isNotEmpty
+                            ? _buildEmptyState(errMsg)
+                            : result != null
+                                ? _buildResult(result)
+                                : suggestions.isNotEmpty
+                                    ? _buildSuggestionsList(suggestions)
+                                    : _buildHint(),
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSuggestionsList() {
+  Widget _buildSuggestionsList(List<dynamic> suggestions) {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _suggestions.length,
+      itemCount: suggestions.length,
       itemBuilder: (context, index) {
-        final suggestion = _suggestions[index];
+        final suggestion = suggestions[index];
         return Card(
           color: Colors.white,
           elevation: 0,
@@ -426,14 +400,14 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(String errorMessage) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.no_crash, size: 80, color: Colors.orange.shade200),
           const SizedBox(height: 16),
-          Text(_errorMessage, textAlign: TextAlign.center, style: GoogleFonts.inter(color: Colors.orange.shade700, fontSize: 16, fontWeight: FontWeight.w600)),
+          Text(errorMessage, textAlign: TextAlign.center, style: GoogleFonts.inter(color: Colors.orange.shade700, fontSize: 16, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           Text(context.tr('Check the vehicle number and try again.'), style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 13)),
         ],
@@ -441,10 +415,10 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
     );
   }
 
-  Widget _buildResult() {
-    final vehicle = _result!['vehicle'] as Map<String, dynamic>;
-    final customer = _result!['customer'] as Map<String, dynamic>;
-    final visits = _result!['visits'] as Map<String, dynamic>;
+  Widget _buildResult(Map<String, dynamic> resultData) {
+    final vehicle = resultData['vehicle'] as Map<String, dynamic>;
+    final customer = resultData['customer'] as Map<String, dynamic>;
+    final visits = resultData['visits'] as Map<String, dynamic>;
 
     final int totalVisits = visits['total_visits'] ?? 0;
     final int paidVisits = visits['paid_visits'] ?? 0;

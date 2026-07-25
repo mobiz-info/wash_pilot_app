@@ -21,17 +21,18 @@ class _AddSchemeScreenState extends State<AddSchemeScreen> {
   final _voucherNumberController = TextEditingController();
   final _voucherDiscountController = TextEditingController();
 
-  bool _loading = true;
-  bool _saving = false;
-  String _error = '';
-  Map<String, dynamic> _options = {};
-  String? _schemeTypeId;
-  DateTime _startDate = DateTime.now();
-  DateTime _endDate = DateTime.now().add(const Duration(days: 30));
+  final _loading = ValueNotifier<bool>(true);
+  final _saving = ValueNotifier<bool>(false);
+  final _error = ValueNotifier<String>('');
+  final _options = ValueNotifier<Map<String, dynamic>>({});
+  final _schemeTypeId = ValueNotifier<String?>(null);
+  final _startDate = ValueNotifier<DateTime>(DateTime.now());
+  final _endDate = ValueNotifier<DateTime>(DateTime.now().add(const Duration(days: 30)));
   final Set<String> _serviceIds = {};
   final Set<String> _customerTypeIds = {};
   final Set<String> _vehicleTypeIds = {};
   final List<Map<String, String>> _vouchers = [];
+  final _formNotifier = ValueNotifier<int>(0);
 
   @override
   void initState() {
@@ -47,40 +48,40 @@ class _AddSchemeScreenState extends State<AddSchemeScreen> {
     _discountController.dispose();
     _voucherNumberController.dispose();
     _voucherDiscountController.dispose();
+    _loading.dispose();
+    _saving.dispose();
+    _error.dispose();
+    _options.dispose();
+    _schemeTypeId.dispose();
+    _startDate.dispose();
+    _endDate.dispose();
+    _formNotifier.dispose();
     super.dispose();
   }
 
   Future<void> _loadOptions() async {
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
-    setState(() {
-      _loading = true;
-      _error = '';
-    });
+    _loading.value = true;
+    _error.value = '';
     try {
       final res = await ApiService.getSchemeOptions(token);
       if (!mounted) return;
       if (res['success'] == true) {
         final types = List<dynamic>.from(res['scheme_types'] ?? []);
-        setState(() {
-          _options = res;
-          _schemeTypeId = types.isNotEmpty
-              ? Map<String, dynamic>.from(types.first as Map)['id']?.toString()
-              : null;
-          _loading = false;
-        });
+        _options.value = res;
+        _schemeTypeId.value = types.isNotEmpty
+            ? Map<String, dynamic>.from(types.first as Map)['id']?.toString()
+            : null;
+        _loading.value = false;
       } else {
-        setState(() {
-          _error = res['message'] ?? 'Failed to load options';
-          _loading = false;
-        });
+        _error.value = res['message'] ?? 'Failed to load options';
+        _loading.value = false;
       }
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _error = 'Network error: $e';
-        _loading = false;
-      });
+      _error.value = 'Network error: $e';
+      _loading.value = false;
     }
   }
 
@@ -91,9 +92,9 @@ class _AddSchemeScreenState extends State<AddSchemeScreen> {
       '${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}';
 
   String get _selectedTypeName {
-    for (final item in List<dynamic>.from(_options['scheme_types'] ?? [])) {
+    for (final item in List<dynamic>.from(_options.value['scheme_types'] ?? [])) {
       final type = Map<String, dynamic>.from(item as Map);
-      if (type['id']?.toString() == _schemeTypeId) {
+      if (type['id']?.toString() == _schemeTypeId.value) {
         return type['name']?.toString() ?? '';
       }
     }
@@ -107,7 +108,7 @@ class _AddSchemeScreenState extends State<AddSchemeScreen> {
   Future<void> _pickDate({required bool isStart}) async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: isStart ? _startDate : _endDate,
+      initialDate: isStart ? _startDate.value : _endDate.value,
       firstDate: DateTime(2024),
       lastDate: DateTime(2035),
       builder: (ctx, child) => Theme(
@@ -118,42 +119,39 @@ class _AddSchemeScreenState extends State<AddSchemeScreen> {
       ),
     );
     if (picked == null) return;
-    setState(() {
-      if (isStart) {
-        _startDate = picked;
-        if (_endDate.isBefore(picked)) _endDate = picked;
-      } else {
-        _endDate = picked;
-      }
-    });
+    if (isStart) {
+      _startDate.value = picked;
+      if (_endDate.value.isBefore(picked)) _endDate.value = picked;
+    } else {
+      _endDate.value = picked;
+    }
   }
 
   void _addVoucher() {
     final number = _voucherNumberController.text.trim();
     final discount = _voucherDiscountController.text.trim();
     if (number.isEmpty || discount.isEmpty) return;
-    setState(() {
-      _vouchers.add({'voucher_number': number, 'discount': discount});
-      _voucherNumberController.clear();
-      _voucherDiscountController.clear();
-    });
+    _vouchers.add({'voucher_number': number, 'discount': discount});
+    _voucherNumberController.clear();
+    _voucherDiscountController.clear();
+    _formNotifier.value++;
   }
 
   Future<void> _save() async {
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
-    if (_nameController.text.trim().isEmpty || _schemeTypeId == null) {
+    if (_nameController.text.trim().isEmpty || _schemeTypeId.value == null) {
       _showError('Enter scheme name and type');
       return;
     }
 
-    setState(() => _saving = true);
+    _saving.value = true;
     try {
       final res = await ApiService.createScheme({
         'name': _nameController.text.trim(),
-        'scheme_type_id': _schemeTypeId,
-        'start_date': _apiDate(_startDate),
-        'end_date': _apiDate(_endDate),
+        'scheme_type_id': _schemeTypeId.value,
+        'start_date': _apiDate(_startDate.value),
+        'end_date': _apiDate(_endDate.value),
         'service_ids': _serviceIds.toList(),
         'customer_type_ids': _customerTypeIds.toList(),
         'vehicle_type_ids': _vehicleTypeIds.toList(),
@@ -179,7 +177,7 @@ class _AddSchemeScreenState extends State<AddSchemeScreen> {
       if (!mounted) return;
       _showError('Error: $e');
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) _saving.value = false;
     }
   }
 
@@ -204,57 +202,79 @@ class _AddSchemeScreenState extends State<AddSchemeScreen> {
           ),
         ),
       ),
-      body: _buildBody(),
+      body: ValueListenableBuilder<bool>(
+        valueListenable: _loading,
+        builder: (context, isLoading, _) => ValueListenableBuilder<String>(
+          valueListenable: _error,
+          builder: (context, err, _) {
+            if (isLoading) {
+              return const Center(
+                child: CircularProgressIndicator(color: Color(0xFF000080)),
+              );
+            }
+            if (err.isNotEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                    const SizedBox(height: 12),
+                    Text(
+                      err,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(onPressed: _loadOptions, child: Text(context.tr('Retry'))),
+                  ],
+                ),
+              );
+            }
+            return ValueListenableBuilder<int>(
+              valueListenable: _formNotifier,
+              builder: (context, _, __) => _buildForm(),
+            );
+          },
+        ),
+      ),
     );
   }
 
-  Widget _buildBody() {
-    if (_loading) {
-      return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF000080)),
-      );
-    }
-    if (_error.isNotEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, size: 48, color: Colors.red),
-            const SizedBox(height: 12),
-            Text(
-              _error,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.red),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(onPressed: _loadOptions, child: Text(context.tr('Retry'))),
-          ],
-        ),
-      );
-    }
-
+  Widget _buildForm() {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         _textField(_nameController, 'Scheme Name', Icons.local_offer_outlined),
         const SizedBox(height: 12),
-        _schemeTypeDropdown(),
+        ValueListenableBuilder<Map<String, dynamic>>(
+          valueListenable: _options,
+          builder: (context, opts, _) => ValueListenableBuilder<String?>(
+            valueListenable: _schemeTypeId,
+            builder: (context, typeId, _) => _schemeTypeDropdown(opts, typeId),
+          ),
+        ),
         const SizedBox(height: 12),
         Row(
           children: [
             Expanded(
-              child: _dateTile(
-                'Start',
-                _startDate,
-                () => _pickDate(isStart: true),
+              child: ValueListenableBuilder<DateTime>(
+                valueListenable: _startDate,
+                builder: (context, startD, _) => _dateTile(
+                  'Start',
+                  startD,
+                  () => _pickDate(isStart: true),
+                ),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: _dateTile(
-                'End',
-                _endDate,
-                () => _pickDate(isStart: false),
+              child: ValueListenableBuilder<DateTime>(
+                valueListenable: _endDate,
+                builder: (context, endD, _) => _dateTile(
+                  'End',
+                  endD,
+                  () => _pickDate(isStart: false),
+                ),
               ),
             ),
           ],
@@ -324,46 +344,52 @@ class _AddSchemeScreenState extends State<AddSchemeScreen> {
               subtitle: Text(context.tr('Discount: ${voucher['discount']}')),
               trailing: IconButton(
                 icon: const Icon(Icons.delete_outline, color: Colors.red),
-                onPressed: () => setState(() => _vouchers.removeAt(entry.key)),
+                onPressed: () {
+                  _vouchers.removeAt(entry.key);
+                  _formNotifier.value++;
+                },
               ),
             );
           }),
         ],
         const SizedBox(height: 16),
-        _optionChips('Services', _options['services'] ?? [], _serviceIds),
+        _optionChips('Services', _options.value['services'] ?? [], _serviceIds),
         const SizedBox(height: 14),
         _optionChips(
           'Customer Types',
-          _options['customer_types'] ?? [],
+          _options.value['customer_types'] ?? [],
           _customerTypeIds,
         ),
         const SizedBox(height: 14),
         _optionChips(
           'Vehicle Types',
-          _options['vehicle_types'] ?? [],
+          _options.value['vehicle_types'] ?? [],
           _vehicleTypeIds,
         ),
         const SizedBox(height: 24),
         SizedBox(
           height: 50,
-          child: ElevatedButton.icon(
-            onPressed: _saving ? null : _save,
-            icon: _saving
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Icon(Icons.save_outlined),
-            label: Text(_saving ? 'Saving...' : 'Save Scheme'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF000080),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          child: ValueListenableBuilder<bool>(
+            valueListenable: _saving,
+            builder: (context, isSaving, _) => ElevatedButton.icon(
+              onPressed: isSaving ? null : _save,
+              icon: isSaving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.save_outlined),
+              label: Text(isSaving ? 'Saving...' : 'Save Scheme'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF000080),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ),
@@ -372,10 +398,10 @@ class _AddSchemeScreenState extends State<AddSchemeScreen> {
     );
   }
 
-  Widget _schemeTypeDropdown() {
-    final types = List<dynamic>.from(_options['scheme_types'] ?? []);
+  Widget _schemeTypeDropdown(Map<String, dynamic> opts, String? currentTypeId) {
+    final types = List<dynamic>.from(opts['scheme_types'] ?? []);
     return DropdownButtonFormField<String>(
-      value: _schemeTypeId,
+      value: currentTypeId,
       isExpanded: true,
       menuMaxHeight: 350,
       decoration: _inputDecoration('Scheme Type', Icons.category_outlined),
@@ -386,7 +412,10 @@ class _AddSchemeScreenState extends State<AddSchemeScreen> {
           child: Text(type['name']?.toString() ?? ''),
         );
       }).toList(),
-      onChanged: (value) => setState(() => _schemeTypeId = value),
+      onChanged: (value) {
+        _schemeTypeId.value = value;
+        _formNotifier.value++;
+      },
     );
   }
 
@@ -506,13 +535,12 @@ class _AddSchemeScreenState extends State<AddSchemeScreen> {
                 selectedColor: const Color(0xFFEFF6FF),
                 checkmarkColor: const Color(0xFF000080),
                 onSelected: (value) {
-                  setState(() {
-                    if (value) {
-                      selectedIds.add(id);
-                    } else {
-                      selectedIds.remove(id);
-                    }
-                  });
+                  if (value) {
+                    selectedIds.add(id);
+                  } else {
+                    selectedIds.remove(id);
+                  }
+                  _formNotifier.value++;
                 },
               );
             }).toList(),

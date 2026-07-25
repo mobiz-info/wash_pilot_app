@@ -15,27 +15,27 @@ class BookingSettingsScreen extends StatefulWidget {
 
 class _BookingSettingsScreenState extends State<BookingSettingsScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  bool _isLoading = true;
-  String _errorMessage = '';
+  final _isLoading = ValueNotifier<bool>(true);
+  final _errorMessage = ValueNotifier<String>('');
 
-  List<dynamic> _branches = [];
-  String? _selectedBranchId;
+  final _branches = ValueNotifier<List<dynamic>>([]);
+  final _selectedBranchId = ValueNotifier<String?>(null);
 
   // General Settings State
-  bool _isBookingEnabled = true;
+  final _isBookingEnabled = ValueNotifier<bool>(true);
   final _maxBookingController = TextEditingController();
   final _welcomeMessageController = TextEditingController();
-  TimeOfDay? _closingTime;
+  final _closingTime = ValueNotifier<TimeOfDay?>(null);
 
   // Weekly Off State
   final List<String> _allDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-  List<dynamic> _weeklyOffs = []; // list of {id, day}
+  final _weeklyOffs = ValueNotifier<List<dynamic>>([]); // list of {id, day}
 
   // Holidays State
-  List<dynamic> _holidays = []; // list of {id, holiday_date, repeat_yearly}
+  final _holidays = ValueNotifier<List<dynamic>>([]); // list of {id, holiday_date, repeat_yearly}
 
   // Pauses State
-  List<dynamic> _pauses = []; // list of {id, from_date, to_date, reason}
+  final _pauses = ValueNotifier<List<dynamic>>([]); // list of {id, from_date, to_date, reason}
 
   @override
   void initState() {
@@ -54,6 +54,15 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
     _tabController.dispose();
     _maxBookingController.dispose();
     _welcomeMessageController.dispose();
+    _isLoading.dispose();
+    _errorMessage.dispose();
+    _branches.dispose();
+    _selectedBranchId.dispose();
+    _isBookingEnabled.dispose();
+    _closingTime.dispose();
+    _weeklyOffs.dispose();
+    _holidays.dispose();
+    _pauses.dispose();
     super.dispose();
   }
 
@@ -62,42 +71,34 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
     final token = auth.token;
     if (token == null) return;
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = '';
-    });
+    _isLoading.value = true;
+    _errorMessage.value = '';
 
     try {
       final res = await ApiService.getCompanyBranches(token);
       if (res['success'] == true) {
-        final branches = res['branches'] ?? [];
-        setState(() {
-          _branches = branches;
-          if (branches.isNotEmpty) {
-            _selectedBranchId = branches.first['id']?.toString();
-          }
-        });
+        final branchesList = res['branches'] ?? [];
+        _branches.value = List<dynamic>.from(branchesList);
+        if (branchesList.isNotEmpty) {
+          _selectedBranchId.value = branchesList.first['id']?.toString();
+        }
         await _fetchAllData();
       } else {
         throw Exception(res['message'] ?? 'Failed to load branches');
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-        _isLoading = false;
-      });
+      _errorMessage.value = e.toString();
+      _isLoading.value = false;
     }
   }
 
   Future<void> _fetchAllData() async {
-    if (_selectedBranchId == null) {
-      setState(() => _isLoading = false);
+    if (_selectedBranchId.value == null) {
+      _isLoading.value = false;
       return;
     }
-    setState(() {
-      _isLoading = true;
-      _errorMessage = '';
-    });
+    _isLoading.value = true;
+    _errorMessage.value = '';
     try {
       await Future.wait([
         _fetchGeneralSettings(),
@@ -105,18 +106,16 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
         _fetchHolidayData(),
         _fetchPauseData(),
       ]);
-      setState(() => _isLoading = false);
+      _isLoading.value = false;
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-        _isLoading = false;
-      });
+      _errorMessage.value = e.toString();
+      _isLoading.value = false;
     }
   }
 
   Future<void> _fetchTabData() async {
-    if (_selectedBranchId == null) return;
-    setState(() => _isLoading = true);
+    if (_selectedBranchId.value == null) return;
+    _isLoading.value = true;
     try {
       switch (_tabController.index) {
         case 0:
@@ -132,56 +131,54 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
           await _fetchPauseData();
           break;
       }
-      setState(() => _isLoading = false);
+      _isLoading.value = false;
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-        _isLoading = false;
-      });
+      _errorMessage.value = e.toString();
+      _isLoading.value = false;
     }
   }
 
   Future<void> _fetchGeneralSettings() async {
     final auth = context.read<AuthProvider>();
-    final res = await ApiService.getBookingSettings(auth.token!, branchId: _selectedBranchId);
+    final res = await ApiService.getBookingSettings(auth.token!, branchId: _selectedBranchId.value);
     if (res['success'] == true) {
       final bs = res['booking_settings'] ?? {};
-      _isBookingEnabled = bs['is_booking_enabled'] ?? true;
+      _isBookingEnabled.value = bs['is_booking_enabled'] ?? true;
       _maxBookingController.text = (bs['max_booking_per_day'] ?? 50).toString();
       _welcomeMessageController.text = bs['whatsapp_welcome_message']?.toString() ?? '';
       final closingTimeStr = bs['booking_closing_time']?.toString() ?? '';
       if (closingTimeStr.isNotEmpty) {
         final parts = closingTimeStr.split(':');
         if (parts.length >= 2) {
-          _closingTime = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+          _closingTime.value = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
         }
       } else {
-        _closingTime = null;
+        _closingTime.value = null;
       }
     }
   }
 
   Future<void> _fetchWeeklyOffData() async {
     final auth = context.read<AuthProvider>();
-    final res = await ApiService.getWeeklyOffs(auth.token!, branchId: _selectedBranchId);
+    final res = await ApiService.getWeeklyOffs(auth.token!, branchId: _selectedBranchId.value);
     if (res['success'] == true) {
-      _weeklyOffs = res['weekly_offs'] ?? [];
+      _weeklyOffs.value = List<dynamic>.from(res['weekly_offs'] ?? []);
     }
   }
 
   Future<void> _fetchHolidayData() async {
     final auth = context.read<AuthProvider>();
-    final res = await ApiService.getHolidays(auth.token!, branchId: _selectedBranchId);
+    final res = await ApiService.getHolidays(auth.token!, branchId: _selectedBranchId.value);
     if (res['success'] == true) {
-      _holidays = res['holidays'] ?? [];
+      _holidays.value = List<dynamic>.from(res['holidays'] ?? []);
     }
   }
 
   Future<void> _fetchPauseData() async {
     final auth = context.read<AuthProvider>();
-    final res = await ApiService.getBookingPauses(auth.token!, branchId: _selectedBranchId);
+    final res = await ApiService.getBookingPauses(auth.token!, branchId: _selectedBranchId.value);
     if (res['success'] == true) {
-      _pauses = res['pauses'] ?? [];
+      _pauses.value = List<dynamic>.from(res['pauses'] ?? []);
     }
   }
 
@@ -189,7 +186,7 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
   Future<void> _saveGeneralSettings() async {
     final auth = context.read<AuthProvider>();
     final token = auth.token;
-    if (token == null || _selectedBranchId == null) return;
+    if (token == null || _selectedBranchId.value == null) return;
 
     final maxVal = int.tryParse(_maxBookingController.text.trim());
     if (maxVal == null || maxVal < 0) {
@@ -198,17 +195,17 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
     }
 
     String? closingTimeStr;
-    if (_closingTime != null) {
-      final hh = _closingTime!.hour.toString().padLeft(2, '0');
-      final mm = _closingTime!.minute.toString().padLeft(2, '0');
+    if (_closingTime.value != null) {
+      final hh = _closingTime.value!.hour.toString().padLeft(2, '0');
+      final mm = _closingTime.value!.minute.toString().padLeft(2, '0');
       closingTimeStr = '$hh:$mm:00';
     }
 
-    setState(() => _isLoading = true);
+    _isLoading.value = true;
     try {
       final res = await ApiService.updateBookingSettings(token, {
-        'branch_id': _selectedBranchId,
-        'is_booking_enabled': _isBookingEnabled,
+        'branch_id': _selectedBranchId.value,
+        'is_booking_enabled': _isBookingEnabled.value,
         'max_booking_per_day': maxVal,
         'booking_closing_time': closingTimeStr,
         'whatsapp_welcome_message': _welcomeMessageController.text.trim(),
@@ -222,7 +219,7 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
     } catch (e) {
       _showSnackBar(e.toString(), Colors.red);
     } finally {
-      setState(() => _isLoading = false);
+      _isLoading.value = false;
     }
   }
 
@@ -230,13 +227,13 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
   Future<void> _toggleWeeklyOff(String day, bool enableOff) async {
     final auth = context.read<AuthProvider>();
     final token = auth.token;
-    if (token == null || _selectedBranchId == null) return;
+    if (token == null || _selectedBranchId.value == null) return;
 
-    setState(() => _isLoading = true);
+    _isLoading.value = true;
     try {
       if (enableOff) {
         final res = await ApiService.createWeeklyOff(token, {
-          'branch_id': _selectedBranchId,
+          'branch_id': _selectedBranchId.value,
           'day': day,
         });
         if (res['success'] == true) {
@@ -245,7 +242,7 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
           throw Exception(res['message'] ?? 'Failed to add Weekly Off');
         }
       } else {
-        final match = _weeklyOffs.firstWhere((w) => w['day'] == day, orElse: () => null);
+        final match = _weeklyOffs.value.firstWhere((w) => w['day'] == day, orElse: () => null);
         if (match != null) {
           final res = await ApiService.deleteWeeklyOff(token, match['id'].toString());
           if (res['success'] == true) {
@@ -259,7 +256,7 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
     } catch (e) {
       _showSnackBar(e.toString(), Colors.red);
     } finally {
-      setState(() => _isLoading = false);
+      _isLoading.value = false;
     }
   }
 
@@ -267,27 +264,28 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
   Future<void> _addHoliday() async {
     final auth = context.read<AuthProvider>();
     final token = auth.token;
-    if (token == null || _selectedBranchId == null) return;
+    if (token == null || _selectedBranchId.value == null) return;
 
-    DateTime? selectedDate = DateTime.now();
-    bool repeatYearly = false;
+    final selectedDateNotifier = ValueNotifier<DateTime?>(DateTime.now());
+    final repeatYearlyNotifier = ValueNotifier<bool>(false);
 
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setStateDialog) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: Text(
-                context.tr('Add Holiday'),
-                style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: const Color(0xFF000080)),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  ElevatedButton.icon(
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(
+            context.tr('Add Holiday'),
+            style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: const Color(0xFF000080)),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ValueListenableBuilder<DateTime?>(
+                valueListenable: selectedDateNotifier,
+                builder: (context, selectedDate, _) {
+                  return ElevatedButton.icon(
                     onPressed: () async {
                       final picked = await showDatePicker(
                         context: context,
@@ -296,13 +294,13 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
                         lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
                       );
                       if (picked != null) {
-                        setStateDialog(() => selectedDate = picked);
+                        selectedDateNotifier.value = picked;
                       }
                     },
                     icon: const Icon(Icons.calendar_today, size: 18),
                     label: Text(
                       selectedDate != null
-                          ? DateFormat('dd-MM-yyyy').format(selectedDate!)
+                          ? DateFormat('dd-MM-yyyy').format(selectedDate)
                           : context.tr('Select Date'),
                     ),
                     style: ElevatedButton.styleFrom(
@@ -314,49 +312,64 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
                         side: BorderSide(color: Colors.grey.shade300),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  CheckboxListTile(
+                  );
+                },
+              ),
+              const SizedBox(height: 10),
+              ValueListenableBuilder<bool>(
+                valueListenable: repeatYearlyNotifier,
+                builder: (context, repeatYearly, _) {
+                  return CheckboxListTile(
                     title: Text(
                       context.tr('Repeat Yearly'),
                       style: GoogleFonts.inter(fontSize: 14),
                     ),
                     value: repeatYearly,
                     onChanged: (val) {
-                      setStateDialog(() => repeatYearly = val ?? false);
+                      repeatYearlyNotifier.value = val ?? false;
                     },
                     controlAffinity: ListTileControlAffinity.leading,
                     contentPadding: EdgeInsets.zero,
-                  ),
-                ],
+                  );
+                },
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child: Text(context.tr('Cancel'), style: GoogleFonts.inter(color: Colors.grey)),
-                ),
-                ElevatedButton(
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(context.tr('Cancel'), style: GoogleFonts.inter(color: Colors.grey)),
+            ),
+            ValueListenableBuilder<DateTime?>(
+              valueListenable: selectedDateNotifier,
+              builder: (context, selectedDate, _) {
+                return ElevatedButton(
                   onPressed: selectedDate == null ? null : () => Navigator.pop(ctx, true),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF000080),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
-                  child: Text(context.tr('Add'), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-                ),
-              ],
-            );
-          },
+                  child: Text(context.tr('Add')),
+                );
+              },
+            ),
+          ],
         );
       },
     );
 
+    final selectedDate = selectedDateNotifier.value;
+    final repeatYearly = repeatYearlyNotifier.value;
+    selectedDateNotifier.dispose();
+    repeatYearlyNotifier.dispose();
+
     if (result == true && selectedDate != null) {
-      setState(() => _isLoading = true);
+      _isLoading.value = true;
       try {
-        final formattedDate = DateFormat('yyyy-MM-dd').format(selectedDate!);
+        final formattedDate = DateFormat('yyyy-MM-dd').format(selectedDate);
         final res = await ApiService.createHoliday(token, {
-          'branch_id': _selectedBranchId,
+          'branch_id': _selectedBranchId.value,
           'holiday_date': formattedDate,
           'repeat_yearly': repeatYearly,
         });
@@ -369,7 +382,7 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
       } catch (e) {
         _showSnackBar(e.toString(), Colors.red);
       } finally {
-        setState(() => _isLoading = false);
+        _isLoading.value = false;
       }
     }
   }
@@ -397,7 +410,7 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
     );
 
     if (confirm == true) {
-      setState(() => _isLoading = true);
+      _isLoading.value = true;
       try {
         final res = await ApiService.deleteHoliday(token, id);
         if (res['success'] == true) {
@@ -409,40 +422,41 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
       } catch (e) {
         _showSnackBar(e.toString(), Colors.red);
       } finally {
-        setState(() => _isLoading = false);
+        _isLoading.value = false;
       }
     }
   }
 
   // --- ADD PAUSE ---
-  Future<void> _addBookingPause() async {
+  Future<void> _addPausePeriod() async {
     final auth = context.read<AuthProvider>();
     final token = auth.token;
-    if (token == null || _selectedBranchId == null) return;
+    if (token == null || _selectedBranchId.value == null) return;
 
-    DateTime? fromDate = DateTime.now();
-    DateTime? toDate = DateTime.now();
+    final fromDateNotifier = ValueNotifier<DateTime?>(DateTime.now());
+    final toDateNotifier = ValueNotifier<DateTime?>(DateTime.now());
     final reasonCtrl = TextEditingController();
 
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setStateDialog) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: Text(
-                context.tr('Pause Bookings'),
-                style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: const Color(0xFF000080)),
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(context.tr('From Date *'), style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey.shade600)),
-                    const SizedBox(height: 4),
-                    ElevatedButton.icon(
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(
+            context.tr('Pause Bookings'),
+            style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: const Color(0xFF000080)),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(context.tr('From Date *'), style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey.shade600)),
+                const SizedBox(height: 4),
+                ValueListenableBuilder<DateTime?>(
+                  valueListenable: fromDateNotifier,
+                  builder: (context, fromDate, _) {
+                    return ElevatedButton.icon(
                       onPressed: () async {
                         final picked = await showDatePicker(
                           context: context,
@@ -451,18 +465,16 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
                           lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
                         );
                         if (picked != null) {
-                          setStateDialog(() {
-                            fromDate = picked;
-                            if (toDate != null && toDate!.isBefore(fromDate!)) {
-                              toDate = fromDate;
-                            }
-                          });
+                          fromDateNotifier.value = picked;
+                          if (toDateNotifier.value != null && toDateNotifier.value!.isBefore(picked)) {
+                            toDateNotifier.value = picked;
+                          }
                         }
                       },
                       icon: const Icon(Icons.calendar_today, size: 18),
                       label: Text(
                         fromDate != null
-                            ? DateFormat('dd-MM-yyyy').format(fromDate!)
+                            ? DateFormat('dd-MM-yyyy').format(fromDate)
                             : context.tr('Select Start Date'),
                       ),
                       style: ElevatedButton.styleFrom(
@@ -474,26 +486,31 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
                           side: BorderSide(color: Colors.grey.shade300),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 14),
-                    Text(context.tr('To Date *'), style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey.shade600)),
-                    const SizedBox(height: 4),
-                    ElevatedButton.icon(
+                    );
+                  },
+                ),
+                const SizedBox(height: 14),
+                Text(context.tr('To Date *'), style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey.shade600)),
+                const SizedBox(height: 4),
+                ValueListenableBuilder<DateTime?>(
+                  valueListenable: toDateNotifier,
+                  builder: (context, toDate, _) {
+                    return ElevatedButton.icon(
                       onPressed: () async {
                         final picked = await showDatePicker(
                           context: context,
-                          initialDate: toDate ?? (fromDate ?? DateTime.now()),
-                          firstDate: fromDate ?? DateTime.now(),
+                          initialDate: toDate ?? (fromDateNotifier.value ?? DateTime.now()),
+                          firstDate: fromDateNotifier.value ?? DateTime.now(),
                           lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
                         );
                         if (picked != null) {
-                          setStateDialog(() => toDate = picked);
+                          toDateNotifier.value = picked;
                         }
                       },
                       icon: const Icon(Icons.calendar_today, size: 18),
                       label: Text(
                         toDate != null
-                            ? DateFormat('dd-MM-yyyy').format(toDate!)
+                            ? DateFormat('dd-MM-yyyy').format(toDate)
                             : context.tr('Select End Date'),
                       ),
                       style: ElevatedButton.styleFrom(
@@ -505,49 +522,64 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
                           side: BorderSide(color: Colors.grey.shade300),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 14),
-                    Text(context.tr('Reason'), style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey.shade600)),
-                    const SizedBox(height: 4),
-                    TextField(
-                      controller: reasonCtrl,
-                      decoration: InputDecoration(
-                        hintText: context.tr('Reason for pause'),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                      ),
-                    ),
-                  ],
+                    );
+                  },
                 ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child: Text(context.tr('Cancel'), style: GoogleFonts.inter(color: Colors.grey)),
-                ),
-                ElevatedButton(
-                  onPressed: fromDate == null || toDate == null ? null : () => Navigator.pop(ctx, true),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF000080),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                const SizedBox(height: 14),
+                Text(context.tr('Reason (Optional)'), style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey.shade600)),
+                const SizedBox(height: 4),
+                TextField(
+                  controller: reasonCtrl,
+                  decoration: InputDecoration(
+                    hintText: context.tr('e.g. Maintenance, Renovation'),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   ),
-                  child: Text(context.tr('Pause'), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
                 ),
               ],
-            );
-          },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(context.tr('Cancel'), style: GoogleFonts.inter(color: Colors.grey)),
+            ),
+            ValueListenableBuilder<DateTime?>(
+              valueListenable: fromDateNotifier,
+              builder: (context, fromDate, _) => ValueListenableBuilder<DateTime?>(
+                valueListenable: toDateNotifier,
+                builder: (context, toDate, _) {
+                  return ElevatedButton(
+                    onPressed: (fromDate == null || toDate == null)
+                        ? null
+                        : () => Navigator.pop(ctx, true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF000080),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: Text(context.tr('Add Pause')),
+                  );
+                },
+              ),
+            ),
+          ],
         );
       },
     );
 
+    final fromDate = fromDateNotifier.value;
+    final toDate = toDateNotifier.value;
+    fromDateNotifier.dispose();
+    toDateNotifier.dispose();
+
     if (result == true && fromDate != null && toDate != null) {
-      setState(() => _isLoading = true);
+      _isLoading.value = true;
       try {
         final formattedFrom = DateFormat('yyyy-MM-dd').format(fromDate!);
         final formattedTo = DateFormat('yyyy-MM-dd').format(toDate!);
         final res = await ApiService.createBookingPause(token, {
-          'branch_id': _selectedBranchId,
+          'branch_id': _selectedBranchId.value,
           'from_date': formattedFrom,
           'to_date': formattedTo,
           'reason': reasonCtrl.text.trim(),
@@ -561,7 +593,7 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
       } catch (e) {
         _showSnackBar(e.toString(), Colors.red);
       } finally {
-        setState(() => _isLoading = false);
+        _isLoading.value = false;
       }
     }
   }
@@ -589,7 +621,7 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
     );
 
     if (confirm == true) {
-      setState(() => _isLoading = true);
+      _isLoading.value = true;
       try {
         final res = await ApiService.deleteBookingPause(token, id);
         if (res['success'] == true) {
@@ -601,7 +633,7 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
       } catch (e) {
         _showSnackBar(e.toString(), Colors.red);
       } finally {
-        setState(() => _isLoading = false);
+        _isLoading.value = false;
       }
     }
   }
@@ -645,29 +677,46 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
       body: Column(
         children: [
           // Branch selector for Company Admin
-          if (isCompanyAdmin && _branches.isNotEmpty) _buildBranchDropdown(),
+          if (isCompanyAdmin)
+            ValueListenableBuilder<List<dynamic>>(
+              valueListenable: _branches,
+              builder: (context, branchList, _) {
+                if (branchList.isEmpty) return const SizedBox.shrink();
+                return _buildBranchDropdown(branchList);
+              },
+            ),
 
           Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator(color: Color(0xFF000080)))
-                : _errorMessage.isNotEmpty
-                    ? _buildErrorWidget()
-                    : TabBarView(
-                        controller: _tabController,
-                        children: [
-                          _buildGeneralTab(),
-                          _buildWeeklyOffsTab(),
-                          _buildHolidaysTab(),
-                          _buildPausesTab(),
-                        ],
-                      ),
+            child: ValueListenableBuilder<bool>(
+              valueListenable: _isLoading,
+              builder: (context, loading, _) => ValueListenableBuilder<String>(
+                valueListenable: _errorMessage,
+                builder: (context, err, _) {
+                  if (loading) {
+                    return const Center(child: CircularProgressIndicator(color: Color(0xFF000080)));
+                  }
+                  if (err.isNotEmpty) {
+                    return _buildErrorWidget(err);
+                  }
+                  return TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildGeneralTab(),
+                      _buildWeeklyOffsTab(),
+                      _buildHolidaysTab(),
+                      _buildPausesTab(),
+                    ],
+                  );
+                },
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildBranchDropdown() {
+  Widget _buildBranchDropdown(List<dynamic> branchList) {
     return Container(
       width: double.infinity,
       color: Colors.white,
@@ -687,21 +736,22 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
               border: Border.all(color: Colors.grey.shade300),
             ),
             child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                isExpanded: true,
-                value: _selectedBranchId,
-                items: _branches.map((b) {
-                  return DropdownMenuItem<String>(
-                    value: b['id']?.toString(),
-                    child: Text(b['name'] ?? '', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-                  );
-                }).toList(),
-                onChanged: (val) {
-                  setState(() {
-                    _selectedBranchId = val;
-                  });
-                  _fetchAllData();
-                },
+              child: ValueListenableBuilder<String?>(
+                valueListenable: _selectedBranchId,
+                builder: (context, selectedId, _) => DropdownButton<String>(
+                  isExpanded: true,
+                  value: selectedId,
+                  items: branchList.map((b) {
+                    return DropdownMenuItem<String>(
+                      value: b['id']?.toString(),
+                      child: Text(b['name'] ?? '', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    _selectedBranchId.value = val;
+                    _fetchAllData();
+                  },
+                ),
               ),
             ),
           ),
@@ -710,14 +760,14 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
     );
   }
 
-  Widget _buildErrorWidget() {
+  Widget _buildErrorWidget(String err) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(_errorMessage, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
+            Text(err, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _fetchAllData,
@@ -744,19 +794,22 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SwitchListTile(
-              title: Text(
-                context.tr('Enable Booking Service'),
-                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
+            ValueListenableBuilder<bool>(
+              valueListenable: _isBookingEnabled,
+              builder: (context, enabled, _) => SwitchListTile(
+                title: Text(
+                  context.tr('Enable Booking Service'),
+                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                subtitle: Text(
+                  context.tr(''),
+                  style: GoogleFonts.inter(color: Colors.grey, fontSize: 12),
+                ),
+                value: enabled,
+                onChanged: (val) => _isBookingEnabled.value = val,
+                activeColor: const Color(0xFF000080),
+                contentPadding: EdgeInsets.zero,
               ),
-              subtitle: Text(
-                context.tr(''),
-                style: GoogleFonts.inter(color: Colors.grey, fontSize: 12),
-              ),
-              value: _isBookingEnabled,
-              onChanged: (val) => setState(() => _isBookingEnabled = val),
-              activeColor: const Color(0xFF000080),
-              contentPadding: EdgeInsets.zero,
             ),
             const Divider(height: 32),
             Text(
@@ -779,42 +832,45 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
               style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.grey.shade700),
             ),
             const SizedBox(height: 6),
-            GestureDetector(
-              onTap: () async {
-                final picked = await showTimePicker(
-                  context: context,
-                  initialTime: _closingTime ?? const TimeOfDay(hour: 18, minute: 0),
-                );
-                if (picked != null) {
-                  setState(() => _closingTime = picked);
-                }
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.grey.shade300),
-                  color: Colors.grey.shade50,
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.access_time, color: Colors.grey, size: 20),
-                    const SizedBox(width: 10),
-                    Text(
-                      _closingTime != null
-                          ? _closingTime!.format(context)
-                          : context.tr('No Closing Time (No Limit)'),
-                      style: GoogleFonts.inter(fontSize: 15, color: _closingTime != null ? Colors.black87 : Colors.grey),
-                    ),
-                    const Spacer(),
-                    if (_closingTime != null)
-                      IconButton(
-                        icon: const Icon(Icons.clear, size: 18, color: Colors.red),
-                        onPressed: () => setState(() => _closingTime = null),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
+            ValueListenableBuilder<TimeOfDay?>(
+              valueListenable: _closingTime,
+              builder: (context, closingT, _) => GestureDetector(
+                onTap: () async {
+                  final picked = await showTimePicker(
+                    context: context,
+                    initialTime: closingT ?? const TimeOfDay(hour: 18, minute: 0),
+                  );
+                  if (picked != null) {
+                    _closingTime.value = picked;
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.grey.shade300),
+                    color: Colors.grey.shade50,
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.access_time, color: Colors.grey, size: 20),
+                      const SizedBox(width: 10),
+                      Text(
+                        closingT != null
+                            ? closingT.format(context)
+                            : context.tr('No Closing Time (No Limit)'),
+                        style: GoogleFonts.inter(fontSize: 15, color: closingT != null ? Colors.black87 : Colors.grey),
                       ),
-                  ],
+                      const Spacer(),
+                      if (closingT != null)
+                        IconButton(
+                          icon: const Icon(Icons.clear, size: 18, color: Colors.red),
+                          onPressed: () => _closingTime.value = null,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -857,28 +913,31 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
 
   // --- 2. WEEKLY OFF TAB ---
   Widget _buildWeeklyOffsTab() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _allDays.length,
-      itemBuilder: (context, index) {
-        final day = _allDays[index];
-        final isOff = _weeklyOffs.any((w) => w['day'] == day);
-        return Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          margin: const EdgeInsets.only(bottom: 10),
-          child: CheckboxListTile(
-            title: Text(
-              context.tr(day[0].toUpperCase() + day.substring(1)),
-              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15),
+    return ValueListenableBuilder<List<dynamic>>(
+      valueListenable: _weeklyOffs,
+      builder: (context, offs, _) => ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _allDays.length,
+        itemBuilder: (context, index) {
+          final day = _allDays[index];
+          final isOff = offs.any((w) => w['day'] == day);
+          return Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.only(bottom: 10),
+            child: CheckboxListTile(
+              title: Text(
+                context.tr(day[0].toUpperCase() + day.substring(1)),
+                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+              value: isOff,
+              activeColor: const Color(0xFF000080),
+              onChanged: (val) {
+                _toggleWeeklyOff(day, val ?? false);
+              },
             ),
-            value: isOff,
-            activeColor: const Color(0xFF000080),
-            onChanged: (val) {
-              _toggleWeeklyOff(day, val ?? false);
-            },
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
@@ -901,44 +960,50 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
           ),
         ),
         Expanded(
-          child: _holidays.isEmpty
-              ? Center(
+          child: ValueListenableBuilder<List<dynamic>>(
+            valueListenable: _holidays,
+            builder: (context, holidayList, _) {
+              if (holidayList.isEmpty) {
+                return Center(
                   child: Text(
                     context.tr('No custom holidays added yet.'),
                     style: GoogleFonts.inter(color: Colors.grey),
                   ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: _holidays.length,
-                  itemBuilder: (context, index) {
-                    final h = _holidays[index];
-                    final dateStr = h['holiday_date']?.toString() ?? '';
-                    final repeat = h['repeat_yearly'] == true;
-                    DateTime? parsedDate;
-                    if (dateStr.isNotEmpty) {
-                      parsedDate = DateTime.tryParse(dateStr);
-                    }
-                    final displayDate = parsedDate != null ? DateFormat('dd-MM-yyyy').format(parsedDate) : dateStr;
+                );
+              }
+              return ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: holidayList.length,
+                itemBuilder: (context, index) {
+                  final h = holidayList[index];
+                  final dateStr = h['holiday_date']?.toString() ?? '';
+                  final repeat = h['repeat_yearly'] == true;
+                  DateTime? parsedDate;
+                  if (dateStr.isNotEmpty) {
+                    parsedDate = DateTime.tryParse(dateStr);
+                  }
+                  final displayDate = parsedDate != null ? DateFormat('dd-MM-yyyy').format(parsedDate) : dateStr;
 
-                    return Card(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      margin: const EdgeInsets.only(bottom: 10),
-                      child: ListTile(
-                        leading: const CircleAvatar(
-                          backgroundColor: Color(0xFFE0E0FF),
-                          child: Icon(Icons.beach_access, color: Color(0xFF000080), size: 20),
-                        ),
-                        title: Text(displayDate, style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-                        subtitle: Text(repeat ? context.tr('Repeats Yearly') : context.tr('One-time Holiday')),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete_outline, color: Colors.red),
-                          onPressed: () => _deleteHoliday(h['id'].toString()),
-                        ),
+                  return Card(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    margin: const EdgeInsets.only(bottom: 10),
+                    child: ListTile(
+                      leading: const CircleAvatar(
+                        backgroundColor: Color(0xFFE0E0FF),
+                        child: Icon(Icons.beach_access, color: Color(0xFF000080), size: 20),
                       ),
-                    );
-                  },
-                ),
+                      title: Text(displayDate, style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                      subtitle: Text(repeat ? context.tr('Repeats Yearly') : context.tr('One-time Holiday')),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.red),
+                        onPressed: () => _deleteHoliday(h['id'].toString()),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
         ),
       ],
     );
@@ -951,7 +1016,7 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: ElevatedButton.icon(
-            onPressed: _addBookingPause,
+            onPressed: _addPausePeriod,
             icon: const Icon(Icons.add),
             label: Text(context.tr('Pause Booking Schedule')),
             style: ElevatedButton.styleFrom(
@@ -963,50 +1028,56 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
           ),
         ),
         Expanded(
-          child: _pauses.isEmpty
-              ? Center(
+          child: ValueListenableBuilder<List<dynamic>>(
+            valueListenable: _pauses,
+            builder: (context, pauseList, _) {
+              if (pauseList.isEmpty) {
+                return Center(
                   child: Text(
                     context.tr('No booking pauses scheduled yet.'),
                     style: GoogleFonts.inter(color: Colors.grey),
                   ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: _pauses.length,
-                  itemBuilder: (context, index) {
-                    final p = _pauses[index];
-                    final fromStr = p['from_date']?.toString() ?? '';
-                    final toStr = p['to_date']?.toString() ?? '';
-                    final reason = p['reason']?.toString() ?? '';
+                );
+              }
+              return ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: pauseList.length,
+                itemBuilder: (context, index) {
+                  final p = pauseList[index];
+                  final fromStr = p['from_date']?.toString() ?? '';
+                  final toStr = p['to_date']?.toString() ?? '';
+                  final reason = p['reason']?.toString() ?? '';
 
-                    DateTime? fromD = fromStr.isNotEmpty ? DateTime.tryParse(fromStr) : null;
-                    DateTime? toD = toStr.isNotEmpty ? DateTime.tryParse(toStr) : null;
+                  DateTime? fromD = fromStr.isNotEmpty ? DateTime.tryParse(fromStr) : null;
+                  DateTime? toD = toStr.isNotEmpty ? DateTime.tryParse(toStr) : null;
 
-                    final displayFrom = fromD != null ? DateFormat('dd-MM-yyyy').format(fromD) : fromStr;
-                    final displayTo = toD != null ? DateFormat('dd-MM-yyyy').format(toD) : toStr;
+                  final displayFrom = fromD != null ? DateFormat('dd-MM-yyyy').format(fromD) : fromStr;
+                  final displayTo = toD != null ? DateFormat('dd-MM-yyyy').format(toD) : toStr;
 
-                    return Card(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      margin: const EdgeInsets.only(bottom: 10),
-                      child: ListTile(
-                        leading: const CircleAvatar(
-                          backgroundColor: Color(0xFFFFEBEE),
-                          child: Icon(Icons.pause_circle_outline, color: Colors.red, size: 20),
-                        ),
-                        title: Text('$displayFrom ${context.tr('to')} $displayTo', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14)),
-                        subtitle: Text(
-                          reason.isNotEmpty ? reason : context.tr('No reason provided'),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete_outline, color: Colors.red),
-                          onPressed: () => _deleteBookingPause(p['id'].toString()),
-                        ),
+                  return Card(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    margin: const EdgeInsets.only(bottom: 10),
+                    child: ListTile(
+                      leading: const CircleAvatar(
+                        backgroundColor: Color(0xFFFFEBEE),
+                        child: Icon(Icons.pause_circle_outline, color: Colors.red, size: 20),
                       ),
-                    );
-                  },
-                ),
+                      title: Text('$displayFrom ${context.tr('to')} $displayTo', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14)),
+                      subtitle: Text(
+                        reason.isNotEmpty ? reason : context.tr('No reason provided'),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.red),
+                        onPressed: () => _deleteBookingPause(p['id'].toString()),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
         ),
       ],
     );

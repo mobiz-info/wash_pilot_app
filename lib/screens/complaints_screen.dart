@@ -13,10 +13,10 @@ class ComplaintsScreen extends StatefulWidget {
 }
 
 class _ComplaintsScreenState extends State<ComplaintsScreen> {
-  bool _isLoading = false;
+  final _isLoading = ValueNotifier<bool>(false);
   List<dynamic> _complaints = [];
   List<dynamic> _complaintTypes = [];
-  String? _selectedBranch = 'All';
+  final _selectedBranch = ValueNotifier<String?>('All');
   List<String> _branches = ['All'];
 
   @override
@@ -26,7 +26,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
   }
 
   Future<void> _loadData() async {
-    if (mounted) setState(() => _isLoading = true);
+    _isLoading.value = true;
     try {
       final auth = Provider.of<AuthProvider>(context, listen: false);
       final token = auth.token ?? '';
@@ -55,7 +55,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
         );
       }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) _isLoading.value = false;
     }
   }
 
@@ -700,19 +700,24 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-    final isBranch = auth.isBranchAdmin;
+    return ValueListenableBuilder<bool>(
+      valueListenable: _isLoading,
+      builder: (context, loading, _) => ValueListenableBuilder<String?>(
+        valueListenable: _selectedBranch,
+        builder: (context, selectedBranch, _) {
+          final auth = Provider.of<AuthProvider>(context, listen: false);
+          final isBranch = auth.isBranchAdmin;
 
-    final filteredComplaints = _complaints.where((c) {
-      return _selectedBranch == 'All' || c['branch'] == _selectedBranch;
-    }).toList();
+          final filteredComplaints = _complaints.where((c) {
+            return selectedBranch == 'All' || c['branch'] == selectedBranch;
+          }).toList();
 
-    // Sort: unresolved first (new / pending), then resolved
-    final activeComplaints = filteredComplaints.where((c) => c['status'] != 'resolved').toList();
-    final resolvedComplaints = filteredComplaints.where((c) => c['status'] == 'resolved').toList();
-    final sortedComplaints = [...activeComplaints, ...resolvedComplaints];
+          // Sort: unresolved first (new / pending), then resolved
+          final activeComplaints = filteredComplaints.where((c) => c['status'] != 'resolved').toList();
+          final resolvedComplaints = filteredComplaints.where((c) => c['status'] == 'resolved').toList();
+          final sortedComplaints = [...activeComplaints, ...resolvedComplaints];
 
-    return Scaffold(
+          return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
       appBar: AppBar(
         title: Text(
@@ -745,7 +750,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
-                          value: _selectedBranch,
+                          value: selectedBranch,
                           isExpanded: true,
                           menuMaxHeight: 350,
                           items: _branches.map((b) {
@@ -755,7 +760,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                             );
                           }).toList(),
                           onChanged: (val) {
-                            setState(() => _selectedBranch = val);
+                            _selectedBranch.value = val;
                           },
                         ),
                       ),
@@ -766,7 +771,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
             ),
           ],
           Expanded(
-            child: _isLoading && sortedComplaints.isEmpty
+            child: loading && sortedComplaints.isEmpty
                 ? const Center(
                     child: CircularProgressIndicator(
                       color: Color(0xFF000080),
@@ -834,6 +839,9 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
               ),
             )
           : null,
+    );
+        },
+      ),
     );
   }
 }

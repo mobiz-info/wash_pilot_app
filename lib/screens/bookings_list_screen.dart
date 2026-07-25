@@ -16,20 +16,30 @@ class BookingsListScreen extends StatefulWidget {
 }
 
 class _BookingsListScreenState extends State<BookingsListScreen> {
-  bool _isLoading = false;
-  List<dynamic> _bookings = [];
-  String _errorMessage = '';
+  final _isLoading = ValueNotifier<bool>(false);
+  final _bookings = ValueNotifier<List<dynamic>>([]);
+  final _errorMessage = ValueNotifier<String>('');
 
-  DateTime? _fromDate;
-  DateTime? _toDate;
+  final _fromDate = ValueNotifier<DateTime?>(null);
+  final _toDate = ValueNotifier<DateTime?>(null);
 
   @override
   void initState() {
     super.initState();
     final now = DateTime.now();
-    _fromDate = DateTime(now.year, now.month, now.day);
-    _toDate = DateTime(now.year, now.month, now.day);
+    _fromDate.value = DateTime(now.year, now.month, now.day);
+    _toDate.value = DateTime(now.year, now.month, now.day);
     _fetchBookings();
+  }
+
+  @override
+  void dispose() {
+    _isLoading.dispose();
+    _bookings.dispose();
+    _errorMessage.dispose();
+    _fromDate.dispose();
+    _toDate.dispose();
+    super.dispose();
   }
 
   String _formatDate(DateTime d) =>
@@ -42,40 +52,32 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
       ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m - 1];
 
   Future<void> _fetchBookings() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = '';
-    });
+    _isLoading.value = true;
+    _errorMessage.value = '';
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
 
     try {
       final res = await ApiService.listBookings(
         token,
-        fromDate: _fromDate != null ? _formatDate(_fromDate!) : null,
-        toDate: _toDate != null ? _formatDate(_toDate!) : null,
+        fromDate: _fromDate.value != null ? _formatDate(_fromDate.value!) : null,
+        toDate: _toDate.value != null ? _formatDate(_toDate.value!) : null,
       );
       if (res['success'] == true) {
-        setState(() {
-          _bookings = res['bookings'] as List<dynamic>;
-          _isLoading = false;
-        });
+        _bookings.value = List<dynamic>.from(res['bookings'] ?? []);
+        _isLoading.value = false;
       } else {
-        setState(() {
-          _errorMessage = res['message'] ?? 'Failed to load bookings';
-          _isLoading = false;
-        });
+        _errorMessage.value = res['message'] ?? 'Failed to load bookings';
+        _isLoading.value = false;
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-        _isLoading = false;
-      });
+      _errorMessage.value = e.toString();
+      _isLoading.value = false;
     }
   }
 
   Future<void> _pickDate({required bool isFrom}) async {
-    final initial = isFrom ? (_fromDate ?? DateTime.now()) : (_toDate ?? DateTime.now());
+    final initial = isFrom ? (_fromDate.value ?? DateTime.now()) : (_toDate.value ?? DateTime.now());
     final picked = await showDatePicker(
       context: context,
       initialDate: initial,
@@ -89,15 +91,13 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
       ),
     );
     if (picked == null) return;
-    setState(() {
-      if (isFrom) {
-        _fromDate = picked;
-        if (_toDate != null && _toDate!.isBefore(picked)) _toDate = picked;
-      } else {
-        _toDate = picked;
-        if (_fromDate != null && _fromDate!.isAfter(picked)) _fromDate = picked;
-      }
-    });
+    if (isFrom) {
+      _fromDate.value = picked;
+      if (_toDate.value != null && _toDate.value!.isBefore(picked)) _toDate.value = picked;
+    } else {
+      _toDate.value = picked;
+      if (_fromDate.value != null && _fromDate.value!.isAfter(picked)) _fromDate.value = picked;
+    }
     _fetchBookings();
   }
 
@@ -236,9 +236,7 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
 
-    setState(() {
-      _isLoading = true;
-    });
+    _isLoading.value = true;
 
     try {
       final res = await ApiService.sendBookingReadyAlert(booking['id'] as String, token);
@@ -300,9 +298,7 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
       }
     } finally {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        _isLoading.value = false;
       }
     }
   }
@@ -353,9 +349,19 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
             child: Row(
               children: [
-                Expanded(child: _datePicker(label: 'From', date: _fromDate, isFrom: true)),
+                Expanded(
+                  child: ValueListenableBuilder<DateTime?>(
+                    valueListenable: _fromDate,
+                    builder: (context, fromD, _) => _datePicker(label: 'From', date: fromD, isFrom: true),
+                  ),
+                ),
                 const SizedBox(width: 12),
-                Expanded(child: _datePicker(label: 'To', date: _toDate, isFrom: false)),
+                Expanded(
+                  child: ValueListenableBuilder<DateTime?>(
+                    valueListenable: _toDate,
+                    builder: (context, toD, _) => _datePicker(label: 'To', date: toD, isFrom: false),
+                  ),
+                ),
                 const SizedBox(width: 12),
                 GestureDetector(
                   onTap: _fetchBookings,
@@ -371,38 +377,62 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
           ),
 
           // Booking count
-          if (!_isLoading && _bookings.isNotEmpty)
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              child: Row(
-                children: [
-                  Icon(Icons.calendar_month, size: 16, color: Colors.grey.shade500),
-                  const SizedBox(width: 8),
-                  Text(
-                    context.tr('${_bookings.length} booking${_bookings.length == 1 ? '' : 's'}'),
-                    style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: Colors.grey.shade700, fontSize: 13),
-                  ),
-                ],
-              ),
+          ValueListenableBuilder<bool>(
+            valueListenable: _isLoading,
+            builder: (context, loading, _) => ValueListenableBuilder<List<dynamic>>(
+              valueListenable: _bookings,
+              builder: (context, bookingList, _) {
+                if (!loading && bookingList.isNotEmpty) {
+                  return Container(
+                    color: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    child: Row(
+                      children: [
+                        Icon(Icons.calendar_month, size: 16, color: Colors.grey.shade500),
+                        const SizedBox(width: 8),
+                        Text(
+                          context.tr('${bookingList.length} booking${bookingList.length == 1 ? '' : 's'}'),
+                          style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: Colors.grey.shade700, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
             ),
+          ),
 
           // List
           Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _errorMessage.isNotEmpty
-                    ? _buildError()
-                    : _bookings.isEmpty
-                        ? _buildEmpty()
-                        : RefreshIndicator(
-                            onRefresh: _fetchBookings,
-                            child: ListView.builder(
-                              padding: const EdgeInsets.all(16),
-                              itemCount: _bookings.length,
-                              itemBuilder: (ctx, i) => _bookingCard(_bookings[i]),
-                            ),
-                          ),
+            child: ValueListenableBuilder<bool>(
+              valueListenable: _isLoading,
+              builder: (context, loading, _) => ValueListenableBuilder<String>(
+                valueListenable: _errorMessage,
+                builder: (context, err, _) => ValueListenableBuilder<List<dynamic>>(
+                  valueListenable: _bookings,
+                  builder: (context, bookingList, _) {
+                    if (loading) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (err.isNotEmpty) {
+                      return _buildError(err);
+                    }
+                    if (bookingList.isEmpty) {
+                      return _buildEmpty();
+                    }
+                    return RefreshIndicator(
+                      onRefresh: _fetchBookings,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: bookingList.length,
+                        itemBuilder: (ctx, i) => _bookingCard(bookingList[i]),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -750,14 +780,14 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
     );
   }
 
-  Widget _buildError() {
+  Widget _buildError(String err) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.error_outline, size: 60, color: Colors.red.shade200),
           const SizedBox(height: 16),
-          Text(_errorMessage, textAlign: TextAlign.center, style: GoogleFonts.inter(color: Colors.red, fontSize: 14)),
+          Text(err, textAlign: TextAlign.center, style: GoogleFonts.inter(color: Colors.red, fontSize: 14)),
         ],
       ),
     );

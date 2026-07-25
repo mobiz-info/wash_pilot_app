@@ -8,6 +8,13 @@ import 'config/country_config.dart';
 import 'providers/auth_provider.dart';
 import 'providers/customer_provider.dart';
 import 'providers/language_provider.dart';
+import 'providers/invoice_provider.dart';
+import 'providers/broadcast_provider.dart';
+import 'providers/inventory_provider.dart';
+import 'providers/expense_provider.dart';
+import 'providers/navigation_provider.dart';
+import 'providers/dashboard_provider.dart';
+import 'providers/add_customer_provider.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/menu_screen.dart';
 import 'screens/login_screen.dart';
@@ -25,6 +32,13 @@ void main() async {
         ),
         ChangeNotifierProvider(create: (_) => CustomerProvider()),
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
+        ChangeNotifierProvider(create: (_) => InvoiceProvider()),
+        ChangeNotifierProvider(create: (_) => BroadcastProvider()),
+        ChangeNotifierProvider(create: (_) => InventoryProvider()),
+        ChangeNotifierProvider(create: (_) => ExpenseProvider()),
+        ChangeNotifierProvider(create: (_) => NavigationProvider()),
+        ChangeNotifierProvider(create: (_) => DashboardProvider()),
+        ChangeNotifierProvider(create: (_) => AddCustomerProvider()),
       ],
       child: const CarWashApp(),
     ),
@@ -106,7 +120,6 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
-  int _currentIndex = 0;
   bool _checkingSubscription = false;
 
   final List<Widget> _pages = [const DashboardScreen(), const MenuScreen()];
@@ -135,11 +148,11 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   Future<void> _checkSubscriptionStatus() async {
     if (!mounted) return;
-    setState(() => _checkingSubscription = true);
+    _checkingSubscription = true;
     final auth = context.read<AuthProvider>();
     final token = auth.token;
     if (token == null) {
-      if (mounted) setState(() => _checkingSubscription = false);
+      _checkingSubscription = false;
       return;
     }
     try {
@@ -158,7 +171,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         );
       }
     } finally {
-      if (mounted) setState(() => _checkingSubscription = false);
+      _checkingSubscription = false;
     }
   }
 
@@ -287,7 +300,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     return WillPopScope(
       onWillPop: _confirmExit,
       child: Scaffold(
-        body: _pages[_currentIndex],
+        body: _pages[context.watch<NavigationProvider>().currentIndex],
         bottomNavigationBar: Container(
           decoration: BoxDecoration(
             boxShadow: [
@@ -299,11 +312,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
             ],
           ),
           child: BottomNavigationBar(
-            currentIndex: _currentIndex,
+            currentIndex: context.watch<NavigationProvider>().currentIndex,
             onTap: (index) {
-              setState(() {
-                _currentIndex = index;
-              });
+              context.read<NavigationProvider>().setIndex(index);
               _checkSubscriptionStatus();
             },
             backgroundColor: Colors.white,

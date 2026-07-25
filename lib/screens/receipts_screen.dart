@@ -21,25 +21,40 @@ class ReceiptsScreen extends StatefulWidget {
 }
 
 class _ReceiptsScreenState extends State<ReceiptsScreen> {
-  bool _loading = true;
-  String _error = '';
-  String _search = '';
-  List<dynamic> _receipts = [];
-  double _totalCollected = 0;
-  DateTime? _fromDate;
-  DateTime? _toDate;
-  List<dynamic> _branches = [];
-  String? _selectedBranchId;
-  String? _selectedPaymentMode;
+  final _loading = ValueNotifier<bool>(true);
+  final _error = ValueNotifier<String>('');
+  final _search = ValueNotifier<String>('');
+  final _receipts = ValueNotifier<List<dynamic>>([]);
+  final _totalCollected = ValueNotifier<double>(0);
+  late final ValueNotifier<DateTime?> _fromDate;
+  late final ValueNotifier<DateTime?> _toDate;
+  final _branches = ValueNotifier<List<dynamic>>([]);
+  final _selectedBranchId = ValueNotifier<String?>(null);
+  final _selectedPaymentMode = ValueNotifier<String?>(null);
 
   @override
   void initState() {
     super.initState();
     final now = DateTime.now();
-    _fromDate = DateTime(now.year, now.month, now.day);
-    _toDate = DateTime(now.year, now.month, now.day);
+    _fromDate = ValueNotifier<DateTime?>(DateTime(now.year, now.month, now.day));
+    _toDate = ValueNotifier<DateTime?>(DateTime(now.year, now.month, now.day));
     _loadBranches();
     _fetchReceipts();
+  }
+
+  @override
+  void dispose() {
+    _loading.dispose();
+    _error.dispose();
+    _search.dispose();
+    _receipts.dispose();
+    _totalCollected.dispose();
+    _fromDate.dispose();
+    _toDate.dispose();
+    _branches.dispose();
+    _selectedBranchId.dispose();
+    _selectedPaymentMode.dispose();
+    super.dispose();
   }
 
   String _formatApiDate(DateTime d) =>
@@ -65,8 +80,8 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
 
   Future<void> _pickDate({required bool isFrom}) async {
     final initial = isFrom
-        ? (_fromDate ?? DateTime.now())
-        : (_toDate ?? DateTime.now());
+        ? (_fromDate.value ?? DateTime.now())
+        : (_toDate.value ?? DateTime.now());
     final picked = await showDatePicker(
       context: context,
       initialDate: initial,
@@ -83,58 +98,48 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
       ),
     );
     if (picked == null) return;
-    setState(() {
-      if (isFrom) {
-        _fromDate = picked;
-        if (_toDate != null && _toDate!.isBefore(picked)) _toDate = picked;
-      } else {
-        _toDate = picked;
-        if (_fromDate != null && _fromDate!.isAfter(picked)) _fromDate = picked;
-      }
-    });
+    if (isFrom) {
+      _fromDate.value = picked;
+      if (_toDate.value != null && _toDate.value!.isBefore(picked)) _toDate.value = picked;
+    } else {
+      _toDate.value = picked;
+      if (_fromDate.value != null && _fromDate.value!.isAfter(picked)) _fromDate.value = picked;
+    }
     _fetchReceipts();
   }
 
   Future<void> _fetchReceipts() async {
-    setState(() {
-      _loading = true;
-      _error = '';
-    });
+    _loading.value = true;
+    _error.value = '';
 
     final token = context.read<AuthProvider>().token;
     if (token == null) {
-      setState(() {
-        _error = 'Not authenticated';
-        _loading = false;
-      });
+      _error.value = 'Not authenticated';
+      _loading.value = false;
       return;
     }
 
     try {
       final res = await ApiService.getReceiptList(
         token,
-        fromDate: _fromDate != null ? _formatApiDate(_fromDate!) : null,
-        toDate: _toDate != null ? _formatApiDate(_toDate!) : null,
-        branchId: _selectedBranchId,
-        paymentMode: _selectedPaymentMode,
+        fromDate: _fromDate.value != null ? _formatApiDate(_fromDate.value!) : null,
+        toDate: _toDate.value != null ? _formatApiDate(_toDate.value!) : null,
+        branchId: _selectedBranchId.value,
+        paymentMode: _selectedPaymentMode.value,
       );
       if (!mounted) return;
-      setState(() {
-        if (res['success'] == true) {
-          _receipts = res['receipts'] ?? [];
-          _totalCollected =
-              double.tryParse(res['total_collected']?.toString() ?? '0') ?? 0;
-        } else {
-          _error = res['message'] ?? 'Failed to load receipts';
-        }
-        _loading = false;
-      });
+      if (res['success'] == true) {
+        _receipts.value = res['receipts'] ?? [];
+        _totalCollected.value =
+            double.tryParse(res['total_collected']?.toString() ?? '0') ?? 0;
+      } else {
+        _error.value = res['message'] ?? 'Failed to load receipts';
+      }
+      _loading.value = false;
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _error = 'Network error: $e';
-        _loading = false;
-      });
+      _error.value = 'Network error: $e';
+      _loading.value = false;
     }
   }
 
@@ -145,17 +150,17 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
     try {
       final res = await ApiService.getCompanyBranches(auth.token!);
       if (!mounted || res['success'] != true) return;
-      setState(() => _branches = res['branches'] ?? []);
+      _branches.value = res['branches'] ?? [];
     } catch (_) {
       // Branch filter is optional; receipts can still load all branches.
     }
   }
 
   List<dynamic> get _filteredReceipts {
-    final q = _search.trim().toLowerCase();
-    if (q.isEmpty) return _receipts;
+    final q = _search.value.trim().toLowerCase();
+    if (q.isEmpty) return _receipts.value;
 
-    return _receipts.where((item) {
+    return _receipts.value.where((item) {
       final receipt = item as Map;
       final searchable = [
         _value(receipt['receipt_number']),
@@ -387,246 +392,276 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final filtered = _filteredReceipts;
+    return ValueListenableBuilder<bool>(
+      valueListenable: _loading,
+      builder: (context, loading, _) => ValueListenableBuilder<String>(
+        valueListenable: _error,
+        builder: (context, errorMsg, _) => ValueListenableBuilder<String>(
+          valueListenable: _search,
+          builder: (context, searchVal, _) => ValueListenableBuilder<List<dynamic>>(
+            valueListenable: _receipts,
+            builder: (context, receiptsList, _) => ValueListenableBuilder<double>(
+              valueListenable: _totalCollected,
+              builder: (context, totalCollectedVal, _) {
+                final filtered = _filteredReceipts;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF000080),
-        foregroundColor: Colors.white,
-        title: Text(
-          context.tr('Receipts'),
-          style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 18),
-        ),
-        actions: [
-          IconButton(
-            onPressed: _fetchReceipts,
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Container(
-            color: const Color(0xFF000080),
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: _datePicker(
-                        label: 'From',
-                        date: _fromDate,
-                        isFrom: true,
-                      ),
+                return Scaffold(
+                  backgroundColor: const Color(0xFFF8FAFC),
+                  appBar: AppBar(
+                    backgroundColor: const Color(0xFF000080),
+                    foregroundColor: Colors.white,
+                    title: Text(
+                      context.tr('Receipts'),
+                      style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 18),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _datePicker(
-                        label: 'To',
-                        date: _toDate,
-                        isFrom: false,
+                    actions: [
+                      IconButton(
+                        onPressed: _fetchReceipts,
+                        icon: const Icon(Icons.refresh),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    GestureDetector(
-                      onTap: _fetchReceipts,
-                      child: Container(
-                        height: 48,
-                        width: 48,
-                        decoration: BoxDecoration(
+                    ],
+                  ),
+                  body: Column(
+                    children: [
+                      Container(
+                        color: const Color(0xFF000080),
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ValueListenableBuilder<DateTime?>(
+                                    valueListenable: _fromDate,
+                                    builder: (context, fromDateVal, _) => _datePicker(
+                                      label: 'From',
+                                      date: fromDateVal,
+                                      isFrom: true,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: ValueListenableBuilder<DateTime?>(
+                                    valueListenable: _toDate,
+                                    builder: (context, toDateVal, _) => _datePicker(
+                                      label: 'To',
+                                      date: toDateVal,
+                                      isFrom: false,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                GestureDetector(
+                                  onTap: _fetchReceipts,
+                                  child: Container(
+                                    height: 48,
+                                    width: 48,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Icon(
+                                      Icons.search,
+                                      color: Color(0xFF000080),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (context.watch<AuthProvider>().isCompanyAdmin) ...[
+                              const SizedBox(height: 12),
+                              ValueListenableBuilder<String?>(
+                                valueListenable: _selectedBranchId,
+                                builder: (context, branchId, _) => _branchDropdown(branchId),
+                              ),
+                            ],
+                            const SizedBox(height: 12),
+                            ValueListenableBuilder<String?>(
+                              valueListenable: _selectedPaymentMode,
+                              builder: (context, paymentModeVal, _) => _paymentModeDropdown(paymentModeVal),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        color: Colors.white,
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                        child: TextField(
+                          onChanged: (value) => _search.value = value,
+                          decoration: InputDecoration(
+                            hintText: context.tr('Search receipt, customer, invoice or vehicle'),
+                            hintStyle: GoogleFonts.inter(
+                              fontSize: 13,
+                              color: const Color(0xFF94A3B8),
+                            ),
+                            prefixIcon: const Icon(
+                              Icons.search,
+                              size: 20,
+                              color: Color(0xFF94A3B8),
+                            ),
+                            filled: true,
+                            fillColor: const Color(0xFFF1F5F9),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                          ),
+                        ),
+                      ),
+                      if (loading)
+                        const Expanded(
+                          child: Center(
+                            child: CircularProgressIndicator(color: Color(0xFF000080)),
+                          ),
+                        )
+                      else if (errorMsg.isNotEmpty)
+                        Expanded(
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.error_outline,
+                                  size: 48,
+                                  color: Colors.red,
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  errorMsg,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(color: Colors.red),
+                                ),
+                                const SizedBox(height: 16),
+                                ElevatedButton(
+                                  onPressed: _fetchReceipts,
+                                  child: Text(context.tr('Retry')),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      else if (filtered.isEmpty)
+                        Expanded(
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.receipt_long_outlined,
+                                  size: 72,
+                                  color: Colors.grey.shade300,
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  searchVal.isNotEmpty
+                                      ? 'No results for "$searchVal"'
+                                      : 'No receipts found',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF64748B),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      else
+                        Expanded(
+                          child: RefreshIndicator(
+                            onRefresh: _fetchReceipts,
+                            child: ListView.builder(
+                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                              itemCount: filtered.length,
+                              itemBuilder: (_, index) {
+                                final receipt = Map<String, dynamic>.from(
+                                  filtered[index] as Map,
+                                );
+                                return _receiptCard(receipt);
+                              },
+                            ),
+                          ),
+                        ),
+                      if (!loading && errorMsg.isEmpty && filtered.isNotEmpty)
+                        Container(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(10),
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                context.tr('Total Collected'),
+                                style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF64748B),
+                                  fontSize: 14,
+                                ),
+                              ),
+                              Text(
+                                context.tr('${CountryConfig.currencySymbol}${totalCollectedVal.toStringAsFixed(2)}'),
+                                style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.green.shade700,
+                                  fontSize: 18,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        child: const Icon(
-                          Icons.search,
-                          color: Color(0xFF000080),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                if (context.watch<AuthProvider>().isCompanyAdmin) ...[
-                  const SizedBox(height: 12),
-                  _branchDropdown(),
-                ],
-                const SizedBox(height: 12),
-                _paymentModeDropdown(),
-              ],
+                    ],
+                  ),
+                );
+              },
             ),
           ),
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-            child: TextField(
-              onChanged: (value) => setState(() => _search = value),
-              decoration: InputDecoration(
-                hintText: context.tr('Search receipt, customer, invoice or vehicle'),
-                hintStyle: GoogleFonts.inter(
-                  fontSize: 13,
-                  color: const Color(0xFF94A3B8),
-                ),
-                prefixIcon: const Icon(
-                  Icons.search,
-                  size: 20,
-                  color: Color(0xFF94A3B8),
-                ),
-                filled: true,
-                fillColor: const Color(0xFFF1F5F9),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 10),
-              ),
-            ),
+        ),
+      ),
+    );
+  }
+
+  Widget _branchDropdown(String? selectedBranchId) {
+    return ValueListenableBuilder<List<dynamic>>(
+      valueListenable: _branches,
+      builder: (context, branchesList, _) => DropdownButtonFormField<String>(
+        value: selectedBranchId,
+        isExpanded: true,
+        menuMaxHeight: 350,
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 12,
           ),
-          if (_loading)
-            const Expanded(
-              child: Center(
-                child: CircularProgressIndicator(color: Color(0xFF000080)),
-              ),
-            )
-          else if (_error.isNotEmpty)
-            Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      size: 48,
-                      color: Colors.red,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      _error,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.red),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: _fetchReceipts,
-                      child: Text(context.tr('Retry')),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else if (filtered.isEmpty)
-            Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.receipt_long_outlined,
-                      size: 72,
-                      color: Colors.grey.shade300,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      _search.isNotEmpty
-                          ? 'No results for "$_search"'
-                          : 'No receipts found',
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF64748B),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: _fetchReceipts,
-                child: ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                  itemCount: filtered.length,
-                  itemBuilder: (_, index) {
-                    final receipt = Map<String, dynamic>.from(
-                      filtered[index] as Map,
-                    );
-                    return _receiptCard(receipt);
-                  },
-                ),
-              ),
-            ),
-          if (!_loading && _error.isEmpty && filtered.isNotEmpty)
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    context.tr('Total Collected'),
-                    style: GoogleFonts.inter(
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF64748B),
-                      fontSize: 14,
-                    ),
-                  ),
-                  Text(
-                    context.tr('${CountryConfig.currencySymbol}${_totalCollected.toStringAsFixed(2)}'),
-                    style: GoogleFonts.inter(
-                      fontWeight: FontWeight.w900,
-                      color: Colors.green.shade700,
-                      fontSize: 18,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide.none,
+          ),
+        ),
+        hint: Text(context.tr('All branches')),
+        items: [
+          DropdownMenuItem<String>(value: '', child: Text(context.tr('All branches'))),
+          ...branchesList.map((branch) {
+            final item = Map<String, dynamic>.from(branch as Map);
+            return DropdownMenuItem<String>(
+              value: item['id']?.toString() ?? '',
+              child: Text(item['name']?.toString() ?? ''),
+            );
+          }),
         ],
+        onChanged: (value) {
+          _selectedBranchId.value = value == null || value.isEmpty ? null : value;
+          _fetchReceipts();
+        },
       ),
     );
   }
 
-  Widget _branchDropdown() {
+  Widget _paymentModeDropdown(String? selectedPaymentMode) {
     return DropdownButtonFormField<String>(
-      value: _selectedBranchId,
-      isExpanded: true,
-      menuMaxHeight: 350,
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 12,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide.none,
-        ),
-      ),
-      hint: Text(context.tr('All branches')),
-      items: [
-        DropdownMenuItem<String>(value: '', child: Text(context.tr('All branches'))),
-        ..._branches.map((branch) {
-          final item = Map<String, dynamic>.from(branch as Map);
-          return DropdownMenuItem<String>(
-            value: item['id']?.toString() ?? '',
-            child: Text(item['name']?.toString() ?? ''),
-          );
-        }),
-      ],
-      onChanged: (value) {
-        setState(() {
-          _selectedBranchId = value == null || value.isEmpty ? null : value;
-        });
-        _fetchReceipts();
-      },
-    );
-  }
-
-  Widget _paymentModeDropdown() {
-    return DropdownButtonFormField<String>(
-      value: _selectedPaymentMode,
+      value: selectedPaymentMode,
       isExpanded: true,
       menuMaxHeight: 350,
       decoration: InputDecoration(
@@ -649,9 +684,7 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
         DropdownMenuItem<String>(value: 'digital_payments', child: Text(context.tr('Digital payments'))),
       ],
       onChanged: (value) {
-        setState(() {
-          _selectedPaymentMode = value == null || value.isEmpty ? null : value;
-        });
+        _selectedPaymentMode.value = value == null || value.isEmpty ? null : value;
         _fetchReceipts();
       },
     );

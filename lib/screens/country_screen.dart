@@ -2,61 +2,53 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../config/country_config.dart';
 
-class CountryScreen extends StatefulWidget {
+class CountryScreen extends StatelessWidget {
   const CountryScreen({super.key});
 
   @override
-  State<CountryScreen> createState() => _CountryScreenState();
-}
-
-class _CountryScreenState extends State<CountryScreen> {
-  CountryCode _selected = CountryConfig.current.code;
-  bool _isSaving = false;
-
-  Future<void> _select(CountryCode code) async {
-    setState(() {
-      _selected = code;
-      _isSaving = true;
-    });
-    await CountryConfig.setCountry(code);
-    setState(() => _isSaving = false);
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${CountryConfig.current.flag} Country set to ${CountryConfig.current.displayName}. '
-            'Phone code: ${CountryConfig.current.phoneDialCode} | '
-            'Currency: ${CountryConfig.current.currencySymbol}',
-          ),
-          backgroundColor: const Color(0xFF000080),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final selected = ValueNotifier<CountryCode>(CountryConfig.current.code);
+    final isSaving = ValueNotifier<bool>(false);
+
+    Future<void> select(CountryCode code) async {
+      selected.value = code;
+      isSaving.value = true;
+      await CountryConfig.setCountry(code);
+      isSaving.value = false;
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${CountryConfig.current.flag} Country set to ${CountryConfig.current.displayName}. '
+              'Phone code: ${CountryConfig.current.phoneDialCode} | '
+              'Currency: ${CountryConfig.current.currencySymbol}',
+            ),
+            backgroundColor: const Color(0xFF000080),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    }
+
     final countries = CountryConfig.all;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
-      appBar: AppBar(
-        title: Text(
-          'Select Country',
-          style: GoogleFonts.inter(fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: const Color(0xFF000080),
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
-      body: Stack(
-        children: [
-          // ── Info banner ──────────────────────────────────────────────────
-          Column(
+    return ValueListenableBuilder<bool>(
+      valueListenable: isSaving,
+      builder: (context, saving, _) => ValueListenableBuilder<CountryCode>(
+        valueListenable: selected,
+        builder: (context, sel, _) => Scaffold(
+          backgroundColor: const Color(0xFFF1F5F9),
+          appBar: AppBar(
+            title: Text('Select Country', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+            backgroundColor: const Color(0xFF000080),
+            foregroundColor: Colors.white,
+            elevation: 0,
+          ),
+          body: Stack(
             children: [
+              Column(
+                children: [
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
@@ -86,10 +78,10 @@ class _CountryScreenState extends State<CountryScreen> {
                   itemCount: countries.length,
                   itemBuilder: (context, index) {
                     final country = countries[index];
-                    final isSelected = country.code == _selected;
+                    final isSelected = country.code == sel;
 
                     return GestureDetector(
-                      onTap: _isSaving ? null : () => _select(country.code),
+                      onTap: saving ? null : () => select(country.code),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         margin: const EdgeInsets.only(bottom: 12),
@@ -177,14 +169,16 @@ class _CountryScreenState extends State<CountryScreen> {
           ),
 
           // ── Loading overlay ──────────────────────────────────────────────
-          if (_isSaving)
-            Positioned.fill(
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.25),
-                child: const Center(child: CircularProgressIndicator()),
-              ),
-            ),
-        ],
+              if (saving)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    child: const Center(child: CircularProgressIndicator()),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

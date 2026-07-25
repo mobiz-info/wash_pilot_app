@@ -16,9 +16,9 @@ class PurchaseRequestScreen extends StatefulWidget {
 }
 
 class _PurchaseRequestScreenState extends State<PurchaseRequestScreen> {
-  bool _isLoading = true;
-  String _errorMessage = '';
-  List<dynamic> _purchaseExpenses = [];
+  final _isLoading = ValueNotifier<bool>(true);
+  final _errorMessage = ValueNotifier<String>('');
+  final _purchaseExpenses = ValueNotifier<List<dynamic>>([]);
 
   @override
   void initState() {
@@ -26,40 +26,40 @@ class _PurchaseRequestScreenState extends State<PurchaseRequestScreen> {
     _fetchPurchaseExpenses();
   }
 
+  @override
+  void dispose() {
+    _isLoading.dispose();
+    _errorMessage.dispose();
+    _purchaseExpenses.dispose();
+    super.dispose();
+  }
+
   Future<void> _fetchPurchaseExpenses() async {
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = '';
-    });
+    _isLoading.value = true;
+    _errorMessage.value = '';
 
     try {
       final res = await ApiService.getPurchaseExpensesList(token);
       if (res['success'] == true) {
-        setState(() {
-          _purchaseExpenses = res['purchase_expenses'] ?? [];
-          _isLoading = false;
-        });
+        _purchaseExpenses.value = res['purchase_expenses'] ?? [];
+        _isLoading.value = false;
       } else {
-        setState(() {
-          _errorMessage = res['message'] ?? 'Failed to load purchase expenses';
-          _isLoading = false;
-        });
+        _errorMessage.value = res['message'] ?? 'Failed to load purchase expenses';
+        _isLoading.value = false;
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-        _isLoading = false;
-      });
+      _errorMessage.value = e.toString();
+      _isLoading.value = false;
     }
   }
 
   void _navigateToAddPurchaseExpense() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const ExpenseScreen()),
+      MaterialPageRoute(builder: (_) => ExpenseScreen()),
     );
     _fetchPurchaseExpenses();
   }
@@ -218,47 +218,41 @@ class _PurchaseRequestScreenState extends State<PurchaseRequestScreen> {
           )
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage.isNotEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          _errorMessage,
-                          style: const TextStyle(color: Colors.red),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _fetchPurchaseExpenses,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF000080),
-                            foregroundColor: Colors.white,
-                          ),
-                          child: Text(context.tr('Retry')),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              : _purchaseExpenses.isEmpty
+      body: ValueListenableBuilder<bool>(
+        valueListenable: _isLoading,
+        builder: (context, loading, _) => ValueListenableBuilder<String>(
+          valueListenable: _errorMessage,
+          builder: (context, errMsg, _) => ValueListenableBuilder<List<dynamic>>(
+            valueListenable: _purchaseExpenses,
+            builder: (context, expenses, _) => loading
+              ? const Center(child: CircularProgressIndicator())
+              : errMsg.isNotEmpty
                   ? Center(
-                      child: Text(
-                        context.tr('No purchase expenses found'),
-                        style: GoogleFonts.inter(color: Colors.grey, fontSize: 15),
+                      child: Padding(
+                        padding: const EdgeInsets.all(20.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(errMsg, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: _fetchPurchaseExpenses,
+                              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000080), foregroundColor: Colors.white),
+                              child: Text(context.tr('Retry')),
+                            ),
+                          ],
+                        ),
                       ),
                     )
-                  : RefreshIndicator(
-                      onRefresh: _fetchPurchaseExpenses,
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _purchaseExpenses.length,
-                        itemBuilder: (ctx, i) {
-                          final expense = Map<String, dynamic>.from(_purchaseExpenses[i] as Map);
+                  : expenses.isEmpty
+                      ? Center(child: Text(context.tr('No purchase expenses found'), style: GoogleFonts.inter(color: Colors.grey, fontSize: 15)))
+                      : RefreshIndicator(
+                          onRefresh: _fetchPurchaseExpenses,
+                          child: ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: expenses.length,
+                            itemBuilder: (ctx, i) {
+                              final expense = Map<String, dynamic>.from(expenses[i] as Map);
                           final name = expense['expense_name'] ?? '';
                           final branch = expense['branch_name'] ?? '';
                           final supplier = expense['supplier_name'] ?? '';
@@ -425,6 +419,9 @@ class _PurchaseRequestScreenState extends State<PurchaseRequestScreen> {
                         },
                       ),
                     ),
+          ),
+        ),
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _navigateToAddPurchaseExpense,
         backgroundColor: const Color(0xFF000080),
