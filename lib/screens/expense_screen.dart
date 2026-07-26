@@ -607,6 +607,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       'expense_name': expenseName,
       'amount': amount,
       'expense_date': DateFormat('yyyy-MM-dd').format(_selectedDateNotifier.value),
+      'date': DateFormat('yyyy-MM-dd').format(_selectedDateNotifier.value),
       'branch_id': branchId,
       'supplier_id': supplierId,
       'paid_amount': paidAmount,
