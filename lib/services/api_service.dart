@@ -1337,6 +1337,22 @@ class ApiService {
     throw Exception('Failed to create expense (Status: ${response.statusCode}).');
   }
 
+  static Future<Map<String, dynamic>> deleteExpenseEntry(String token, String id) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/expenses/delete/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'id': id}),
+    );
+    try {
+      final res = jsonDecode(response.body);
+      if (res is Map<String, dynamic>) return res;
+    } catch (_) {}
+    throw Exception('Failed to delete expense (Status: ${response.statusCode}).');
+  }
+
   static Future<Map<String, dynamic>> getPurchaseExpensesList(String token) async {
     final response = await http.get(
       Uri.parse('$baseUrl/purchase-expenses/list/'),

@@ -72,6 +72,69 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     });
   }
 
+  Future<void> _deleteExpense(String id) async {
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          ctx.tr('Delete Expense'),
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.red.shade700),
+        ),
+        content: Text(
+          ctx.tr('Are you sure you want to delete this expense?'),
+          style: GoogleFonts.inter(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(ctx.tr('Cancel')),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade700),
+            child: Text(ctx.tr('Delete'), style: const TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        final res = await ApiService.deleteExpenseEntry(token, id);
+        if (res['success'] == true) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(context.tr('Expense deleted successfully')),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+          _fetchExpenses();
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(res['message'] ?? context.tr('Failed to delete expense')),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+          );
+        }
+      }
+    }
+  }
+
   double _calculateTotalAmount(List<dynamic> expenses) {
     double total = 0.0;
     for (var e in expenses) {
@@ -283,13 +346,31 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                                         ),
                                       ),
                                       const Spacer(),
-                                      Text(
-                                        '₹$amountStr',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.red.shade700,
-                                        ),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            '₹$amountStr',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.red.shade700,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          InkWell(
+                                            onTap: () => _deleteExpense(item['id'].toString()),
+                                            borderRadius: BorderRadius.circular(20),
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(4.0),
+                                              child: Icon(
+                                                Icons.delete_outline,
+                                                color: Colors.red.shade600,
+                                                size: 20,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   ),
