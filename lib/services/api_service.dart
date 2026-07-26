@@ -1763,9 +1763,18 @@ class ApiService {
     throw Exception('Failed to load expense head detail report (status: ${response.statusCode}, body: ${response.body}).');
   }
 
-  static Future<Map<String, dynamic>> getAllExpenses(String token, {String search = ''}) async {
+  static Future<Map<String, dynamic>> getAllExpenses(
+    String token, {
+    String search = '',
+    String? branchId,
+    String? fromDate,
+    String? toDate,
+  }) async {
     final params = <String, String>{};
     if (search.isNotEmpty) params['search'] = search;
+    if (branchId != null && branchId.isNotEmpty) params['branch_id'] = branchId;
+    if (fromDate != null && fromDate.isNotEmpty) params['from_date'] = fromDate;
+    if (toDate != null && toDate.isNotEmpty) params['to_date'] = toDate;
     final url = Uri.parse('$baseUrl/expenses/list/').replace(queryParameters: params);
     final response = await http.get(
       url,

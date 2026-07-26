@@ -18,12 +18,17 @@ class ExpenseScreen extends StatefulWidget {
 class _ExpenseScreenState extends State<ExpenseScreen> {
   final ValueNotifier<bool> _isLoadingNotifier = ValueNotifier(true);
   final ValueNotifier<List<dynamic>> _expensesNotifier = ValueNotifier([]);
+  final ValueNotifier<List<dynamic>> _branchesNotifier = ValueNotifier([]);
+  final ValueNotifier<String?> _selectedFilterBranchIdNotifier = ValueNotifier(null);
+  final ValueNotifier<DateTime?> _fromDateNotifier = ValueNotifier(null);
+  final ValueNotifier<DateTime?> _toDateNotifier = ValueNotifier(null);
   final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadBranches();
       _fetchExpenses();
     });
     _searchController.addListener(_onSearchChanged);
@@ -34,7 +39,22 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     _searchController.dispose();
     _isLoadingNotifier.dispose();
     _expensesNotifier.dispose();
+    _branchesNotifier.dispose();
+    _selectedFilterBranchIdNotifier.dispose();
+    _fromDateNotifier.dispose();
+    _toDateNotifier.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadBranches() async {
+    final auth = context.read<AuthProvider>();
+    if (!auth.isCompanyAdmin) return;
+    try {
+      final res = await ApiService.getCompanyBranches(auth.token!);
+      if (res['success'] == true && res['branches'] != null) {
+        _branchesNotifier.value = List.from(res['branches']);
+      }
+    } catch (_) {}
   }
 
   void _onSearchChanged() {
@@ -47,7 +67,20 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
 
     _isLoadingNotifier.value = true;
     try {
-      final res = await ApiService.getAllExpenses(token, search: _searchController.text.trim());
+      final fromDateStr = _fromDateNotifier.value != null
+          ? DateFormat('yyyy-MM-dd').format(_fromDateNotifier.value!)
+          : null;
+      final toDateStr = _toDateNotifier.value != null
+          ? DateFormat('yyyy-MM-dd').format(_toDateNotifier.value!)
+          : null;
+
+      final res = await ApiService.getAllExpenses(
+        token,
+        search: _searchController.text.trim(),
+        branchId: _selectedFilterBranchIdNotifier.value,
+        fromDate: fromDateStr,
+        toDate: toDateStr,
+      );
       if (res['success'] == true && res['expenses'] != null) {
         _expensesNotifier.value = List.from(res['expenses']);
       } else {
@@ -59,6 +92,39 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     } finally {
       _isLoadingNotifier.value = false;
     }
+  }
+
+  Future<void> _pickFromDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _fromDateNotifier.value ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (picked != null) {
+      _fromDateNotifier.value = picked;
+      _fetchExpenses();
+    }
+  }
+
+  Future<void> _pickToDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _toDateNotifier.value ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (picked != null) {
+      _toDateNotifier.value = picked;
+      _fetchExpenses();
+    }
+  }
+
+  void _clearDateFilters() {
+    _fromDateNotifier.value = null;
+    _toDateNotifier.value = null;
+    _selectedFilterBranchIdNotifier.value = null;
+    _fetchExpenses();
   }
 
   void _navigateToAddExpense() {
@@ -144,6 +210,37 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     return total;
   }
 
+  Widget _buildDetailChip({
+    required IconData icon,
+    required String label,
+    Color? color,
+    Color? backgroundColor,
+  }) {
+    final textColor = color ?? Colors.grey.shade800;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: backgroundColor ?? const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: textColor),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: textColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
@@ -201,6 +298,168 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     ),
                   ),
+
+                  // Filters Row (Branch & Dates)
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      // From Date
+                      Expanded(
+                        child: ValueListenableBuilder<DateTime?>(
+                          valueListenable: _fromDateNotifier,
+                          builder: (context, fromDate, child) {
+                            return InkWell(
+                              onTap: _pickFromDate,
+                              borderRadius: BorderRadius.circular(8),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.calendar_today, size: 14, color: Colors.white70),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        fromDate != null ? DateFormat('dd-MM-yyyy').format(fromDate) : context.tr('From Date'),
+                                        style: GoogleFonts.inter(fontSize: 12, color: Colors.white),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // To Date
+                      Expanded(
+                        child: ValueListenableBuilder<DateTime?>(
+                          valueListenable: _toDateNotifier,
+                          builder: (context, toDate, child) {
+                            return InkWell(
+                              onTap: _pickToDate,
+                              borderRadius: BorderRadius.circular(8),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.calendar_today, size: 14, color: Colors.white70),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        toDate != null ? DateFormat('dd-MM-yyyy').format(toDate) : context.tr('To Date'),
+                                        style: GoogleFonts.inter(fontSize: 12, color: Colors.white),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      // Clear Button
+                      ValueListenableBuilder<DateTime?>(
+                        valueListenable: _fromDateNotifier,
+                        builder: (context, fromDate, child) {
+                          return ValueListenableBuilder<DateTime?>(
+                            valueListenable: _toDateNotifier,
+                            builder: (context, toDate, child) {
+                              return ValueListenableBuilder<String?>(
+                                valueListenable: _selectedFilterBranchIdNotifier,
+                                builder: (context, branchId, child) {
+                                  if (fromDate == null && toDate == null && branchId == null) {
+                                    return const SizedBox.shrink();
+                                  }
+                                  return Padding(
+                                    padding: const EdgeInsets.only(left: 6),
+                                    child: InkWell(
+                                      onTap: _clearDateFilters,
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(alpha: 0.2),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(Icons.close, size: 14, color: Colors.white),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+
+                  if (auth.isCompanyAdmin) ...[
+                    const SizedBox(height: 8),
+                    ValueListenableBuilder<List<dynamic>>(
+                      valueListenable: _branchesNotifier,
+                      builder: (context, branches, child) {
+                        return ValueListenableBuilder<String?>(
+                          valueListenable: _selectedFilterBranchIdNotifier,
+                          builder: (context, selectedBranchId, child) {
+                            return Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String?>(
+                                  value: selectedBranchId,
+                                  isExpanded: true,
+                                  dropdownColor: const Color(0xFF000080),
+                                  icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
+                                  hint: Text(
+                                    context.tr('All Branches'),
+                                    style: GoogleFonts.inter(fontSize: 13, color: Colors.white70),
+                                  ),
+                                  items: [
+                                    DropdownMenuItem<String?>(
+                                      value: null,
+                                      child: Text(
+                                        context.tr('All Branches'),
+                                        style: GoogleFonts.inter(fontSize: 13, color: Colors.white),
+                                      ),
+                                    ),
+                                    ...branches.map((b) {
+                                      final branch = Map<String, dynamic>.from(b as Map);
+                                      return DropdownMenuItem<String?>(
+                                        value: branch['id']?.toString(),
+                                        child: Text(
+                                          branch['name'] ?? '',
+                                          style: GoogleFonts.inter(fontSize: 13, color: Colors.white),
+                                        ),
+                                      );
+                                    }),
+                                  ],
+                                  onChanged: (val) {
+                                    _selectedFilterBranchIdNotifier.value = val;
+                                    _fetchExpenses();
+                                  },
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   ValueListenableBuilder<List<dynamic>>(
                     valueListenable: _expensesNotifier,
@@ -317,120 +576,163 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                           final supplierName = (item['supplier_name'] ?? '').toString();
                           final remarks = (item['remarks'] ?? '').toString();
 
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                            elevation: 2,
-                            shadowColor: Colors.black.withValues(alpha: 0.05),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFF000080).withValues(alpha: 0.1),
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Text(
-                                          headName,
-                                          style: GoogleFonts.inter(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: const Color(0xFF000080),
-                                          ),
-                                        ),
-                                      ),
-                                      const Spacer(),
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            '₹$amountStr',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.red.shade700,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 4),
-                                          InkWell(
-                                            onTap: () => _deleteExpense(item['id'].toString()),
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 14),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF000080).withValues(alpha: 0.08),
+                                  blurRadius: 16,
+                                  spreadRadius: 1,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                              border: Border.all(
+                                color: Colors.grey.shade200,
+                                width: 1,
+                              ),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: Container(
+                                decoration: const BoxDecoration(
+                                  border: Border(
+                                    left: BorderSide(
+                                      color: Color(0xFF000080),
+                                      width: 4,
+                                    ),
+                                  ),
+                                ),
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Top Header Row (Head Badge & Amount + Delete Button)
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF000080).withValues(alpha: 0.08),
                                             borderRadius: BorderRadius.circular(20),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(Icons.label_outlined, size: 13, color: Color(0xFF000080)),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                headName,
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: const Color(0xFF000080),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const Spacer(),
+                                        Text(
+                                          '₹$amountStr',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 19,
+                                            fontWeight: FontWeight.w800,
+                                            color: Colors.red.shade700,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Material(
+                                          color: Colors.red.shade50,
+                                          shape: const CircleBorder(),
+                                          child: InkWell(
+                                            onTap: () => _deleteExpense(item['id'].toString()),
+                                            customBorder: const CircleBorder(),
                                             child: Padding(
-                                              padding: const EdgeInsets.all(4.0),
+                                              padding: const EdgeInsets.all(6.0),
                                               child: Icon(
                                                 Icons.delete_outline,
-                                                color: Colors.red.shade600,
-                                                size: 20,
+                                                color: Colors.red.shade700,
+                                                size: 18,
                                               ),
                                             ),
                                           ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    expenseName.isNotEmpty ? expenseName : headName,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      Icon(Icons.calendar_today, size: 14, color: Colors.grey.shade600),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        dateStr,
-                                        style: GoogleFonts.inter(fontSize: 13, color: Colors.grey.shade700),
-                                      ),
-                                      if (auth.isCompanyAdmin && branchName != 'N/A') ...[
-                                        const SizedBox(width: 12),
-                                        Icon(Icons.storefront, size: 14, color: Colors.grey.shade600),
-                                        const SizedBox(width: 4),
-                                        Expanded(
-                                          child: Text(
-                                            branchName,
-                                            style: GoogleFonts.inter(fontSize: 13, color: Colors.grey.shade700),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                  if (supplierName != 'N/A' && supplierName.isNotEmpty) ...[
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      children: [
-                                        Icon(Icons.business, size: 14, color: Colors.grey.shade600),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          '${context.tr("Supplier")}: $supplierName',
-                                          style: GoogleFonts.inter(fontSize: 13, color: Colors.grey.shade700),
                                         ),
                                       ],
                                     ),
-                                  ],
-                                  if (remarks.isNotEmpty) ...[
-                                    const SizedBox(height: 6),
+                                    const SizedBox(height: 10),
+
+                                    // Expense Item Name
                                     Text(
-                                      remarks,
+                                      expenseName.isNotEmpty ? expenseName : headName,
                                       style: GoogleFonts.inter(
-                                        fontSize: 13,
-                                        fontStyle: FontStyle.italic,
-                                        color: Colors.grey.shade600,
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.w700,
+                                        color: const Color(0xFF1E293B),
+                                        height: 1.2,
                                       ),
                                     ),
+                                    const SizedBox(height: 10),
+
+                                    // Details Chips (Date, Branch, Supplier)
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 6,
+                                      children: [
+                                        _buildDetailChip(
+                                          icon: Icons.calendar_today_outlined,
+                                          label: dateStr,
+                                        ),
+                                        if (auth.isCompanyAdmin && branchName != 'N/A' && branchName.isNotEmpty)
+                                          _buildDetailChip(
+                                            icon: Icons.storefront_outlined,
+                                            label: branchName,
+                                          ),
+                                        if (supplierName != 'N/A' && supplierName.isNotEmpty)
+                                          _buildDetailChip(
+                                            icon: Icons.business_outlined,
+                                            label: supplierName,
+                                            color: Colors.amber.shade900,
+                                            backgroundColor: Colors.amber.shade50,
+                                          ),
+                                      ],
+                                    ),
+
+                                    // Remarks if present
+                                    if (remarks.isNotEmpty) ...[
+                                      const SizedBox(height: 10),
+                                      Container(
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFF8FAFC),
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(color: Colors.grey.shade200),
+                                        ),
+                                        child: Row(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Icon(Icons.notes, size: 14, color: Colors.grey.shade600),
+                                            const SizedBox(width: 6),
+                                            Expanded(
+                                              child: Text(
+                                                remarks,
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 12,
+                                                  fontStyle: FontStyle.italic,
+                                                  color: Colors.grey.shade700,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
                                   ],
-                                ],
+                                ),
                               ),
                             ),
                           );
