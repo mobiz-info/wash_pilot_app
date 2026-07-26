@@ -1330,11 +1330,11 @@ class ApiService {
       },
       body: jsonEncode(data),
     );
-    if (response.statusCode == 200 || response.statusCode == 400) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Failed to create expense.');
-    }
+    try {
+      final res = jsonDecode(response.body);
+      if (res is Map<String, dynamic>) return res;
+    } catch (_) {}
+    throw Exception('Failed to create expense (Status: ${response.statusCode}).');
   }
 
   static Future<Map<String, dynamic>> getPurchaseExpensesList(String token) async {
