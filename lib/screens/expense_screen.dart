@@ -394,6 +394,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   final ValueNotifier<Map<String, dynamic>?> _selectedExpenseHeadNotifier = ValueNotifier(null);
   final ValueNotifier<String?> _selectedBranchIdNotifier = ValueNotifier(null);
   final ValueNotifier<String?> _selectedSupplierIdNotifier = ValueNotifier(null);
+  final ValueNotifier<bool> _hasSupplierNotifier = ValueNotifier(false);
 
   final TextEditingController _expenseNameController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
@@ -425,6 +426,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     _selectedExpenseHeadNotifier.dispose();
     _selectedBranchIdNotifier.dispose();
     _selectedSupplierIdNotifier.dispose();
+    _hasSupplierNotifier.dispose();
     _expenseNameController.dispose();
     _amountController.dispose();
     _remarkController.dispose();
@@ -595,8 +597,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       }
     }
 
+    final hasSupplier = _hasSupplierNotifier.value;
+    final supplierId = hasSupplier ? _selectedSupplierIdNotifier.value : null;
     final paidAmountStr = _paidAmountController.text.trim();
-    final paidAmount = paidAmountStr.isNotEmpty ? double.tryParse(paidAmountStr) : amount;
+    final paidAmount = (hasSupplier && paidAmountStr.isNotEmpty) ? double.tryParse(paidAmountStr) : amount;
 
     final payload = <String, dynamic>{
       'expense_head_id': _selectedExpenseHeadNotifier.value!['id'].toString(),
@@ -604,7 +608,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       'amount': amount,
       'expense_date': DateFormat('yyyy-MM-dd').format(_selectedDateNotifier.value),
       'branch_id': branchId,
-      'supplier_id': _selectedSupplierIdNotifier.value,
+      'supplier_id': supplierId,
       'paid_amount': paidAmount,
       'remarks': _remarkController.text.trim(),
     };
@@ -799,39 +803,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                         ),
                         const SizedBox(height: 14),
 
-                        // Supplier (Optional)
-                        ValueListenableBuilder<List<dynamic>>(
-                          valueListenable: _suppliersNotifier,
-                          builder: (context, suppliers, child) {
-                            return ValueListenableBuilder<String?>(
-                              valueListenable: _selectedSupplierIdNotifier,
-                              builder: (context, selectedSupplierId, child) {
-                                return _buildDropdownField(
-                                  context,
-                                  label: context.tr('Supplier (Optional)'),
-                                  icon: Icons.business,
-                                  hintText: context.tr('Select Supplier'),
-                                  value: selectedSupplierId,
-                                  items: suppliers.map((s) {
-                                    final sup = Map<String, dynamic>.from(s as Map);
-                                    return DropdownMenuItem<String>(
-                                      value: sup['id']?.toString(),
-                                      child: Text(
-                                        sup['name'] ?? '',
-                                        style: GoogleFonts.inter(fontSize: 15),
-                                      ),
-                                    );
-                                  }).toList(),
-                                  onChanged: (val) {
-                                    _selectedSupplierIdNotifier.value = val;
-                                  },
-                                );
-                              },
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 14),
-
                         // Amount
                         _buildTextField(
                           context,
@@ -842,15 +813,94 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                         ),
                         const SizedBox(height: 14),
 
-                        // Paid Amount
-                        _buildTextField(
-                          context,
-                          _paidAmountController,
-                          context.tr('Paid Amount'),
-                          Icons.money,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        // Has Supplier Checkbox
+                        ValueListenableBuilder<bool>(
+                          valueListenable: _hasSupplierNotifier,
+                          builder: (context, hasSupplier, child) {
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 14),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFAFAFA),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: Colors.grey.shade300),
+                              ),
+                              child: CheckboxListTile(
+                                title: Text(
+                                  context.tr('Has Supplier / Credit Supplier Payment'),
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF000080),
+                                  ),
+                                ),
+                                value: hasSupplier,
+                                activeColor: const Color(0xFF000080),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+                                controlAffinity: ListTileControlAffinity.leading,
+                                onChanged: (val) {
+                                  _hasSupplierNotifier.value = val ?? false;
+                                  if (val == false) {
+                                    _selectedSupplierIdNotifier.value = null;
+                                  }
+                                },
+                              ),
+                            );
+                          },
                         ),
-                        const SizedBox(height: 14),
+
+                        // Supplier (Optional) & Paid Amount (Visible when Has Supplier is checked)
+                        ValueListenableBuilder<bool>(
+                          valueListenable: _hasSupplierNotifier,
+                          builder: (context, hasSupplier, child) {
+                            if (!hasSupplier) return const SizedBox.shrink();
+
+                            return Column(
+                              children: [
+                                ValueListenableBuilder<List<dynamic>>(
+                                  valueListenable: _suppliersNotifier,
+                                  builder: (context, suppliers, child) {
+                                    return ValueListenableBuilder<String?>(
+                                      valueListenable: _selectedSupplierIdNotifier,
+                                      builder: (context, selectedSupplierId, child) {
+                                        return _buildDropdownField(
+                                          context,
+                                          label: context.tr('Supplier (Optional)'),
+                                          icon: Icons.business,
+                                          hintText: context.tr('Select Supplier'),
+                                          value: selectedSupplierId,
+                                          items: suppliers.map((s) {
+                                            final sup = Map<String, dynamic>.from(s as Map);
+                                            return DropdownMenuItem<String>(
+                                              value: sup['id']?.toString(),
+                                              child: Text(
+                                                sup['name'] ?? '',
+                                                style: GoogleFonts.inter(fontSize: 15),
+                                              ),
+                                            );
+                                          }).toList(),
+                                          onChanged: (val) {
+                                            _selectedSupplierIdNotifier.value = val;
+                                          },
+                                        );
+                                      },
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 14),
+
+                                // Paid Amount
+                                _buildTextField(
+                                  context,
+                                  _paidAmountController,
+                                  context.tr('Paid Amount'),
+                                  Icons.money,
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                ),
+                                const SizedBox(height: 14),
+                              ],
+                            );
+                          },
+                        ),
 
                         // Remark
                         _buildTextField(
