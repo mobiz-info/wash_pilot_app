@@ -8,17 +8,378 @@ import '../providers/inventory_provider.dart';
 import '../providers/language_provider.dart';
 import '../services/api_service.dart';
 
-class ExpenseScreen extends StatelessWidget {
-  ExpenseScreen({super.key}) {
-    // We defer initial load to building phase via addPostFrameCallback inside the build method
+class ExpenseScreen extends StatefulWidget {
+  const ExpenseScreen({super.key});
+
+  @override
+  State<ExpenseScreen> createState() => _ExpenseScreenState();
+}
+
+class _ExpenseScreenState extends State<ExpenseScreen> {
+  final ValueNotifier<bool> _isLoadingNotifier = ValueNotifier(true);
+  final ValueNotifier<List<dynamic>> _expensesNotifier = ValueNotifier([]);
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchExpenses();
+    });
+    _searchController.addListener(_onSearchChanged);
   }
 
-  // ValueNotifiers for screen states
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _isLoadingNotifier.dispose();
+    _expensesNotifier.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    _fetchExpenses();
+  }
+
+  Future<void> _fetchExpenses() async {
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
+
+    _isLoadingNotifier.value = true;
+    try {
+      final res = await ApiService.getAllExpenses(token, search: _searchController.text.trim());
+      if (res['success'] == true && res['expenses'] != null) {
+        _expensesNotifier.value = List.from(res['expenses']);
+      } else {
+        _expensesNotifier.value = [];
+      }
+    } catch (e) {
+      debugPrint("Error loading expenses: $e");
+      _expensesNotifier.value = [];
+    } finally {
+      _isLoadingNotifier.value = false;
+    }
+  }
+
+  void _navigateToAddExpense() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (ctx) => const AddExpenseScreen()),
+    ).then((result) {
+      if (result == true) {
+        _fetchExpenses();
+      }
+    });
+  }
+
+  double _calculateTotalAmount(List<dynamic> expenses) {
+    double total = 0.0;
+    for (var e in expenses) {
+      final amt = double.tryParse(e['amount']?.toString() ?? '0') ?? 0.0;
+      total += amt;
+    }
+    return total;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F6F9),
+      appBar: AppBar(
+        title: Text(
+          context.tr('Expenses'),
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+        backgroundColor: const Color(0xFF000080),
+        iconTheme: const IconThemeData(color: Colors.white),
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            tooltip: context.tr('Refresh'),
+            onPressed: _fetchExpenses,
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _navigateToAddExpense,
+        backgroundColor: const Color(0xFF000080),
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: Text(
+          context.tr('Add Expense'),
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+      ),
+      body: RefreshIndicator(
+        onRefresh: _fetchExpenses,
+        color: const Color(0xFF000080),
+        child: Column(
+          children: [
+            // Search Bar & Summary Header
+            Container(
+              color: const Color(0xFF000080),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                children: [
+                  TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: context.tr('Search expenses...'),
+                      hintStyle: GoogleFonts.inter(color: Colors.grey.shade500),
+                      prefixIcon: const Icon(Icons.search, color: Color(0xFF000080)),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ValueListenableBuilder<List<dynamic>>(
+                    valueListenable: _expensesNotifier,
+                    builder: (context, expenses, child) {
+                      final totalAmount = _calculateTotalAmount(expenses);
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  context.tr('Total Expenses'),
+                                  style: GoogleFonts.inter(fontSize: 12, color: Colors.white70),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '₹${totalAmount.toStringAsFixed(2)}',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                '${expenses.length} ${context.tr("Entries")}',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF000080),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+
+            // Expenses List
+            Expanded(
+              child: ValueListenableBuilder<bool>(
+                valueListenable: _isLoadingNotifier,
+                builder: (context, isLoading, child) {
+                  if (isLoading) {
+                    return const Center(
+                      child: CircularProgressIndicator(color: Color(0xFF000080)),
+                    );
+                  }
+
+                  return ValueListenableBuilder<List<dynamic>>(
+                    valueListenable: _expensesNotifier,
+                    builder: (context, expenses, child) {
+                      if (expenses.isEmpty) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.receipt_long_outlined, size: 64, color: Colors.grey.shade400),
+                              const SizedBox(height: 12),
+                              Text(
+                                context.tr('No expenses recorded yet'),
+                                style: GoogleFonts.inter(
+                                  fontSize: 16,
+                                  color: Colors.grey.shade600,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              ElevatedButton.icon(
+                                onPressed: _navigateToAddExpense,
+                                icon: const Icon(Icons.add, color: Colors.white),
+                                label: Text(
+                                  context.tr('Add Expense'),
+                                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF000080),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      return ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+                        itemCount: expenses.length,
+                        itemBuilder: (context, index) {
+                          final item = Map<String, dynamic>.from(expenses[index] as Map);
+                          final headName = (item['expense_head_name'] ?? 'General').toString();
+                          final expenseName = (item['expense_name'] ?? '').toString();
+                          final amountStr = (item['amount'] ?? '0.00').toString();
+                          final dateStr = (item['expense_date'] ?? '').toString();
+                          final branchName = (item['branch_name'] ?? '').toString();
+                          final supplierName = (item['supplier_name'] ?? '').toString();
+                          final remarks = (item['remarks'] ?? '').toString();
+
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            elevation: 2,
+                            shadowColor: Colors.black.withValues(alpha: 0.05),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF000080).withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          headName,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: const Color(0xFF000080),
+                                          ),
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      Text(
+                                        '₹$amountStr',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.red.shade700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    expenseName.isNotEmpty ? expenseName : headName,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.calendar_today, size: 14, color: Colors.grey.shade600),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        dateStr,
+                                        style: GoogleFonts.inter(fontSize: 13, color: Colors.grey.shade700),
+                                      ),
+                                      if (auth.isCompanyAdmin && branchName != 'N/A') ...[
+                                        const SizedBox(width: 12),
+                                        Icon(Icons.storefront, size: 14, color: Colors.grey.shade600),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            branchName,
+                                            style: GoogleFonts.inter(fontSize: 13, color: Colors.grey.shade700),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  if (supplierName != 'N/A' && supplierName.isNotEmpty) ...[
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        Icon(Icons.business, size: 14, color: Colors.grey.shade600),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '${context.tr("Supplier")}: $supplierName',
+                                          style: GoogleFonts.inter(fontSize: 13, color: Colors.grey.shade700),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                  if (remarks.isNotEmpty) ...[
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      remarks,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13,
+                                        fontStyle: FontStyle.italic,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+class AddExpenseScreen extends StatefulWidget {
+  const AddExpenseScreen({super.key});
+
+  @override
+  State<AddExpenseScreen> createState() => _AddExpenseScreenState();
+}
+
+class _AddExpenseScreenState extends State<AddExpenseScreen> {
   final ValueNotifier<bool> _isLoadingNotifier = ValueNotifier(true);
   final ValueNotifier<bool> _isSavingNotifier = ValueNotifier(false);
   final ValueNotifier<String> _errorMessageNotifier = ValueNotifier('');
 
-  // Form selections and data sources
   final ValueNotifier<List<dynamic>> _expenseHeadsNotifier = ValueNotifier([]);
   final ValueNotifier<List<dynamic>> _branchesNotifier = ValueNotifier([]);
   final ValueNotifier<List<dynamic>> _staffsNotifier = ValueNotifier([]);
@@ -39,7 +400,39 @@ class ExpenseScreen extends StatelessWidget {
   final TextEditingController _remarkController = TextEditingController();
   final TextEditingController _paidAmountController = TextEditingController();
 
-  Future<void> _fetchInitialData(BuildContext context) async {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchInitialData();
+    });
+  }
+
+  @override
+  void dispose() {
+    _isLoadingNotifier.dispose();
+    _isSavingNotifier.dispose();
+    _errorMessageNotifier.dispose();
+    _expenseHeadsNotifier.dispose();
+    _branchesNotifier.dispose();
+    _staffsNotifier.dispose();
+    _stocksNotifier.dispose();
+    _suppliersNotifier.dispose();
+    _headItemsNotifier.dispose();
+    _isCustomExpenseNameNotifier.dispose();
+    _isLoadingHeadItemsNotifier.dispose();
+    _selectedDateNotifier.dispose();
+    _selectedExpenseHeadNotifier.dispose();
+    _selectedBranchIdNotifier.dispose();
+    _selectedSupplierIdNotifier.dispose();
+    _expenseNameController.dispose();
+    _amountController.dispose();
+    _remarkController.dispose();
+    _paidAmountController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchInitialData() async {
     final auth = context.read<AuthProvider>();
     final token = auth.token;
     if (token == null) return;
@@ -89,7 +482,7 @@ class ExpenseScreen extends StatelessWidget {
     }
   }
 
-  Future<void> _pickDate(BuildContext context) async {
+  Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
       initialDate: _selectedDateNotifier.value,
@@ -111,7 +504,7 @@ class ExpenseScreen extends StatelessWidget {
     }
   }
 
-  Future<void> _fetchItemsForHead(BuildContext context, Map<String, dynamic> head) async {
+  Future<void> _fetchItemsForHead(Map<String, dynamic> head) async {
     _expenseNameController.clear();
     _isCustomExpenseNameNotifier.value = false;
     _headItemsNotifier.value = [];
@@ -135,7 +528,7 @@ class ExpenseScreen extends StatelessWidget {
     }
   }
 
-  void _showExpenseHeadSelector(BuildContext context) {
+  void _showExpenseHeadSelector() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -147,7 +540,7 @@ class ExpenseScreen extends StatelessWidget {
           expenseHeads: _expenseHeadsNotifier.value,
           onSelected: (head) {
             _selectedExpenseHeadNotifier.value = head;
-            _fetchItemsForHead(context, head);
+            _fetchItemsForHead(head);
           },
           onHeadCreated: (newHead) {
             final list = List.from(_expenseHeadsNotifier.value);
@@ -155,128 +548,127 @@ class ExpenseScreen extends StatelessWidget {
             list.sort((a, b) => (a['name'] ?? '').toString().compareTo((b['name'] ?? '').toString()));
             _expenseHeadsNotifier.value = list;
             _selectedExpenseHeadNotifier.value = newHead;
-            _fetchItemsForHead(context, newHead);
+            _fetchItemsForHead(newHead);
           },
         );
       },
     );
   }
 
-  Future<void> _save(BuildContext context) async {
+  Future<void> _save() async {
     final auth = context.read<AuthProvider>();
     final token = auth.token;
     if (token == null) return;
 
-    if (auth.isCompanyAdmin && (_selectedBranchIdNotifier.value == null || _selectedBranchIdNotifier.value!.isEmpty)) {
-      _showSnackBar(context, context.tr('Please select a branch'), Colors.orange);
-      return;
-    }
-
     if (_selectedExpenseHeadNotifier.value == null) {
-      _showSnackBar(context, context.tr('Please select an expense head'), Colors.orange);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('Please select an Expense Head'))),
+      );
       return;
     }
 
     final expenseName = _expenseNameController.text.trim();
     if (expenseName.isEmpty) {
-      _showSnackBar(context, context.tr('Please enter expense name'), Colors.orange);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('Please enter or select an Expense Name'))),
+      );
       return;
     }
 
     final amountStr = _amountController.text.trim();
-    if (amountStr.isEmpty) {
-      _showSnackBar(context, context.tr('Please enter amount'), Colors.orange);
-      return;
-    }
-
     final amount = double.tryParse(amountStr);
     if (amount == null || amount <= 0) {
-      _showSnackBar(context, context.tr('Please enter a valid amount'), Colors.orange);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('Please enter a valid amount'))),
+      );
       return;
     }
 
-    final headName = (_selectedExpenseHeadNotifier.value!['name'] ?? '').toString().toLowerCase().trim();
-    final isPurchase = headName == 'purchase';
-
-    if (isPurchase) {
-      final paidAmountStr = _paidAmountController.text.trim();
-      if (paidAmountStr.isEmpty) {
-        _showSnackBar(context, context.tr('Please enter paid amount'), Colors.orange);
-        return;
-      }
-      final paidAmount = double.tryParse(paidAmountStr);
-      if (paidAmount == null || paidAmount < 0) {
-        _showSnackBar(context, context.tr('Please enter a valid paid amount'), Colors.orange);
+    String? branchId;
+    if (auth.isCompanyAdmin) {
+      branchId = _selectedBranchIdNotifier.value;
+      if (branchId == null || branchId.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.tr('Please select a Branch'))),
+        );
         return;
       }
     }
 
+    final paidAmountStr = _paidAmountController.text.trim();
+    final paidAmount = paidAmountStr.isNotEmpty ? double.tryParse(paidAmountStr) : amount;
+
+    final payload = <String, dynamic>{
+      'expense_head_id': _selectedExpenseHeadNotifier.value!['id'].toString(),
+      'expense_name': expenseName,
+      'amount': amount,
+      'expense_date': DateFormat('yyyy-MM-dd').format(_selectedDateNotifier.value),
+      'branch_id': branchId,
+      'supplier_id': _selectedSupplierIdNotifier.value,
+      'paid_amount': paidAmount,
+      'remarks': _remarkController.text.trim(),
+    };
+
     _isSavingNotifier.value = true;
-
     try {
-      final formattedDate = DateFormat('yyyy-MM-dd').format(_selectedDateNotifier.value);
-      final payload = {
-        'expense_head_id': _selectedExpenseHeadNotifier.value!['id'],
-        'expense_name': expenseName,
-        'amount': amount,
-        'date': formattedDate,
-        'remarks': _remarkController.text.trim(),
-        if (auth.isCompanyAdmin) 'branch_id': _selectedBranchIdNotifier.value,
-        if (isPurchase) 'supplier_id': _selectedSupplierIdNotifier.value,
-        if (isPurchase) 'paid_amount': double.tryParse(_paidAmountController.text.trim()),
-      };
-
       final res = await ApiService.createExpenseEntry(token, payload);
+
       if (res['success'] == true) {
-        if (context.mounted) {
-          _showSnackBar(context, context.tr('Expense created successfully!'), Colors.green);
-          Navigator.pop(context);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(context.tr('Expense Saved Successfully')),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pop(context, true);
         }
       } else {
-        if (context.mounted) {
-          _showSnackBar(context, res['message'] ?? context.tr('Failed to create expense'), Colors.red);
-          _isSavingNotifier.value = false;
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(res['message'] ?? context.tr('Failed to save expense')),
+              backgroundColor: Colors.red,
+            ),
+          );
         }
       }
     } catch (e) {
-      if (context.mounted) {
-        _showSnackBar(context, e.toString(), Colors.red);
-        _isSavingNotifier.value = false;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
+    } finally {
+      _isSavingNotifier.value = false;
     }
-  }
-
-  void _showSnackBar(BuildContext context, String msg, Color bg) {
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: bg),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.read<AuthProvider>();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _fetchInitialData(context);
-    });
+    final auth = context.watch<AuthProvider>();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
+      backgroundColor: const Color(0xFFF4F6F9),
       appBar: AppBar(
         title: Text(
           context.tr('Add Expense'),
-          style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white),
         ),
         backgroundColor: const Color(0xFF000080),
-        foregroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
       ),
       body: ValueListenableBuilder<bool>(
         valueListenable: _isLoadingNotifier,
         builder: (context, isLoading, child) {
           if (isLoading) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+              child: CircularProgressIndicator(color: Color(0xFF000080)),
+            );
           }
 
           return ValueListenableBuilder<String>(
@@ -284,100 +676,90 @@ class ExpenseScreen extends StatelessWidget {
             builder: (context, errorMsg, child) {
               if (errorMsg.isNotEmpty) {
                 return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          errorMsg,
-                          style: const TextStyle(color: Colors.red),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () => _fetchInitialData(context),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF000080),
-                            foregroundColor: Colors.white,
-                          ),
-                          child: Text(context.tr('Retry')),
-                        ),
-                      ],
-                    ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(errorMsg, style: GoogleFonts.inter(color: Colors.red)),
+                      const SizedBox(height: 12),
+                      ElevatedButton(
+                        onPressed: _fetchInitialData,
+                        child: Text(context.tr('Retry')),
+                      ),
+                    ],
                   ),
                 );
               }
 
-              return ValueListenableBuilder<Map<String, dynamic>?>(
-                valueListenable: _selectedExpenseHeadNotifier,
-                builder: (context, selectedExpenseHead, child) {
-                  final headName = (selectedExpenseHead != null ? selectedExpenseHead['name'] ?? '' : '').toString().toLowerCase().trim();
-                  final isPurchase = headName == 'purchase';
-
-                  return SingleChildScrollView(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    _buildSection(
+                      title: context.tr('Expense Details'),
+                      icon: Icons.receipt_long_outlined,
                       children: [
-                        _buildSection(
-                          title: context.tr('Expense Details'),
-                          icon: Icons.account_balance_wallet_outlined,
-                          children: [
-                            // Branch Selection (Company Admin only)
-                            if (auth.isCompanyAdmin) ...[
-                              _buildLabel(context.tr('Branch *')),
-                              const SizedBox(height: 6),
-                              ValueListenableBuilder<List<dynamic>>(
-                                valueListenable: _branchesNotifier,
-                                builder: (context, branches, child) {
-                                  return ValueListenableBuilder<String?>(
-                                    valueListenable: _selectedBranchIdNotifier,
-                                    builder: (context, selectedBranchId, child) {
-                                      return Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(10),
-                                          border: Border.all(color: Colors.grey.shade300),
-                                        ),
-                                        child: DropdownButtonHideUnderline(
-                                          child: DropdownButton<String>(
-                                            isExpanded: true,
-                                            menuMaxHeight: 350,
-                                            value: selectedBranchId,
-                                            items: branches.map((b) {
-                                              final branch = Map<String, dynamic>.from(b as Map);
-                                              return DropdownMenuItem<String>(
-                                                value: branch['id']?.toString(),
-                                                child: Text(
-                                                  branch['name'] ?? '',
-                                                  style: GoogleFonts.inter(),
-                                                ),
-                                              );
-                                            }).toList(),
-                                            onChanged: (val) {
-                                              _selectedBranchIdNotifier.value = val;
-                                            },
-                                          ),
+                        if (auth.isCompanyAdmin) ...[
+                          ValueListenableBuilder<List<dynamic>>(
+                            valueListenable: _branchesNotifier,
+                            builder: (context, branches, child) {
+                              return ValueListenableBuilder<String?>(
+                                valueListenable: _selectedBranchIdNotifier,
+                                builder: (context, selectedBranchId, child) {
+                                  return _buildDropdownField(
+                                    context,
+                                    label: context.tr('Branch *'),
+                                    icon: Icons.storefront,
+                                    hintText: context.tr('Select Branch'),
+                                    value: selectedBranchId,
+                                    items: branches.map((b) {
+                                      final branch = Map<String, dynamic>.from(b as Map);
+                                      return DropdownMenuItem<String>(
+                                        value: branch['id']?.toString(),
+                                        child: Text(
+                                          branch['name'] ?? '',
+                                          style: GoogleFonts.inter(fontSize: 15),
                                         ),
                                       );
+                                    }).toList(),
+                                    onChanged: (val) {
+                                      _selectedBranchIdNotifier.value = val;
                                     },
                                   );
                                 },
-                              ),
-                              const SizedBox(height: 14),
-                            ],
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 14),
+                        ],
 
-                            // Date Selector
-                            _buildLabel(context.tr('Date *')),
-                            const SizedBox(height: 6),
-                            GestureDetector(
-                              onTap: () => _pickDate(context),
-                              child: ValueListenableBuilder<DateTime>(
-                                valueListenable: _selectedDateNotifier,
-                                builder: (context, selectedDate, child) {
-                                  return Container(
+                        // Date Selector
+                        ValueListenableBuilder<DateTime>(
+                          valueListenable: _selectedDateNotifier,
+                          builder: (context, selectedDate, child) {
+                            return _buildClickableField(
+                              context,
+                              label: context.tr('Date *'),
+                              icon: Icons.calendar_today_outlined,
+                              value: DateFormat('dd-MM-yyyy').format(selectedDate),
+                              onTap: () => _pickDate(),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Expense Head Selector
+                        ValueListenableBuilder<Map<String, dynamic>?>(
+                          valueListenable: _selectedExpenseHeadNotifier,
+                          builder: (context, selectedExpenseHead, child) {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildLabel(context.tr('Expense Head *')),
+                                const SizedBox(height: 6),
+                                InkWell(
+                                  onTap: () => _showExpenseHeadSelector(),
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                                     decoration: BoxDecoration(
                                       color: const Color(0xFFFAFAFA),
@@ -386,167 +768,136 @@ class ExpenseScreen extends StatelessWidget {
                                     ),
                                     child: Row(
                                       children: [
-                                        Icon(Icons.calendar_today, size: 20, color: Colors.grey.shade500),
+                                        Icon(Icons.search, size: 20, color: Colors.grey.shade500),
                                         const SizedBox(width: 10),
-                                        Text(
-                                          DateFormat('dd-MM-yyyy').format(selectedDate),
-                                          style: GoogleFonts.inter(
-                                            fontSize: 15,
-                                            color: Colors.black87,
+                                        Expanded(
+                                          child: Text(
+                                            selectedExpenseHead != null
+                                                ? selectedExpenseHead['name'] ?? ''
+                                                : context.tr('Select Expense Head'),
+                                            style: GoogleFonts.inter(
+                                              fontSize: 15,
+                                              color: selectedExpenseHead != null
+                                                  ? Colors.black87
+                                                  : Colors.grey.shade500,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
-                                        const Spacer(),
                                         Icon(Icons.arrow_drop_down, color: Colors.grey.shade600),
                                       ],
                                     ),
-                                  );
-                                },
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-
-                            // Expense Head (Searchable Dropdown)
-                            _buildLabel(context.tr('Expense Head *')),
-                            const SizedBox(height: 6),
-                            GestureDetector(
-                              onTap: () => _showExpenseHeadSelector(context),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFFAFAFA),
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: Colors.grey.shade300),
+                                  ),
                                 ),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.search, size: 20, color: Colors.grey.shade500),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Text(
-                                        selectedExpenseHead != null
-                                            ? selectedExpenseHead['name'] ?? ''
-                                            : context.tr('Select Expense Head'),
-                                        style: GoogleFonts.inter(
-                                          fontSize: 15,
-                                          color: selectedExpenseHead != null
-                                              ? Colors.black87
-                                              : Colors.grey.shade50,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    Icon(Icons.arrow_drop_down, color: Colors.grey.shade600),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 14),
+                                const SizedBox(height: 14),
 
-                            // Expense Name Dropdown or Text Field
-                            _buildExpenseNameField(context, selectedExpenseHead),
-                            const SizedBox(height: 14),
-
-                            // Supplier (Optional)
-                            ValueListenableBuilder<List<dynamic>>(
-                              valueListenable: _suppliersNotifier,
-                              builder: (context, suppliers, child) {
-                                return ValueListenableBuilder<String?>(
-                                  valueListenable: _selectedSupplierIdNotifier,
-                                  builder: (context, selectedSupplierId, child) {
-                                    return _buildDropdownField(
-                                      context,
-                                      label: context.tr('Supplier (Optional)'),
-                                      icon: Icons.business,
-                                      hintText: context.tr('Select Supplier'),
-                                      value: selectedSupplierId,
-                                      items: suppliers.map((s) {
-                                        final sup = Map<String, dynamic>.from(s as Map);
-                                        return DropdownMenuItem<String>(
-                                          value: sup['id']?.toString(),
-                                          child: Text(
-                                            sup['name'] ?? '',
-                                            style: GoogleFonts.inter(fontSize: 15),
-                                          ),
-                                        );
-                                      }).toList(),
-                                      onChanged: (val) {
-                                        _selectedSupplierIdNotifier.value = val;
-                                      },
-                                    );
-                                  },
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 14),
-
-                            // Amount
-                            _buildTextField(
-                              context,
-                              _amountController,
-                              context.tr('Amount *'),
-                              Icons.money,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            ),
-                            const SizedBox(height: 14),
-
-                            // Paid Amount
-                            _buildTextField(
-                              context,
-                              _paidAmountController,
-                              context.tr('Paid Amount'),
-                              Icons.money,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            ),
-                            const SizedBox(height: 14),
-
-                            // Remark
-                            _buildTextField(
-                              context,
-                              _remarkController,
-                              context.tr('Remark'),
-                              Icons.comment_outlined,
-                              maxLines: 3,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 32),
-                        ValueListenableBuilder<bool>(
-                          valueListenable: _isSavingNotifier,
-                          builder: (context, isSaving, child) {
-                            return ElevatedButton(
-                              onPressed: isSaving ? null : () => _save(context),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF000080),
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                disabledBackgroundColor: Colors.grey.shade400,
-                              ),
-                              child: isSaving
-                                  ? const SizedBox(
-                                      height: 20,
-                                      width: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : Text(
-                                      context.tr('Save Expense'),
-                                      style: GoogleFonts.inter(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
+                                // Expense Item Dropdown
+                                _buildExpenseNameField(selectedExpenseHead),
+                              ],
                             );
                           },
                         ),
+                        const SizedBox(height: 14),
+
+                        // Supplier (Optional)
+                        ValueListenableBuilder<List<dynamic>>(
+                          valueListenable: _suppliersNotifier,
+                          builder: (context, suppliers, child) {
+                            return ValueListenableBuilder<String?>(
+                              valueListenable: _selectedSupplierIdNotifier,
+                              builder: (context, selectedSupplierId, child) {
+                                return _buildDropdownField(
+                                  context,
+                                  label: context.tr('Supplier (Optional)'),
+                                  icon: Icons.business,
+                                  hintText: context.tr('Select Supplier'),
+                                  value: selectedSupplierId,
+                                  items: suppliers.map((s) {
+                                    final sup = Map<String, dynamic>.from(s as Map);
+                                    return DropdownMenuItem<String>(
+                                      value: sup['id']?.toString(),
+                                      child: Text(
+                                        sup['name'] ?? '',
+                                        style: GoogleFonts.inter(fontSize: 15),
+                                      ),
+                                    );
+                                  }).toList(),
+                                  onChanged: (val) {
+                                    _selectedSupplierIdNotifier.value = val;
+                                  },
+                                );
+                              },
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Amount
+                        _buildTextField(
+                          context,
+                          _amountController,
+                          context.tr('Amount *'),
+                          Icons.money,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Paid Amount
+                        _buildTextField(
+                          context,
+                          _paidAmountController,
+                          context.tr('Paid Amount'),
+                          Icons.money,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Remark
+                        _buildTextField(
+                          context,
+                          _remarkController,
+                          context.tr('Remark'),
+                          Icons.comment_outlined,
+                          maxLines: 3,
+                        ),
                       ],
                     ),
-                  );
-                },
+                    const SizedBox(height: 24),
+                    ValueListenableBuilder<bool>(
+                      valueListenable: _isSavingNotifier,
+                      builder: (context, isSaving, child) {
+                        return ElevatedButton(
+                          onPressed: isSaving ? null : _save,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF000080),
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size.fromHeight(52),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            disabledBackgroundColor: Colors.grey.shade400,
+                          ),
+                          child: isSaving
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Text(
+                                  context.tr('Save Expense'),
+                                  style: GoogleFonts.inter(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
               );
             },
           );
@@ -597,9 +948,9 @@ class ExpenseScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildLabel(String label) {
+  Widget _buildLabel(String text) {
     return Text(
-      label,
+      text,
       style: GoogleFonts.inter(
         fontSize: 13,
         fontWeight: FontWeight.w600,
@@ -608,74 +959,41 @@ class ExpenseScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTextField(
-    BuildContext context,
-    TextEditingController ctrl,
-    String label,
-    IconData icon, {
-    TextInputType? keyboardType,
-    int maxLines = 1,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildLabel(label),
-        const SizedBox(height: 6),
-        TextField(
-          controller: ctrl,
-          keyboardType: keyboardType,
-          maxLines: maxLines,
-          decoration: InputDecoration(
-            prefixIcon: Icon(icon, size: 20, color: Colors.grey.shade500),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: Colors.grey.shade300),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: Colors.grey.shade300),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFF000080)),
-            ),
-            filled: true,
-            fillColor: const Color(0xFFFAFAFA),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDisabledField(
+  Widget _buildClickableField(
     BuildContext context, {
     required String label,
     required IconData icon,
-    required String hintText,
+    required String value,
+    required VoidCallback onTap,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildLabel(label),
         const SizedBox(height: 6),
-        TextField(
-          enabled: false,
-          decoration: InputDecoration(
-            prefixIcon: Icon(icon, size: 20, color: Colors.grey.shade400),
-            hintText: hintText,
-            hintStyle: GoogleFonts.inter(color: Colors.grey.shade400, fontSize: 15),
-            border: OutlineInputBorder(
+        InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFAFAFA),
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: Colors.grey.shade200),
+              border: Border.all(color: Colors.grey.shade300),
             ),
-            disabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: Colors.grey.shade200),
+            child: Row(
+              children: [
+                Icon(icon, size: 20, color: Colors.grey.shade600),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    value,
+                    style: GoogleFonts.inter(fontSize: 15, color: Colors.black87),
+                  ),
+                ),
+                Icon(Icons.arrow_drop_down, color: Colors.grey.shade600),
+              ],
             ),
-            filled: true,
-            fillColor: Colors.grey.shade100,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
           ),
         ),
       ],
@@ -686,96 +1004,88 @@ class ExpenseScreen extends StatelessWidget {
     BuildContext context, {
     required String label,
     required IconData icon,
+    required String hintText,
     required String? value,
     required List<DropdownMenuItem<String>> items,
     required ValueChanged<String?> onChanged,
-    String? hintText,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildLabel(label),
         const SizedBox(height: 6),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFAFAFA),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.grey.shade300),
-          ),
-          child: Row(
-            children: [
-              Icon(icon, size: 20, color: Colors.grey.shade500),
-              const SizedBox(width: 10),
-              Expanded(
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    isExpanded: true,
-                    menuMaxHeight: 350,
-                    hint: Text(
-                      hintText ?? '',
-                      style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 15),
-                    ),
-                    value: value,
-                    items: items,
-                    onChanged: onChanged,
-                  ),
-                ),
-              ),
-            ],
+        DropdownButtonFormField<String>(
+          value: value,
+          items: items,
+          onChanged: onChanged,
+          icon: Icon(Icons.arrow_drop_down, color: Colors.grey.shade600),
+          decoration: InputDecoration(
+            prefixIcon: Icon(icon, color: Colors.grey.shade600),
+            hintText: hintText,
+            hintStyle: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 14),
+            filled: true,
+            fillColor: const Color(0xFFFAFAFA),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFF000080), width: 1.5),
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildExpenseNameField(BuildContext context, Map<String, dynamic>? selectedExpenseHead) {
-    if (selectedExpenseHead == null) {
-      return _buildDisabledField(
-        context,
-        label: context.tr('Expense Name *'),
-        icon: Icons.edit_note,
-        hintText: context.tr('Select Expense Head first'),
-      );
-    }
+  Widget _buildTextField(
+    BuildContext context,
+    TextEditingController controller,
+    String label,
+    IconData icon, {
+    TextInputType keyboardType = TextInputType.text,
+    int maxLines = 1,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabel(label),
+        const SizedBox(height: 6),
+        TextFormField(
+          controller: controller,
+          keyboardType: keyboardType,
+          maxLines: maxLines,
+          style: GoogleFonts.inter(fontSize: 15),
+          decoration: InputDecoration(
+            prefixIcon: Icon(icon, color: Colors.grey.shade600),
+            filled: true,
+            fillColor: const Color(0xFFFAFAFA),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFF000080), width: 1.5),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
-    final headName = (selectedExpenseHead['name'] ?? '').toString().toLowerCase().trim();
-    final isSalary = headName == 'salary' || headName.contains('salary');
-
-    if (isSalary) {
-      return ValueListenableBuilder<List<dynamic>>(
-        valueListenable: _staffsNotifier,
-        builder: (context, staffs, child) {
-          final String? currentValue = staffs.any((s) {
-            final staff = Map<String, dynamic>.from(s as Map);
-            return (staff['name'] ?? '').toString() == _expenseNameController.text;
-          }) ? _expenseNameController.text : null;
-
-          return _buildDropdownField(
-            context,
-            label: context.tr('Select Employee *'),
-            icon: Icons.person_outline,
-            hintText: context.tr('Select Employee'),
-            value: currentValue,
-            items: staffs.map((s) {
-              final staff = Map<String, dynamic>.from(s as Map);
-              final name = (staff['name'] ?? '').toString();
-              return DropdownMenuItem<String>(
-                value: name,
-                child: Text(
-                  name,
-                  style: GoogleFonts.inter(fontSize: 15),
-                ),
-              );
-            }).toList(),
-            onChanged: (val) {
-              _expenseNameController.text = val ?? '';
-            },
-          );
-        },
-      );
-    }
-
+  Widget _buildExpenseNameField(Map<String, dynamic>? selectedExpenseHead) {
     return ValueListenableBuilder<bool>(
       valueListenable: _isLoadingHeadItemsNotifier,
       builder: (context, isLoadingItems, child) {
@@ -783,7 +1093,7 @@ class ExpenseScreen extends StatelessWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildLabel(context.tr('Select Expense / Stock Item *')),
+              _buildLabel(context.tr('Select Stock / Expense Item *')),
               const SizedBox(height: 6),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
@@ -820,7 +1130,7 @@ class ExpenseScreen extends StatelessWidget {
                 final List<dynamic> stocks = _stocksNotifier.value;
                 final stockNames = stocks.where((s) {
                   final stock = Map<String, dynamic>.from(s as Map);
-                  return stock['expense_head_id']?.toString() == selectedExpenseHead['id']?.toString();
+                  return stock['expense_head_id']?.toString() == selectedExpenseHead?['id']?.toString();
                 }).map((s) => (s['item_name'] ?? '').toString()).where((n) => n.isNotEmpty).toList();
 
                 final combinedSet = <String>{...headItems, ...stockNames};
@@ -836,7 +1146,7 @@ class ExpenseScreen extends StatelessWidget {
                     children: [
                       _buildDropdownField(
                         context,
-                        label: context.tr('Select Expense / Stock Item *'),
+                        label: context.tr('Select Stock / Expense Item *'),
                         icon: Icons.shopping_bag_outlined,
                         hintText: context.tr('Select Expense Item'),
                         value: currentValue,
@@ -901,6 +1211,7 @@ class ExpenseScreen extends StatelessWidget {
   }
 }
 
+
 class _ExpenseHeadBottomSheet extends StatelessWidget {
   final List<dynamic> expenseHeads;
   final ValueChanged<Map<String, dynamic>> onSelected;
@@ -959,61 +1270,52 @@ class _ExpenseHeadBottomSheet extends StatelessWidget {
                 labelStyle: GoogleFonts.inter(),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
               ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return ctx.tr('Please enter a name');
+              validator: (val) {
+                if (val == null || val.trim().isEmpty) {
+                  return ctx.tr('Name is required');
                 }
                 return null;
               },
             ),
           ),
           actions: [
-            ValueListenableBuilder<bool>(
-              valueListenable: isCreatingNotifier,
-              builder: (context, isCreating, child) {
-                return TextButton(
-                  onPressed: isCreating ? null : () => Navigator.pop(ctx),
-                  child: Text(ctx.tr('Cancel'), style: GoogleFonts.inter(color: Colors.grey)),
-                );
-              },
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(ctx.tr('Cancel')),
             ),
             ValueListenableBuilder<bool>(
               valueListenable: isCreatingNotifier,
-              builder: (context, isCreating, child) {
+              builder: (ctx, isCreating, child) {
                 return ElevatedButton(
                   onPressed: isCreating
                       ? null
                       : () async {
-                          if (formKey.currentState!.validate()) {
-                            isCreatingNotifier.value = true;
-                            try {
-                              final res = await ApiService.createExpenseHead(
-                                token,
-                                controller.text.trim(),
-                              );
-                              if (res['success'] == true && res['expense_head'] != null) {
-                                Navigator.pop(ctx, Map<String, dynamic>.from(res['expense_head']));
-                              } else {
+                          if (!formKey.currentState!.validate()) return;
+                          isCreatingNotifier.value = true;
+                          try {
+                            final res = await ApiService.createExpenseHead(token, controller.text.trim());
+                            if (res['success'] == true && res['expense_head'] != null) {
+                              if (ctx.mounted) Navigator.pop(ctx, Map<String, dynamic>.from(res['expense_head']));
+                            } else {
+                              if (ctx.mounted) {
                                 ScaffoldMessenger.of(ctx).showSnackBar(
-                                  SnackBar(
-                                    content: Text(res['message'] ?? ctx.tr('Failed to create expense head')),
-                                    backgroundColor: Colors.red,
-                                  ),
+                                  SnackBar(content: Text(res['message'] ?? ctx.tr('Failed to create expense head'))),
                                 );
-                                isCreatingNotifier.value = false;
                               }
-                            } catch (e) {
-                              ScaffoldMessenger.of(ctx).showSnackBar(
-                                SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
-                              );
-                              isCreatingNotifier.value = false;
                             }
+                          } catch (e) {
+                            if (ctx.mounted) {
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                SnackBar(content: Text(e.toString())),
+                              );
+                            }
+                          } finally {
+                            isCreatingNotifier.value = false;
                           }
                         },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF000080),
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   child: isCreating
                       ? const SizedBox(
@@ -1030,9 +1332,9 @@ class _ExpenseHeadBottomSheet extends StatelessWidget {
       },
     );
 
-    if (result != null) {
+    if (result != null && context.mounted) {
       onHeadCreated(result);
-      Navigator.pop(context); // Close bottom sheet
+      Navigator.pop(context);
     }
   }
 

@@ -1747,6 +1747,23 @@ class ApiService {
     throw Exception('Failed to load expense head detail report (status: ${response.statusCode}, body: ${response.body}).');
   }
 
+  static Future<Map<String, dynamic>> getAllExpenses(String token, {String search = ''}) async {
+    final params = <String, String>{};
+    if (search.isNotEmpty) params['search'] = search;
+    final url = Uri.parse('$baseUrl/expenses/list/').replace(queryParameters: params);
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to load expenses list.');
+  }
+
   static Future<Map<String, dynamic>> getLeaveReport(
     String token,
     String fromDate,
