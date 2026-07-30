@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -483,7 +484,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  '₹${totalAmount.toStringAsFixed(2)}',
+                                  '${auth.currencySymbol}${totalAmount.toStringAsFixed(2)}',
                                   style: GoogleFonts.inter(
                                     fontSize: 20,
                                     fontWeight: FontWeight.bold,
@@ -571,7 +572,14 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                           final headName = (item['expense_head_name'] ?? 'General').toString();
                           final expenseName = (item['expense_name'] ?? '').toString();
                           final amountStr = (item['amount'] ?? '0.00').toString();
-                          final dateStr = (item['expense_date'] ?? '').toString();
+                          final rawDateStr = (item['expense_date'] ?? '').toString();
+                          String formattedDateStr = rawDateStr;
+                          if (rawDateStr.isNotEmpty) {
+                            try {
+                              final dt = DateTime.parse(rawDateStr);
+                              formattedDateStr = DateFormat('dd-MM-yyyy').format(dt);
+                            } catch (_) {}
+                          }
                           final branchName = (item['branch_name'] ?? '').toString();
                           final supplierName = (item['supplier_name'] ?? '').toString();
                           final remarks = (item['remarks'] ?? '').toString();
@@ -613,33 +621,39 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                                     Row(
                                       crossAxisAlignment: CrossAxisAlignment.center,
                                       children: [
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF000080).withValues(alpha: 0.08),
-                                            borderRadius: BorderRadius.circular(20),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              const Icon(Icons.label_outlined, size: 13, color: Color(0xFF000080)),
-                                              const SizedBox(width: 4),
-                                              Text(
-                                                headName,
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: const Color(0xFF000080),
+                                        Flexible(
+                                          child: Container(
+                                            padding: REdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFF000080).withValues(alpha: 0.08),
+                                              borderRadius: BorderRadius.circular(20.r),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(Icons.label_outlined, size: 13.r, color: const Color(0xFF000080)),
+                                                SizedBox(width: 4.w),
+                                                Flexible(
+                                                  child: Text(
+                                                    headName,
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 12.sp,
+                                                      fontWeight: FontWeight.w700,
+                                                      color: const Color(0xFF000080),
+                                                    ),
+                                                  ),
                                                 ),
-                                              ),
-                                            ],
+                                              ],
+                                            ),
                                           ),
                                         ),
-                                        const Spacer(),
+                                        SizedBox(width: 8.w),
                                         Text(
-                                          '₹$amountStr',
+                                          '${auth.currencySymbol}$amountStr',
                                           style: GoogleFonts.inter(
-                                            fontSize: 19,
+                                            fontSize: 18.sp,
                                             fontWeight: FontWeight.w800,
                                             color: Colors.red.shade700,
                                           ),
@@ -665,41 +679,52 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                                     ),
                                     const SizedBox(height: 10),
 
-                                    // Expense Item Name
-                                    Text(
-                                      expenseName.isNotEmpty ? expenseName : headName,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 17,
-                                        fontWeight: FontWeight.w700,
-                                        color: const Color(0xFF1E293B),
-                                        height: 1.2,
-                                      ),
+                                    // Expense Item Name & Date Chip
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            expenseName.isNotEmpty ? expenseName : headName,
+                                            style: GoogleFonts.inter(
+                                              fontSize: 17,
+                                              fontWeight: FontWeight.w700,
+                                              color: const Color(0xFF1E293B),
+                                              height: 1.2,
+                                            ),
+                                          ),
+                                        ),
+                                        if (formattedDateStr.isNotEmpty) ...[
+                                          const SizedBox(width: 8),
+                                          _buildDetailChip(
+                                            icon: Icons.calendar_today_outlined,
+                                            label: formattedDateStr,
+                                          ),
+                                        ],
+                                      ],
                                     ),
                                     const SizedBox(height: 10),
 
-                                    // Details Chips (Date, Branch, Supplier)
-                                    Wrap(
-                                      spacing: 8,
-                                      runSpacing: 6,
-                                      children: [
-                                        _buildDetailChip(
-                                          icon: Icons.calendar_today_outlined,
-                                          label: dateStr,
-                                        ),
-                                        if (auth.isCompanyAdmin && branchName != 'N/A' && branchName.isNotEmpty)
-                                          _buildDetailChip(
-                                            icon: Icons.storefront_outlined,
-                                            label: branchName,
-                                          ),
-                                        if (supplierName != 'N/A' && supplierName.isNotEmpty)
-                                          _buildDetailChip(
-                                            icon: Icons.business_outlined,
-                                            label: supplierName,
-                                            color: Colors.amber.shade900,
-                                            backgroundColor: Colors.amber.shade50,
-                                          ),
-                                      ],
-                                    ),
+                                    // Details Chips (Branch, Supplier)
+                                    if ((auth.isCompanyAdmin && branchName != 'N/A' && branchName.isNotEmpty) || (supplierName != 'N/A' && supplierName.isNotEmpty))
+                                      Wrap(
+                                        spacing: 8,
+                                        runSpacing: 6,
+                                        children: [
+                                          if (auth.isCompanyAdmin && branchName != 'N/A' && branchName.isNotEmpty)
+                                            _buildDetailChip(
+                                              icon: Icons.storefront_outlined,
+                                              label: branchName,
+                                            ),
+                                          if (supplierName != 'N/A' && supplierName.isNotEmpty)
+                                            _buildDetailChip(
+                                              icon: Icons.business_outlined,
+                                              label: supplierName,
+                                              color: Colors.amber.shade900,
+                                              backgroundColor: Colors.amber.shade50,
+                                            ),
+                                        ],
+                                      ),
 
                                     // Remarks if present
                                     if (remarks.isNotEmpty) ...[

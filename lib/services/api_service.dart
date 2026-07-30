@@ -88,6 +88,19 @@ class ApiService {
     }
   }
 
+  static Future<void> pingAppOpen(String token) async {
+    try {
+      await http.get(
+        Uri.parse('$baseUrl/user/ping/'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+    } catch (_) {}
+  }
+
+
   static Future<Map<String, dynamic>> searchCustomer(
     String query,
     String token, {
@@ -447,11 +460,13 @@ class ApiService {
     String token, {
     String? fromDate,
     String? toDate,
+    String? serviceId,
   }) async {
     String url = '$baseUrl/booking/list/';
     final params = <String, String>{};
     if (fromDate != null) params['from_date'] = fromDate;
     if (toDate != null) params['to_date'] = toDate;
+    if (serviceId != null && serviceId != 'all') params['service_id'] = serviceId;
     if (params.isNotEmpty) {
       url += '?' + params.entries.map((e) => '${e.key}=${e.value}').join('&');
     }
@@ -2281,6 +2296,44 @@ class ApiService {
       return jsonDecode(response.body);
     }
     throw Exception('Failed to fetch oil price.');
+  }
+
+  /// Fetch active tyres master list for company / branch.
+  static Future<Map<String, dynamic>> getTyres(String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/tyres/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200 || response.statusCode == 401) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to load tyres.');
+  }
+
+  /// Update stock quantity for a tyre.
+  static Future<Map<String, dynamic>> addTyreStock(
+    String tyreId,
+    int stockQtyAdd,
+    String token,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/tyres/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'tyre_id': tyreId,
+        'stock_qty_add': stockQtyAdd,
+      }),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to update tyre stock.');
   }
 }
 

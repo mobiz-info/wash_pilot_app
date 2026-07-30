@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
@@ -52,62 +53,73 @@ class CarWashApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final languageProvider = context.watch<LanguageProvider>();
 
-    return MaterialApp(
-      title: ApiService.appName,
-      debugShowCheckedModeBanner: false,
-      locale: languageProvider.locale,
-      supportedLocales: const [
-        Locale('en', 'US'),
-        Locale('hi', 'IN'),
-        Locale('ml', 'IN'),
-        Locale('ar', 'AE'),
-        Locale('ur', 'PK'),
-        Locale('bn', 'BD'),
-        Locale('te', 'IN'),
-        Locale('si', 'LK'),
-        Locale('ta', 'IN'),
-        Locale('ta', 'LK'),
-        Locale('kn', 'IN'),
-        Locale('or', 'IN'),
-        Locale('ps', 'AF'),
-        Locale('fa', 'AF'),
-      ],
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      theme: ThemeData(
-        scaffoldBackgroundColor: const Color(
-          0xFFF8FAFC,
-        ), // Light grayish-white bg
-        primaryColor: const Color(0xFF000080), // Navy Blue
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF000080),
-          primary: const Color(0xFF000080),
-          secondary: const Color(0xFF3B82F6),
-        ),
-        textTheme: GoogleFonts.interTextTheme(),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF000080),
-          foregroundColor: Colors.white,
-          elevation: 0,
-          centerTitle: true,
-        ),
-        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-          selectedItemColor: Color(0xFF000080),
-          unselectedItemColor: Colors.grey,
-        ),
-      ),
-      home: Consumer<AuthProvider>(
-        builder: (context, auth, _) {
-          if (auth.isAuthenticated) {
-            return const MainScreen();
-          } else {
-            return const LoginScreen();
-          }
-        },
-      ),
+    return ScreenUtilInit(
+      designSize: const Size(375, 812),
+      minTextAdapt: true,
+      splitScreenMode: true,
+      builder: (context, child) {
+        return MaterialApp(
+          title: ApiService.appName,
+          debugShowCheckedModeBanner: false,
+          locale: languageProvider.locale,
+          supportedLocales: const [
+            Locale('en', 'US'),
+            Locale('hi', 'IN'),
+            Locale('ml', 'IN'),
+            Locale('ar', 'AE'),
+            Locale('ur', 'PK'),
+            Locale('bn', 'BD'),
+            Locale('te', 'IN'),
+            Locale('si', 'LK'),
+            Locale('ta', 'IN'),
+            Locale('ta', 'LK'),
+            Locale('kn', 'IN'),
+            Locale('or', 'IN'),
+            Locale('ps', 'AF'),
+            Locale('fa', 'AF'),
+            Locale('ru', 'RU'),
+            Locale('zh', 'CN'),
+            Locale('vi', 'VN'),
+            Locale('th', 'TH'),
+          ],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          theme: ThemeData(
+            scaffoldBackgroundColor: const Color(
+              0xFFF8FAFC,
+            ), // Light grayish-white bg
+            primaryColor: const Color(0xFF000080), // Navy Blue
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFF000080),
+              primary: const Color(0xFF000080),
+              secondary: const Color(0xFF3B82F6),
+            ),
+            textTheme: GoogleFonts.interTextTheme(),
+            appBarTheme: const AppBarTheme(
+              backgroundColor: Color(0xFF000080),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              centerTitle: true,
+            ),
+            bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+              selectedItemColor: Color(0xFF000080),
+              unselectedItemColor: Colors.grey,
+            ),
+          ),
+          home: Consumer<AuthProvider>(
+            builder: (context, auth, _) {
+              if (auth.isAuthenticated) {
+                return const MainScreen();
+              } else {
+                return const LoginScreen();
+              }
+            },
+          ),
+        );
+      },
     );
   }
 }

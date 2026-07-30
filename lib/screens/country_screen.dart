@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../config/country_config.dart';
 
@@ -51,17 +52,17 @@ class CountryScreen extends StatelessWidget {
                 children: [
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                padding: REdgeInsets.symmetric(horizontal: 18, vertical: 14),
                 color: const Color(0xFFEFF6FF),
                 child: Row(
                   children: [
-                    const Icon(Icons.info_outline, color: Color(0xFF1D4ED8), size: 18),
-                    const SizedBox(width: 10),
+                    Icon(Icons.info_outline, color: const Color(0xFF1D4ED8), size: 18.r),
+                    SizedBox(width: 10.w),
                     Expanded(
                       child: Text(
                         'Selecting a country sets the default phone code and currency symbol across the entire app.',
                         style: GoogleFonts.inter(
-                          fontSize: 12.5,
+                          fontSize: 12.5.sp,
                           color: const Color(0xFF1E40AF),
                           fontWeight: FontWeight.w500,
                         ),
@@ -74,7 +75,7 @@ class CountryScreen extends StatelessWidget {
               // ── Country list ───────────────────────────────────────────
               Expanded(
                 child: ListView.builder(
-                  padding: const EdgeInsets.all(16),
+                  padding: REdgeInsets.all(16),
                   itemCount: countries.length,
                   itemBuilder: (context, index) {
                     final country = countries[index];
@@ -84,24 +85,24 @@ class CountryScreen extends StatelessWidget {
                       onTap: saving ? null : () => select(country.code),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(16),
+                        margin: EdgeInsets.only(bottom: 12.h),
+                        padding: REdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: isSelected
                               ? const Color(0xFF000080).withValues(alpha: 0.05)
                               : Colors.white,
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(16.r),
                           border: Border.all(
                             color: isSelected
                                 ? const Color(0xFF000080)
                                 : Colors.grey.shade200,
-                            width: isSelected ? 2 : 1,
+                            width: isSelected ? 2.w : 1.w,
                           ),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(alpha: isSelected ? 0.06 : 0.03),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
+                              blurRadius: 8.r,
+                              offset: Offset(0, 2.h),
                             ),
                           ],
                         ),
@@ -110,9 +111,9 @@ class CountryScreen extends StatelessWidget {
                             // Flag
                             Text(
                               country.flag,
-                              style: const TextStyle(fontSize: 28),
+                              style: TextStyle(fontSize: 28.sp),
                             ),
-                            const SizedBox(width: 16),
+                            SizedBox(width: 16.w),
 
                             // Country info
                             Expanded(
@@ -122,14 +123,14 @@ class CountryScreen extends StatelessWidget {
                                   Text(
                                     country.displayName,
                                     style: GoogleFonts.inter(
-                                      fontSize: 15,
+                                      fontSize: 15.sp,
                                       fontWeight: FontWeight.w700,
                                       color: isSelected
                                           ? const Color(0xFF000080)
                                           : const Color(0xFF1E293B),
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
+                                  SizedBox(height: 4.h),
                                   Row(
                                     children: [
                                       // Phone code badge
@@ -138,7 +139,7 @@ class CountryScreen extends StatelessWidget {
                                         label: country.phoneDialCode,
                                         color: const Color(0xFF3B82F6),
                                       ),
-                                      const SizedBox(width: 8),
+                                      SizedBox(width: 8.w),
                                       // Currency badge
                                       _badge(
                                         icon: Icons.payments_outlined,
@@ -153,10 +154,10 @@ class CountryScreen extends StatelessWidget {
 
                             // Check mark
                             if (isSelected)
-                              const Icon(
+                              Icon(
                                 Icons.check_circle_rounded,
-                                color: Color(0xFF000080),
-                                size: 26,
+                                color: const Color(0xFF000080),
+                                size: 26.r,
                               ),
                           ],
                         ),
@@ -189,20 +190,20 @@ class CountryScreen extends StatelessWidget {
     required Color color,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: REdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 11, color: color),
-          const SizedBox(width: 4),
+          Icon(icon, size: 11.r, color: color),
+          SizedBox(width: 4.w),
           Text(
             label,
             style: GoogleFonts.inter(
-              fontSize: 11,
+              fontSize: 11.sp,
               fontWeight: FontWeight.w600,
               color: color,
             ),

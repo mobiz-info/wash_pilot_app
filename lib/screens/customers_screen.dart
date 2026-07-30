@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../providers/language_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
@@ -144,7 +145,36 @@ class _CustomersScreenState extends State<CustomersScreen> {
       final res = await ApiService.listCustomers(token);
       if (res['success'] == true) {
         if (!mounted) return;
-        _allCustomers.value = res['customers'] as List<dynamic>;
+        final rawList = List<dynamic>.from(res['customers'] as List);
+        
+        // Order by created date / ID descending (newest customer first)
+        rawList.sort((a, b) {
+          DateTime? da, db;
+          if (a['date_added'] != null && a['date_added'].toString().isNotEmpty) {
+            da = DateTime.tryParse(a['date_added'].toString());
+          } else if (a['created_at'] != null && a['created_at'].toString().isNotEmpty) {
+            da = DateTime.tryParse(a['created_at'].toString());
+          }
+          if (b['date_added'] != null && b['date_added'].toString().isNotEmpty) {
+            db = DateTime.tryParse(b['date_added'].toString());
+          } else if (b['created_at'] != null && b['created_at'].toString().isNotEmpty) {
+            db = DateTime.tryParse(b['created_at'].toString());
+          }
+
+          if (da != null && db != null) {
+            return db.compareTo(da);
+          } else if (da != null) {
+            return -1;
+          } else if (db != null) {
+            return 1;
+          }
+
+          final idA = int.tryParse(a['id']?.toString() ?? '') ?? 0;
+          final idB = int.tryParse(b['id']?.toString() ?? '') ?? 0;
+          return idB.compareTo(idA);
+        });
+
+        _allCustomers.value = rawList;
         _categorizeAndFilter();
         _isLoadingList.value = false;
       } else {
@@ -204,23 +234,30 @@ class _CustomersScreenState extends State<CustomersScreen> {
     _newCustomers.value = newCust;
     _inactiveCustomers.value = inactiveCust;
 
-    // Apply Search filter
+    // Apply Search filter safely
     final q = _searchController.text.trim().toLowerCase();
-    if (q.isEmpty) {
-      _filteredAll.value = _allCustomers.value;
-      _filteredNew.value = _newCustomers.value;
-      _filteredInactive.value = _inactiveCustomers.value;
-    } else {
-      _filteredAll.value = _allCustomers.value.where((c) =>
-          (c['name'] as String).toLowerCase().contains(q) ||
-          (c['phone'] as String).contains(q)).toList();
-      _filteredNew.value = _newCustomers.value.where((c) =>
-          (c['name'] as String).toLowerCase().contains(q) ||
-          (c['phone'] as String).contains(q)).toList();
-      _filteredInactive.value = _inactiveCustomers.value.where((c) =>
-          (c['name'] as String).toLowerCase().contains(q) ||
-          (c['phone'] as String).contains(q)).toList();
+    bool matchesQuery(dynamic c) {
+      if (q.isEmpty) return true;
+      final name = (c['name'] ?? '').toString().toLowerCase();
+      final phone = (c['phone'] ?? '').toString().toLowerCase();
+      final whatsapp = (c['whatsapp_number'] ?? '').toString().toLowerCase();
+      final email = (c['email'] ?? '').toString().toLowerCase();
+
+      if (name.contains(q) || phone.contains(q) || whatsapp.contains(q) || email.contains(q)) {
+        return true;
+      }
+
+      final vehicles = c['vehicles'] as List<dynamic>? ?? [];
+      for (final v in vehicles) {
+        final plate = (v['vehicle_number'] ?? '').toString().toLowerCase();
+        if (plate.contains(q)) return true;
+      }
+      return false;
     }
+
+    _filteredAll.value = _allCustomers.value.where(matchesQuery).toList();
+    _filteredNew.value = _newCustomers.value.where(matchesQuery).toList();
+    _filteredInactive.value = _inactiveCustomers.value.where(matchesQuery).toList();
   }
 
   void _onSearchChanged() {
@@ -777,9 +814,9 @@ class _CustomersScreenState extends State<CustomersScreen> {
                       color: color.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(icon, color: color, size: 28),
+                    child: Icon(icon, color: color, size: 28.r),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: 16.w),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -787,16 +824,16 @@ class _CustomersScreenState extends State<CustomersScreen> {
                         Text(
                           title,
                           style: GoogleFonts.inter(
-                            fontSize: 16,
+                            fontSize: 16.sp,
                             fontWeight: FontWeight.w700,
                             color: const Color(0xFF1E293B),
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        SizedBox(height: 4.h),
                         Text(
                           subtitle,
                           style: GoogleFonts.inter(
-                            fontSize: 12,
+                            fontSize: 12.sp,
                             color: Colors.grey.shade500,
                           ),
                         ),
@@ -806,7 +843,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                   Text(
                     count.toString(),
                     style: GoogleFonts.inter(
-                      fontSize: 32,
+                      fontSize: 32.sp,
                       fontWeight: FontWeight.w900,
                       color: color,
                     ),
@@ -820,41 +857,41 @@ class _CustomersScreenState extends State<CustomersScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(10),
+                        padding: REdgeInsets.all(10),
                         decoration: BoxDecoration(
                           color: color.withOpacity(0.1),
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(icon, color: color, size: 22),
+                        child: Icon(icon, color: color, size: 22.r),
                       ),
                       Text(
                         count.toString(),
                         style: GoogleFonts.inter(
-                          fontSize: 24,
+                          fontSize: 24.sp,
                           fontWeight: FontWeight.w900,
                           color: color,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16.h),
                   Text(
                     title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.inter(
-                      fontSize: 14,
+                      fontSize: 14.sp,
                       fontWeight: FontWeight.w700,
                       color: const Color(0xFF1E293B),
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4.h),
                   Text(
                     subtitle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.inter(
-                      fontSize: 11,
+                      fontSize: 11.sp,
                       color: Colors.grey.shade500,
                     ),
                   ),
@@ -867,68 +904,74 @@ class _CustomersScreenState extends State<CustomersScreen> {
   // ─── Customer List Screen ───────────────────────────────────
 
   Widget _buildCustomerListScreen() {
-    List<dynamic> list;
-    if (_selectedCategory == 'new') {
-      list = _filteredNew.value;
-    } else if (_selectedCategory == 'inactive') {
-      list = _filteredInactive.value;
-    } else {
-      list = _filteredAll.value;
-    }
-
-    return Column(
-      children: [
-        // Search bar
-        Container(
-          color: const Color(0xFF000080),
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          child: TextField(
-            controller: _searchController,
-            style: GoogleFonts.inter(color: Colors.white),
-            decoration: InputDecoration(
-              hintText: context.tr('Search by name or phone…'),
-              hintStyle: GoogleFonts.inter(color: Colors.white60),
-              prefixIcon: const Icon(Icons.search, color: Colors.white70),
-              suffixIcon: _searchController.text.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear, color: Colors.white70),
-                      onPressed: () {
-                        _searchController.clear();
-                      },
-                    )
-                  : null,
-              filled: true,
-              fillColor: Colors.white.withOpacity(0.15),
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none),
-              contentPadding: const EdgeInsets.symmetric(vertical: 12),
-            ),
-          ),
-        ),
-        Expanded(
-          child: list.isEmpty
-              ? _buildEmptyState()
-              : RefreshIndicator(
-                  onRefresh: _fetchCustomers,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    itemCount: list.length,
-                    itemBuilder: (context, i) => _buildCustomerTile(list[i]),
+    return ValueListenableBuilder<String?>(
+      valueListenable: _selectedCategory,
+      builder: (context, catVal, _) {
+        return ValueListenableBuilder<List<dynamic>>(
+          valueListenable: catVal == 'new'
+              ? _filteredNew
+              : catVal == 'inactive'
+                  ? _filteredInactive
+                  : _filteredAll,
+          builder: (context, list, _) {
+            return Column(
+              children: [
+                // Search bar
+                Container(
+                  color: const Color(0xFF000080),
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: TextField(
+                    controller: _searchController,
+                    style: GoogleFonts.inter(color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: context.tr('Search by name, phone, vehicle...'),
+                      hintStyle: GoogleFonts.inter(color: Colors.white60),
+                      prefixIcon: const Icon(Icons.search, color: Colors.white70),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, color: Colors.white70),
+                              onPressed: () {
+                                _searchController.clear();
+                              },
+                            )
+                          : null,
+                      filled: true,
+                      fillColor: Colors.white.withOpacity(0.15),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
                   ),
                 ),
-        ),
-      ],
+                Expanded(
+                  child: list.isEmpty
+                      ? _buildEmptyState()
+                      : RefreshIndicator(
+                          onRefresh: _fetchCustomers,
+                          child: ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            itemCount: list.length,
+                            itemBuilder: (context, i) => _buildCustomerTile(list[i]),
+                          ),
+                        ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
   Widget _buildEmptyState() {
     String msg = 'No customers found';
     IconData icon = Icons.person_search;
-    if (_selectedCategory == 'new') {
+    if (_selectedCategory.value == 'new') {
       msg = 'No new customers (last 30 days)';
       icon = Icons.group_add_outlined;
-    } else if (_selectedCategory == 'inactive') {
+    } else if (_selectedCategory.value == 'inactive') {
       msg = 'No inactive customers (60+ days)';
       icon = Icons.notifications_paused_outlined;
     }
@@ -958,23 +1001,28 @@ class _CustomersScreenState extends State<CustomersScreen> {
       }
     }
 
-    if (_selectedCategory == 'new') {
-      dateInfo = 'Registered: ${formatDate(c['date_added'])}';
+    if (_selectedCategory.value == 'new') {
+      dateInfo = 'Reg: ${formatDate(c['date_added'])}';
       dateColor = Colors.green.shade700;
-    } else if (_selectedCategory == 'inactive') {
+    } else if (_selectedCategory.value == 'inactive') {
       if (c['last_invoice_date'] != null && c['last_invoice_date'].toString().isNotEmpty) {
-        dateInfo = 'Last Invoice: ${formatDate(c['last_invoice_date'])}';
+        dateInfo = 'Last Inv: ${formatDate(c['last_invoice_date'])}';
       } else {
-        dateInfo = 'No invoice - Registered: ${formatDate(c['date_added'])}';
+        dateInfo = 'Reg: ${formatDate(c['date_added'])}';
       }
       dateColor = Colors.red.shade700;
     } else {
       if (c['last_invoice_date'] != null && c['last_invoice_date'].toString().isNotEmpty) {
-        dateInfo = 'Last Invoice: ${formatDate(c['last_invoice_date'])}';
+        dateInfo = 'Last Inv: ${formatDate(c['last_invoice_date'])}';
       } else {
-        dateInfo = 'Registered: ${formatDate(c['date_added'])}';
+        dateInfo = 'Reg: ${formatDate(c['date_added'])}';
       }
     }
+
+    final nameStr = (c['name'] ?? '').toString();
+    final phoneStr = (c['phone'] ?? '').toString();
+    final vehicleCount = c['vehicle_count'] as int? ?? (c['vehicles'] as List<dynamic>? ?? []).length;
+    final branchName = (c['branch_name']?.toString() ?? c['branch']?.toString() ?? '');
 
     return GestureDetector(
       onTap: () => _openEdit(c),
@@ -986,9 +1034,10 @@ class _CustomersScreenState extends State<CustomersScreen> {
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 6,
-                offset: const Offset(0, 2))
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
           ],
         ),
         child: Row(
@@ -997,18 +1046,17 @@ class _CustomersScreenState extends State<CustomersScreen> {
               width: 46,
               height: 46,
               decoration: BoxDecoration(
-                color: const Color(0xFF000080).withOpacity(0.1),
+                color: const Color(0xFF000080).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
                 child: Text(
-                  (c['name'] as String).isNotEmpty
-                      ? (c['name'] as String)[0].toUpperCase()
-                      : '?',
+                  nameStr.isNotEmpty ? nameStr[0].toUpperCase() : '?',
                   style: GoogleFonts.inter(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF000080)),
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF000080),
+                  ),
                 ),
               ),
             ),
@@ -1017,65 +1065,96 @@ class _CustomersScreenState extends State<CustomersScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(c['name'],
-                      style: GoogleFonts.inter(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                          color: const Color(0xFF1E293B))),
+                  Text(
+                    nameStr,
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      color: const Color(0xFF1E293B),
+                    ),
+                  ),
                   const SizedBox(height: 3),
                   Row(
                     children: [
-                      Text(c['phone'],
-                          style: GoogleFonts.inter(
-                              fontSize: 13, color: Colors.grey.shade600)),
+                      Text(
+                        phoneStr,
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
                       const Spacer(),
-                      // Text(
-                      //   dateInfo,
-                      //   style: GoogleFonts.inter(
-                      //       fontSize: 11,
-                      //       fontWeight: FontWeight.w600,
-                      //       color: dateColor),
-                      // ),
+                     
                     ],
                   ),
                   const SizedBox(height: 5),
-                  Row(children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                          color: const Color(0xFFEFF6FF),
-                          borderRadius: BorderRadius.circular(20)),
-                      child: Text(c['customer_type'] ?? '',
-                          style: GoogleFonts.inter(
+                  Row(
+                    children: [
+                      if ((c['customer_type'] ?? '').toString().isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            (c['customer_type'] ?? '').toString(),
+                            style: GoogleFonts.inter(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
-                              color: const Color(0xFF2563EB))),
-                    ),
-                    
-                    const SizedBox(width: 8),
-                    Icon(Icons.directions_car, size: 13, color: Colors.grey.shade500),
-                    const SizedBox(width: 3),
-                    Text(
-                        context.tr('${c['vehicle_count']} vehicle${(c['vehicle_count'] as int) != 1 ? "s" : ""}'),
-                        style: GoogleFonts.inter(
-                            fontSize: 12, color: Colors.grey.shade500)),
-                  ]),
-                  const SizedBox(height: 5),
-                  if ((c['branch_name']?.toString() ?? c['branch']?.toString() ?? '').isNotEmpty) ...[
+                              color: const Color(0xFF2563EB),
+                            ),
+                          ),
+                        ),
                       const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                            color: const Color(0xFFF5F3FF),
-                            borderRadius: BorderRadius.circular(20)),
-                        child: Text(
-                           "Branch: ${ c['branch_name']?.toString() ?? c['branch']?.toString() ?? ''}",
-                            style: GoogleFonts.inter(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF7C3AED))),
+                      Icon(Icons.directions_car, size: 13, color: Colors.grey.shade500),
+                      const SizedBox(width: 3),
+                      Text(
+                        context.tr('$vehicleCount vehicle${vehicleCount != 1 ? "s" : ""}'),
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: Colors.grey.shade500,
+                        ),
                       ),
+                     
                     ],
+                  ),
+                  const SizedBox(height: 5),
+                 Row(
+                  
+                  
+                  children: [
+                     if (branchName.isNotEmpty) ...[
+                       
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF5F3FF),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            "Branch: $branchName",
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF7C3AED),
+                            ),
+                          ),
+                        ),
+                      ],
+                      
+                  ],
+                 ),
+                 const SizedBox(height: 5),
+                 if (dateInfo.isNotEmpty)
+                        Text(
+                          dateInfo,
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: dateColor,
+                          ),
+                        ),
                 ],
               ),
             ),
@@ -1085,9 +1164,9 @@ class _CustomersScreenState extends State<CustomersScreen> {
               child: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.08),
+                  color: Colors.green.withValues(alpha: 0.08),
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.green.withOpacity(0.3), width: 1),
+                  border: Border.all(color: Colors.green.withValues(alpha: 0.3), width: 1),
                 ),
                 child: const Icon(Icons.phone, size: 18, color: Colors.green),
               ),
@@ -1099,9 +1178,9 @@ class _CustomersScreenState extends State<CustomersScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.08),
+                    color: Colors.red.withValues(alpha: 0.08),
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.red.withOpacity(0.3), width: 1),
+                    border: Border.all(color: Colors.red.withValues(alpha: 0.3), width: 1),
                   ),
                   child: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
                 ),

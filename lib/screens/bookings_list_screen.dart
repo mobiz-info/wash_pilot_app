@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../providers/language_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -23,6 +24,15 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
   final _fromDate = ValueNotifier<DateTime?>(null);
   final _toDate = ValueNotifier<DateTime?>(null);
 
+  // Service filter
+  String? _selectedServiceId;   // null = "All"
+  String _selectedServiceName = 'All';
+
+  // All unique service names seen in current loaded bookings (for dynamic filter pills)
+  final List<Map<String, String>> _serviceFilters = [
+    {'id': 'all', 'name': 'All'},
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -40,6 +50,21 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
     _fromDate.dispose();
     _toDate.dispose();
     super.dispose();
+  }
+
+  void _updateServiceFilters(List<dynamic> bookings) {
+    final seen = <String>{};
+    _serviceFilters
+      ..clear()
+      ..add({'id': 'all', 'name': 'All'});
+    for (final b in bookings) {
+      final name = (b['service_name'] as String? ?? '').trim();
+      final id = (b['service_id'] as String? ?? '');
+      if (name.isNotEmpty && !seen.contains(name)) {
+        seen.add(name);
+        _serviceFilters.add({'id': id.isNotEmpty ? id : name, 'name': name});
+      }
+    }
   }
 
   String _formatDate(DateTime d) =>
@@ -64,7 +89,18 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
         toDate: _toDate.value != null ? _formatDate(_toDate.value!) : null,
       );
       if (res['success'] == true) {
-        _bookings.value = List<dynamic>.from(res['bookings'] ?? []);
+        final all = List<dynamic>.from(res['bookings'] ?? []);
+        _updateServiceFilters(all);
+        // Client-side filter if service selected
+        if (_selectedServiceId != null && _selectedServiceId != 'all') {
+          _bookings.value = all.where((b) {
+            final bName = (b['service_name'] as String? ?? '').trim();
+            final bId = (b['service_id'] as String? ?? '').trim();
+            return bId == _selectedServiceId || bName == _selectedServiceName;
+          }).toList();
+        } else {
+          _bookings.value = all;
+        }
         _isLoading.value = false;
       } else {
         _errorMessage.value = res['message'] ?? 'Failed to load bookings';
@@ -343,34 +379,92 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
       ),
       body: Column(
         children: [
-          // Date Filter Bar
+          // Date Filter Bar + Service Filter
           Container(
             color: const Color(0xFF000080),
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
-            child: Row(
+            child: Column(
               children: [
-                Expanded(
-                  child: ValueListenableBuilder<DateTime?>(
-                    valueListenable: _fromDate,
-                    builder: (context, fromD, _) => _datePicker(label: 'From', date: fromD, isFrom: true),
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ValueListenableBuilder<DateTime?>(
+                        valueListenable: _fromDate,
+                        builder: (context, fromD, _) => _datePicker(label: 'From', date: fromD, isFrom: true),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ValueListenableBuilder<DateTime?>(
+                        valueListenable: _toDate,
+                        builder: (context, toD, _) => _datePicker(label: 'To', date: toD, isFrom: false),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    GestureDetector(
+                      onTap: _fetchBookings,
+                      child: Container(
+                        height: 48,
+                        width: 48,
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
+                        child: const Icon(Icons.search, color: Color(0xFF000080)),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ValueListenableBuilder<DateTime?>(
-                    valueListenable: _toDate,
-                    builder: (context, toD, _) => _datePicker(label: 'To', date: toD, isFrom: false),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                GestureDetector(
-                  onTap: _fetchBookings,
-                  child: Container(
-                    height: 48,
-                    width: 48,
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
-                    child: const Icon(Icons.search, color: Color(0xFF000080)),
-                  ),
+                const SizedBox(height: 12),
+                // Service Filter Pills
+                StatefulBuilder(
+                  builder: (context, setFilterState) {
+                    return SizedBox(
+                      height: 34,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _serviceFilters.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        itemBuilder: (_, i) {
+                          final f = _serviceFilters[i];
+                          final isAll = f['id'] == 'all';
+                          final isSelected = isAll
+                              ? (_selectedServiceId == null || _selectedServiceId == 'all')
+                              : _selectedServiceId == f['id'];
+                          return GestureDetector(
+                            onTap: () {
+                              setFilterState(() {
+                                if (isAll) {
+                                  _selectedServiceId = null;
+                                  _selectedServiceName = 'All';
+                                } else {
+                                  _selectedServiceId = f['id'];
+                                  _selectedServiceName = f['name'] ?? '';
+                                }
+                              });
+                              _fetchBookings();
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: isSelected ? Colors.white : Colors.white.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: isSelected ? Colors.white : Colors.white.withOpacity(0.3),
+                                ),
+                              ),
+                              child: Text(
+                                f['name'] ?? '',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: isSelected ? const Color(0xFF000080) : Colors.white70,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -490,6 +584,8 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
                 ? '❌ Cancelled'
                 : '🎉 Completed';
 
+    final serviceName = (booking['service_name'] as String? ?? '').trim();
+
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
@@ -533,6 +629,33 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
                           ),
                         ],
                       ),
+                      // Service name badge
+                      if (serviceName.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF000080).withOpacity(0.07),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: const Color(0xFF000080).withOpacity(0.15)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.miscellaneous_services, size: 11, color: Color(0xFF000080)),
+                              const SizedBox(width: 4),
+                              Text(
+                                serviceName,
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF000080),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 10),
                       Row(children: [
                         Icon(Icons.person_outline, size: 14, color: Colors.grey.shade400),

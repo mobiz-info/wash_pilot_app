@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../providers/language_provider.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
@@ -174,11 +175,11 @@ class _CollectionScreenState extends State<CollectionScreen> {
                     foregroundColor: Colors.white,
                     title: Text(
                       context.tr('Outstanding'),
-                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18.sp),
                     ),
                     actions: [
                       IconButton(
-                        icon: const Icon(Icons.refresh),
+                        icon: Icon(Icons.refresh, size: 22.r),
                         onPressed: _fetchOutstanding,
                       ),
                     ],
@@ -187,7 +188,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                     children: [
                       Container(
                         color: const Color(0xFF000080),
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+                        padding: REdgeInsets.fromLTRB(16, 0, 16, 18),
                         child: Column(
                           children: [
                             Row(
@@ -202,7 +203,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 12),
+                                SizedBox(width: 12.w),
                                 Expanded(
                                   child: ValueListenableBuilder<DateTime?>(
                                     valueListenable: _toDate,
@@ -213,26 +214,27 @@ class _CollectionScreenState extends State<CollectionScreen> {
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 12),
+                                SizedBox(width: 12.w),
                                 GestureDetector(
                                   onTap: _fetchOutstanding,
                                   child: Container(
-                                    height: 48,
-                                    width: 48,
+                                    height: 48.h,
+                                    width: 48.w,
                                     decoration: BoxDecoration(
                                       color: Colors.white,
-                                      borderRadius: BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(10.r),
                                     ),
-                                    child: const Icon(
+                                    child: Icon(
                                       Icons.search,
-                                      color: Color(0xFF000080),
+                                      color: const Color(0xFF000080),
+                                      size: 22.r,
                                     ),
                                   ),
                                 ),
                               ],
                             ),
                             if (context.watch<AuthProvider>().isCompanyAdmin) ...[
-                              const SizedBox(height: 12),
+                              SizedBox(height: 12.h),
                               ValueListenableBuilder<String?>(
                                 valueListenable: _selectedBranchId,
                                 builder: (context, branchId, _) => _branchDropdown(branchId),
@@ -244,27 +246,27 @@ class _CollectionScreenState extends State<CollectionScreen> {
                       // Search bar
                       Container(
                         color: Colors.white,
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                        padding: REdgeInsets.fromLTRB(16, 12, 16, 12),
                         child: TextField(
                           onChanged: (v) => _search.value = v,
                           decoration: InputDecoration(
                             hintText: context.tr('Search by customer, phone or invoice #'),
-                            hintStyle: const TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFF94a3b8),
+                            hintStyle: TextStyle(
+                              fontSize: 13.sp,
+                              color: const Color(0xFF94a3b8),
                             ),
-                            prefixIcon: const Icon(
+                            prefixIcon: Icon(
                               Icons.search,
-                              size: 20,
-                              color: Color(0xFF94a3b8),
+                              size: 20.r,
+                              color: const Color(0xFF94a3b8),
                             ),
                             filled: true,
                             fillColor: const Color(0xFFf1f5f9),
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(10.r),
                               borderSide: BorderSide.none,
                             ),
-                            contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                            contentPadding: EdgeInsets.symmetric(vertical: 10.h),
                           ),
                         ),
                       ),
@@ -281,21 +283,21 @@ class _CollectionScreenState extends State<CollectionScreen> {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.error_outline,
-                                  size: 48,
+                                  size: 48.r,
                                   color: Colors.red,
                                 ),
-                                const SizedBox(height: 12),
+                                SizedBox(height: 12.h),
                                 Text(
                                   errorMsg,
                                   textAlign: TextAlign.center,
-                                  style: const TextStyle(color: Colors.red),
+                                  style: TextStyle(color: Colors.red, fontSize: 14.sp),
                                 ),
-                                const SizedBox(height: 16),
+                                SizedBox(height: 16.h),
                                 ElevatedButton(
                                   onPressed: _fetchOutstanding,
-                                  child: Text(context.tr('Retry')),
+                                  child: Text(context.tr('Retry'), style: TextStyle(fontSize: 14.sp)),
                                 ),
                               ],
                             ),
@@ -309,18 +311,18 @@ class _CollectionScreenState extends State<CollectionScreen> {
                               children: [
                                 Icon(
                                   Icons.check_circle_outline,
-                                  size: 64,
+                                  size: 64.r,
                                   color: searchVal.isNotEmpty ? Colors.grey : Colors.green,
                                 ),
-                                const SizedBox(height: 12),
+                                SizedBox(height: 12.h),
                                 Text(
                                   searchVal.isNotEmpty
                                       ? 'No results for "$searchVal"'
                                       : 'No outstanding balances!',
-                                  style: const TextStyle(
-                                    fontSize: 16,
+                                  style: TextStyle(
+                                    fontSize: 16.sp,
                                     fontWeight: FontWeight.w600,
-                                    color: Color(0xFF64748b),
+                                    color: const Color(0xFF64748b),
                                   ),
                                 ),
                               ],
@@ -332,7 +334,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                           child: RefreshIndicator(
                             onRefresh: _fetchOutstanding,
                             child: ListView.builder(
-                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                              padding: REdgeInsets.fromLTRB(16, 8, 16, 100),
                               itemCount: filtered.length,
                               itemBuilder: (_, i) {
                                 final inv = filtered[i];
@@ -344,20 +346,20 @@ class _CollectionScreenState extends State<CollectionScreen> {
                                 final progress = total > 0 ? collected / total : 0.0;
 
                                 return Container(
-                                  margin: const EdgeInsets.only(bottom: 12),
+                                  margin: EdgeInsets.only(bottom: 12.h),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
-                                    borderRadius: BorderRadius.circular(14),
+                                    borderRadius: BorderRadius.circular(14.r),
                                     boxShadow: [
                                       BoxShadow(
                                         color: Colors.black.withOpacity(0.05),
-                                        blurRadius: 6,
-                                        offset: const Offset(0, 2),
+                                        blurRadius: 6.r,
+                                        offset: Offset(0, 2.h),
                                       ),
                                     ],
                                   ),
                                   child: Padding(
-                                    padding: const EdgeInsets.all(16),
+                                    padding: REdgeInsets.all(16),
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
@@ -371,75 +373,78 @@ class _CollectionScreenState extends State<CollectionScreen> {
                                                 children: [
                                                   Text(
                                                     inv['customer']['name'] ?? '',
-                                                    style: const TextStyle(
+                                                    style: TextStyle(
                                                       fontWeight: FontWeight.w700,
-                                                      fontSize: 15,
-                                                      color: Color(0xFF1e293b),
+                                                      fontSize: 15.sp,
+                                                      color: const Color(0xFF1e293b),
                                                     ),
                                                   ),
-                                                  const SizedBox(height: 2),
+                                                  SizedBox(height: 2.h),
                                                   Text(
                                                     inv['customer']['phone'] ?? '',
-                                                    style: const TextStyle(
-                                                      fontSize: 12,
-                                                      color: Color(0xFF94a3b8),
+                                                    style: TextStyle(
+                                                      fontSize: 12.sp,
+                                                      color: const Color(0xFF94a3b8),
                                                     ),
                                                   ),
                                                 ],
                                               ),
                                             ),
                                             Container(
-                                              padding: const EdgeInsets.symmetric(
+                                              padding: REdgeInsets.symmetric(
                                                 horizontal: 10,
                                                 vertical: 4,
                                               ),
                                               decoration: BoxDecoration(
                                                 color: const Color(0xFFfef2f2),
-                                                borderRadius: BorderRadius.circular(20),
+                                                borderRadius: BorderRadius.circular(20.r),
                                                 border: Border.all(
                                                   color: const Color(0xFFfecaca),
                                                 ),
                                               ),
                                               child: Text(
                                                 context.tr('$currencySymbol${outstanding.toStringAsFixed(2)}'),
-                                                style: const TextStyle(
+                                                style: TextStyle(
                                                   fontWeight: FontWeight.w900,
-                                                  fontSize: 15,
-                                                  color: Color(0xFFdc2626),
+                                                  fontSize: 15.sp,
+                                                  color: const Color(0xFFdc2626),
                                                 ),
                                               ),
                                             ),
                                           ],
                                         ),
-                                        const SizedBox(height: 10),
-                                        Row(
-                                          children: [
-                                            _chip(
-                                              Icons.receipt_outlined,
-                                              '#${inv['invoice_number']}',
-                                            ),
-                                            const SizedBox(width: 8),
-                                            _chip(
-                                              Icons.directions_car_outlined,
-                                              inv['vehicle']['number'] ?? '',
-                                            ),
-                                            const SizedBox(width: 8),
-                                            _chip(
-                                              Icons.calendar_today_outlined,
-                                              inv['date'] ?? '',
-                                            ),
-                                            if ((inv['branch'] ?? '')
-                                                .toString()
-                                                .isNotEmpty) ...[
-                                              const SizedBox(width: 8),
+                                        SizedBox(height: 10.h),
+                                        SingleChildScrollView(
+                                          scrollDirection: Axis.horizontal,
+                                          child: Row(
+                                            children: [
                                               _chip(
-                                                Icons.store_outlined,
-                                                inv['branch'] ?? '',
+                                                Icons.receipt_outlined,
+                                                '#${inv['invoice_number']}',
                                               ),
+                                              SizedBox(width: 8.w),
+                                              _chip(
+                                                Icons.directions_car_outlined,
+                                                inv['vehicle']['number'] ?? '',
+                                              ),
+                                              SizedBox(width: 8.w),
+                                              _chip(
+                                                Icons.calendar_today_outlined,
+                                                inv['date'] ?? '',
+                                              ),
+                                              if ((inv['branch'] ?? '')
+                                                  .toString()
+                                                  .isNotEmpty) ...[
+                                                SizedBox(width: 8.w),
+                                                _chip(
+                                                  Icons.store_outlined,
+                                                  inv['branch'] ?? '',
+                                                ),
+                                              ],
                                             ],
-                                          ],
+                                          ),
                                         ),
-                                        const SizedBox(height: 10),
+                                        SizedBox(height: 10.h),
                                         Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
@@ -449,27 +454,27 @@ class _CollectionScreenState extends State<CollectionScreen> {
                                               children: [
                                                 Text(
                                                   context.tr('Collected: $currencySymbol${collected.toStringAsFixed(2)}'),
-                                                  style: const TextStyle(
-                                                    fontSize: 11,
-                                                    color: Color(0xFF16a34a),
+                                                  style: TextStyle(
+                                                    fontSize: 11.sp,
+                                                    color: const Color(0xFF16a34a),
                                                     fontWeight: FontWeight.w600,
                                                   ),
                                                 ),
                                                 Text(
                                                   context.tr('Total: $currencySymbol${total.toStringAsFixed(2)}'),
-                                                  style: const TextStyle(
-                                                    fontSize: 11,
-                                                    color: Color(0xFF64748b),
+                                                  style: TextStyle(
+                                                    fontSize: 11.sp,
+                                                    color: const Color(0xFF64748b),
                                                   ),
                                                 ),
                                               ],
                                             ),
-                                            const SizedBox(height: 4),
+                                            SizedBox(height: 4.h),
                                             ClipRRect(
-                                              borderRadius: BorderRadius.circular(4),
+                                              borderRadius: BorderRadius.circular(4.r),
                                               child: LinearProgressIndicator(
                                                 value: progress.clamp(0.0, 1.0),
-                                                minHeight: 6,
+                                                minHeight: 6.h,
                                                 backgroundColor: const Color(0xFFe2e8f0),
                                                 valueColor: const AlwaysStoppedAnimation(
                                                   Color(0xFF16a34a),
@@ -490,7 +495,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                       if (!loading && errorMsg.isEmpty && filtered.isNotEmpty)
                         Container(
                           color: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                          padding: REdgeInsets.symmetric(horizontal: 20, vertical: 14),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -498,16 +503,16 @@ class _CollectionScreenState extends State<CollectionScreen> {
                                 context.tr('Total Outstanding'),
                                 style: TextStyle(
                                   fontWeight: FontWeight.w700,
-                                  color: Color(0xFF64748b),
-                                  fontSize: 14,
+                                  color: const Color(0xFF64748b),
+                                  fontSize: 14.sp,
                                 ),
                               ),
                               Text(
                                 context.tr('$currencySymbol${totalOutstandingVal.toStringAsFixed(2)}'),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.w900,
-                                  color: Color(0xFFdc2626),
-                                  fontSize: 18,
+                                  color: const Color(0xFFdc2626),
+                                  fontSize: 18.sp,
                                 ),
                               ),
                             ],
@@ -530,27 +535,27 @@ class _CollectionScreenState extends State<CollectionScreen> {
       builder: (context, branchesList, _) => DropdownButtonFormField<String>(
         value: selectedBranchId,
         isExpanded: true,
-        menuMaxHeight: 350,
+        menuMaxHeight: 350.h,
         decoration: InputDecoration(
           filled: true,
           fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(
+          contentPadding: REdgeInsets.symmetric(
             horizontal: 12,
             vertical: 12,
           ),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(10.r),
             borderSide: BorderSide.none,
           ),
         ),
-        hint: Text(context.tr('All branches')),
+        hint: Text(context.tr('All branches'), style: TextStyle(fontSize: 13.sp)),
         items: [
-          DropdownMenuItem<String>(value: '', child: Text(context.tr('All branches'))),
+          DropdownMenuItem<String>(value: '', child: Text(context.tr('All branches'), style: TextStyle(fontSize: 13.sp))),
           ...branchesList.map((branch) {
             final item = Map<String, dynamic>.from(branch as Map);
             return DropdownMenuItem<String>(
               value: item['id']?.toString() ?? '',
-              child: Text(item['name']?.toString() ?? ''),
+              child: Text(item['name']?.toString() ?? '', style: TextStyle(fontSize: 13.sp)),
             );
           }),
         ],
@@ -570,19 +575,19 @@ class _CollectionScreenState extends State<CollectionScreen> {
     return GestureDetector(
       onTap: () => _pickDate(isFrom: isFrom),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        padding: REdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(10.r),
         ),
         child: Row(
           children: [
-            const Icon(
+            Icon(
               Icons.calendar_today,
-              size: 16,
-              color: Color(0xFF000080),
+              size: 16.r,
+              color: const Color(0xFF000080),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8.w),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -590,17 +595,17 @@ class _CollectionScreenState extends State<CollectionScreen> {
                   Text(
                     label,
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 10.sp,
                       color: Colors.grey.shade500,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   Text(
                     date != null ? _displayDate(date) : 'Select',
-                    style: const TextStyle(
-                      fontSize: 13,
+                    style: TextStyle(
+                      fontSize: 13.sp,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF1e293b),
+                      color: const Color(0xFF1e293b),
                     ),
                   ),
                 ],
@@ -616,11 +621,11 @@ class _CollectionScreenState extends State<CollectionScreen> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 13, color: const Color(0xFF94a3b8)),
-        const SizedBox(width: 3),
+        Icon(icon, size: 13.r, color: const Color(0xFF94a3b8)),
+        SizedBox(width: 3.w),
         Text(
           label,
-          style: const TextStyle(fontSize: 12, color: Color(0xFF64748b)),
+          style: TextStyle(fontSize: 12.sp, color: const Color(0xFF64748b)),
         ),
       ],
     );

@@ -1,5 +1,6 @@
 import 'package:car_wash_mobile/screens/dashboard_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../providers/language_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -297,7 +298,7 @@ class _MenuScreenState extends State<MenuScreen> {
               // ── Header ──────────────────────────────────────────────────
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(24),
+                padding: REdgeInsets.all(24),
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     colors: [Color(0xFF000080), Color(0xFF0000CD)],
@@ -310,34 +311,34 @@ class _MenuScreenState extends State<MenuScreen> {
                   children: [
                     Image.asset(
                       ApiService.appIconPath,
-                      width: 56,
-                      height: 56,
+                      width: 56.w,
+                      height: 56.h,
                       fit: BoxFit.contain,
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16.h),
                     Text(
                       displayName,
                       style: GoogleFonts.inter(
                         color: Colors.white,
-                        fontSize: 18,
+                        fontSize: 18.sp,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4.h),
                     Container(
-                      padding: const EdgeInsets.symmetric(
+                      padding: REdgeInsets.symmetric(
                         horizontal: 10,
                         vertical: 3,
                       ),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(20.r),
                       ),
                       child: Text(
                         context.tr(isBranch ? 'Branch Admin' : 'Company Admin'),
                         style: GoogleFonts.inter(
                           color: Colors.white70,
-                          fontSize: 12,
+                          fontSize: 12.sp,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -349,7 +350,7 @@ class _MenuScreenState extends State<MenuScreen> {
               // ── Scrollable menu items ────────────────────────────────────
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  padding: REdgeInsets.symmetric(vertical: 8),
                   children: [
                     _drawerItem(
                       Icons.dashboard_outlined,
@@ -520,18 +521,18 @@ class _MenuScreenState extends State<MenuScreen> {
               ),
 
               // ── Fixed bottom: Logout + version ───────────────────────────
-              const Divider(height: 1),
+              Divider(height: 1.h),
               ListTile(
                 leading: Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: REdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(8.r),
                   ),
                   child: Icon(
                     Icons.logout,
                     color: Colors.red.shade600,
-                    size: 20,
+                    size: 20.r,
                   ),
                 ),
                 title: Text(
@@ -539,7 +540,7 @@ class _MenuScreenState extends State<MenuScreen> {
                   style: GoogleFonts.inter(
                     fontWeight: FontWeight.w700,
                     color: Colors.red.shade600,
-                    fontSize: 15,
+                    fontSize: 15.sp,
                   ),
                 ),
                 onTap: () async {
@@ -548,22 +549,22 @@ class _MenuScreenState extends State<MenuScreen> {
                     context: context,
                     builder: (ctx) => AlertDialog(
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(14.r),
                       ),
                       title: Text(
                         context.tr('Logout'),
-                        style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18.sp),
                       ),
                       content: Text(
                         context.tr('Are you sure you want to logout?'),
-                        style: GoogleFonts.inter(color: Colors.grey.shade600),
+                        style: GoogleFonts.inter(color: Colors.grey.shade600, fontSize: 14.sp),
                       ),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(ctx, false),
                           child: Text(
                             context.tr('Cancel'),
-                            style: GoogleFonts.inter(color: Colors.grey),
+                            style: GoogleFonts.inter(color: Colors.grey, fontSize: 14.sp),
                           ),
                         ),
                         ElevatedButton(
@@ -572,13 +573,14 @@ class _MenuScreenState extends State<MenuScreen> {
                             backgroundColor: Colors.red,
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(8.r),
                             ),
                           ),
                           child: Text(
                             context.tr('Logout'),
                             style: GoogleFonts.inter(
                               fontWeight: FontWeight.bold,
+                              fontSize: 14.sp,
                             ),
                           ),
                         ),
@@ -591,11 +593,11 @@ class _MenuScreenState extends State<MenuScreen> {
                 },
               ),
               Padding(
-                padding: const EdgeInsets.only(bottom: 12),
+                padding: EdgeInsets.only(bottom: 12.h),
                 child: Text(
                   context.tr('Car wash ${CountryConfig.current.displayName} V $kAppVersion'),
                   style: GoogleFonts.inter(
-                    fontSize: 13,
+                    fontSize: 13.sp,
                     color: Colors.grey.shade400,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.5,
@@ -619,41 +621,38 @@ class _MenuScreenState extends State<MenuScreen> {
           children: [
             Image.asset(
               ApiService.appIconPath,
-              width: 24,
-              height: 24,
+              width: 24.w,
+              height: 24.h,
               fit: BoxFit.contain,
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: 10.w),
             Text(
               ApiService.appName,
               style: GoogleFonts.inter(
                 fontWeight: FontWeight.w700,
-                fontSize: 18,
+                fontSize: 18.sp,
               ),
             ),
           ],
         ),
-        // actions: [
-        //   IconButton(icon: const Icon(Icons.refresh), onPressed: _loadStats),
-        // ],
       ),
 
       // ── Body ─────────────────────────────────────────────────────────────
       body: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
+        padding: REdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // ── Welcome Card ────────────────────────────────────────────
             _buildWelcomeCard(displayName, isBranch),
-            const SizedBox(height: 20),
+            SizedBox(height: 20.h),
 
             // ── Quick Menu ──────────────────────────────────────────────
             buildSectionTitle(context.tr('Quick Menu'), Icons.grid_view_outlined),
-            const SizedBox(height: 10),
+            SizedBox(height: 10.h),
             _buildMenuGrid(),
-            const SizedBox(height: 20),
+            SizedBox(height: 20.h),
           ],
         ),
       ),
@@ -664,19 +663,19 @@ class _MenuScreenState extends State<MenuScreen> {
 
   Widget _buildWelcomeCard(String name, bool isBranch) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: REdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFF000080), Color(0xFF0000B8)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.r),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFF000080).withOpacity(0.25),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
+            blurRadius: 16.r,
+            offset: Offset(0, 6.h),
           ),
         ],
       ),
@@ -688,34 +687,34 @@ class _MenuScreenState extends State<MenuScreen> {
               children: [
                 Text(
                   '${context.tr('Welcome Back')} 👋',
-                  style: GoogleFonts.inter(color: Colors.white70, fontSize: 13),
+                  style: GoogleFonts.inter(color: Colors.white70, fontSize: 13.sp),
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: 6.h),
                 Text(
                   name,
                   style: GoogleFonts.inter(
                     color: Colors.white,
-                    fontSize: 20,
+                    fontSize: 20.sp,
                     fontWeight: FontWeight.w800,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: 6.h),
                 Container(
-                  padding: const EdgeInsets.symmetric(
+                  padding: REdgeInsets.symmetric(
                     horizontal: 10,
                     vertical: 3,
                   ),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(20.r),
                   ),
                   child: Text(
                     context.tr(isBranch ? 'Branch Admin' : 'Company Admin'),
                     style: GoogleFonts.inter(
                       color: Colors.white70,
-                      fontSize: 11,
+                      fontSize: 11.sp,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -723,12 +722,12 @@ class _MenuScreenState extends State<MenuScreen> {
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12.w),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            padding: REdgeInsets.symmetric(horizontal: 18, vertical: 14),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(16.r),
               border: Border.all(color: Colors.white.withOpacity(0.2)),
             ),
           ),
@@ -748,10 +747,10 @@ class _MenuScreenState extends State<MenuScreen> {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
+        crossAxisSpacing: 12.w,
+        mainAxisSpacing: 12.h,
         childAspectRatio: 0.95,
       ),
       itemCount: menuItems.length,
@@ -767,16 +766,16 @@ class _MenuScreenState extends State<MenuScreen> {
         
         return InkWell(
           onTap: isEnabled ? () => _navigate(context, title) : null,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           child: Container(
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(16.r),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+                  blurRadius: 8.r,
+                  offset: Offset(0, 2.h),
                 ),
               ],
             ),
@@ -784,21 +783,21 @@ class _MenuScreenState extends State<MenuScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: REdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: color.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(item['icon'], color: color, size: 26),
+                  child: Icon(item['icon'], color: color, size: 26.r),
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: 10.h),
                 Text(
                   context.tr(item['title']),
                   textAlign: TextAlign.center,
                   style: GoogleFonts.inter(
                     fontWeight: FontWeight.w600,
                     color: isEnabled ? const Color(0xFF334155) : Colors.grey,
-                    fontSize: 12,
+                    fontSize: 12.sp,
                   ),
                 ),
               ],
@@ -814,17 +813,17 @@ class _MenuScreenState extends State<MenuScreen> {
   // ─── Drawer Item ──────────────────────────────────────────────────────────
   Widget _drawerItem(IconData icon, String label, VoidCallback onTap) {
     return ListTile(
-      leading: Icon(icon, color: const Color(0xFF000080), size: 22),
+      leading: Icon(icon, color: const Color(0xFF000080), size: 22.r),
       title: Text(
         context.tr(label),
         style: GoogleFonts.inter(
           fontWeight: FontWeight.w600,
-          fontSize: 14,
+          fontSize: 14.sp,
           color: const Color(0xFF1e293b),
         ),
       ),
       onTap: onTap,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
     );
   }
 }

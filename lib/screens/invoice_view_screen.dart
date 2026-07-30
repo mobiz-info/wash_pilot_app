@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../providers/language_provider.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -86,12 +87,27 @@ class InvoiceViewScreen extends StatelessWidget {
       return parts.join(' | ');
     } else if (cat == 'tyre_change') {
       final parts = <String>[];
-      final tBrand = detail['tyre_brand']?['brand']?.toString() ?? '';
-      if (tBrand.isNotEmpty) parts.add('Tyre: $tBrand');
-      final size = detail['tyre_size']?.toString();
-      if (size != null && size.isNotEmpty) parts.add('Size: $size');
-      final count = detail['tyres_changed_count']?.toString();
-      if (count != null && count.isNotEmpty) parts.add('Qty: $count');
+      final items = detail['tyre_items'] as List<dynamic>?;
+      if (items != null && items.isNotEmpty) {
+        for (final item in items) {
+          final brand = item['brand']?.toString() ?? '';
+          final size = item['size']?.toString() ?? '';
+          final qty = item['quantity']?.toString() ?? '1';
+          final lineTot = item['line_total'];
+          final lineTotVal = (lineTot is num) ? lineTot.toDouble() : double.tryParse(lineTot?.toString() ?? '0') ?? 0.0;
+          final priceStr = lineTotVal > 0 ? ' ($currencySymbol${lineTotVal.toStringAsFixed(0)})' : '';
+
+          final labelParts = [if (brand.isNotEmpty) brand, if (size.isNotEmpty) size].join(' ');
+          parts.add('$labelParts x$qty$priceStr');
+        }
+      } else {
+        final tBrand = detail['tyre_brand']?['brand']?.toString() ?? '';
+        if (tBrand.isNotEmpty) parts.add('Tyre: $tBrand');
+        final size = detail['tyre_size']?.toString();
+        if (size != null && size.isNotEmpty) parts.add('Size: $size');
+        final count = detail['tyres_changed_count']?.toString();
+        if (count != null && count.isNotEmpty) parts.add('Qty: $count');
+      }
       final odo = detail['odometer_at_service']?.toString();
       if (odo != null && odo.isNotEmpty && odo != '0') parts.add('Odometer: $odo km');
       final nextKm = detail['next_tyre_change_km']?.toString();

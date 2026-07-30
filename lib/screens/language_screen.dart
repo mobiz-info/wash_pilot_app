@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/language_provider.dart';
@@ -90,6 +91,30 @@ class LanguageScreen extends StatelessWidget {
         'nativeName': 'دری',
         'flag': '🇦🇫',
       },
+      {
+        'code': 'ru',
+        'name': 'Russian',
+        'nativeName': 'Русский',
+        'flag': '🇷🇺',
+      },
+      {
+        'code': 'zh',
+        'name': 'Chinese',
+        'nativeName': '中文 (简体)',
+        'flag': '🇨🇳',
+      },
+      {
+        'code': 'vi',
+        'name': 'Vietnamese',
+        'nativeName': 'Tiếng Việt',
+        'flag': '🇻🇳',
+      },
+      {
+        'code': 'th',
+        'name': 'Thai',
+        'nativeName': 'ไทย',
+        'flag': '🇹🇭',
+      },
     ];
 
     return Scaffold(
@@ -103,19 +128,19 @@ class LanguageScreen extends StatelessWidget {
       body: Stack(
         children: [
           ListView.builder(
-            padding: const EdgeInsets.all(16),
+            padding: REdgeInsets.all(16),
             itemCount: languages.length,
             itemBuilder: (context, index) {
               final lang = languages[index];
               final isSelected = lang['code'] == currentLanguageCode;
 
               return Card(
-                margin: const EdgeInsets.only(bottom: 12),
+                margin: EdgeInsets.only(bottom: 12.h),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(16.r),
                   side: BorderSide(
                     color: isSelected ? const Color(0xFF000080) : Colors.transparent,
-                    width: 2,
+                    width: 2.w,
                   ),
                 ),
                 elevation: isSelected ? 4 : 1,
@@ -139,16 +164,16 @@ class LanguageScreen extends StatelessWidget {
                             }
                           }
                         },
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(16.r),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    padding: REdgeInsets.symmetric(horizontal: 20, vertical: 16),
                     child: Row(
                       children: [
                         Text(
                           lang['flag'],
-                          style: const TextStyle(fontSize: 24),
+                          style: TextStyle(fontSize: 24.sp),
                         ),
-                        const SizedBox(width: 16),
+                        SizedBox(width: 16.w),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -156,16 +181,16 @@ class LanguageScreen extends StatelessWidget {
                               Text(
                                 lang['nativeName'],
                                 style: GoogleFonts.inter(
-                                  fontSize: 16,
+                                  fontSize: 16.sp,
                                   fontWeight: FontWeight.w700,
                                   color: const Color(0xFF1E293B),
                                 ),
                               ),
-                              const SizedBox(height: 2),
+                              SizedBox(height: 2.h),
                               Text(
                                 lang['name'],
                                 style: GoogleFonts.inter(
-                                  fontSize: 13,
+                                  fontSize: 13.sp,
                                   fontWeight: FontWeight.w500,
                                   color: const Color(0xFF64748B),
                                 ),
@@ -174,10 +199,10 @@ class LanguageScreen extends StatelessWidget {
                           ),
                         ),
                         if (isSelected)
-                          const Icon(
+                          Icon(
                             Icons.check_circle_rounded,
-                            color: Color(0xFF000080),
-                            size: 24,
+                            color: const Color(0xFF000080),
+                            size: 24.r,
                           ),
                       ],
                     ),
@@ -192,15 +217,15 @@ class LanguageScreen extends StatelessWidget {
                 color: Colors.black.withValues(alpha: 0.35),
                 child: Center(
                   child: Container(
-                    padding: const EdgeInsets.all(24),
+                    padding: REdgeInsets.all(24),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: const [
+                      borderRadius: BorderRadius.circular(16.r),
+                      boxShadow: [
                         BoxShadow(
                           color: Colors.black26,
-                          blurRadius: 10,
-                          offset: Offset(0, 4),
+                          blurRadius: 10.r,
+                          offset: Offset(0, 4.h),
                         ),
                       ],
                     ),
@@ -210,12 +235,12 @@ class LanguageScreen extends StatelessWidget {
                         const CircularProgressIndicator(
                           valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF000080)),
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16.h),
                         Text(
                           context.tr('Downloading translations...'),
                           style: GoogleFonts.inter(
                             fontWeight: FontWeight.w600,
-                            fontSize: 14,
+                            fontSize: 14.sp,
                             color: const Color(0xFF1E293B),
                           ),
                         ),
