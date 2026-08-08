@@ -55,7 +55,7 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
       final res = await ApiService.getQuotationDetail(widget.quotationId, token);
       if (res['success'] == true && res['quotation'] != null) {
         setState(() {
-          _quotation = res['quotation'];
+          _quotation = Map<String, dynamic>.from(res['quotation'] as Map);
           _isLoading = false;
         });
       } else {

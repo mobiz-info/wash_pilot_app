@@ -75,7 +75,8 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
     try {
       final res = await ApiService.getQuotationList(token);
       if (res['success'] == true) {
-        final list = res['quotations'] as List<dynamic>? ?? [];
+        final rawList = res['quotations'] as List<dynamic>? ?? [];
+        final list = rawList.map((e) => Map<String, dynamic>.from(e as Map)).toList();
         setState(() {
           _allQuotations = list;
           _filteredQuotations = List.from(list);
@@ -110,7 +111,7 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
       if (mounted) Navigator.pop(context); // dismiss loader
 
       if (res['success'] == true && res['quotation'] != null) {
-        final qDetail = res['quotation'] as Map<String, dynamic>;
+        final qDetail = Map<String, dynamic>.from(res['quotation'] as Map);
         final customer = {
           'id': qDetail['customer_id'],
           'name': qDetail['customer_name'],
