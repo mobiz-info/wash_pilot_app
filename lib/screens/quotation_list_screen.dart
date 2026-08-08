@@ -268,6 +268,12 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
     );
   }
 
+  double _parseDouble(dynamic val) {
+    if (val == null) return 0.0;
+    if (val is num) return val.toDouble();
+    return double.tryParse(val.toString()) ?? 0.0;
+  }
+
   Widget _buildQuotationCard(Map<String, dynamic> q) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -302,7 +308,7 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
                 ),
               ),
               Text(
-                '$currencySymbol${(q['grand_total'] as num?)?.toStringAsFixed(2) ?? "0.00"}',
+                '$currencySymbol${_parseDouble(q['grand_total']).toStringAsFixed(2)}',
                 style: GoogleFonts.inter(fontWeight: FontWeight.w900, color: const Color(0xFF000080), fontSize: 18.sp),
               ),
             ],

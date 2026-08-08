@@ -36,6 +36,12 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
   String _errorMessage = '';
   Map<String, dynamic>? _quotation;
 
+  double _parseDouble(dynamic val) {
+    if (val == null) return 0.0;
+    if (val is num) return val.toDouble();
+    return double.tryParse(val.toString()) ?? 0.0;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -111,15 +117,15 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
     if (q['additional_services'] != null && q['additional_services'].toString().trim().isNotEmpty) {
       buffer.writeln('📝 *Additional Service Notes:* ${q['additional_services']}');
     }
-    if (q['additional_days_needed'] != null && (q['additional_days_needed'] as num) > 0) {
+    if (q['additional_days_needed'] != null && _parseDouble(q['additional_days_needed']) > 0) {
       buffer.writeln('⏱️ *Additional Days Needed:* ${q['additional_days_needed']} days');
     }
     buffer.writeln('----------------------------------');
     buffer.writeln('💵 *Subtotal:* $currencySymbol${q['subtotal']}');
-    if ((q['discount'] as num?) != null && (q['discount'] as num) > 0) {
+    if (_parseDouble(q['discount']) > 0) {
       buffer.writeln('🏷️ *Discount:* -$currencySymbol${q['discount']}');
     }
-    if ((q['tax_amount'] as num?) != null && (q['tax_amount'] as num) > 0) {
+    if (_parseDouble(q['tax_amount']) > 0) {
       buffer.writeln('🏛️ *Tax (${q['tax_percentage']}%):* $currencySymbol${q['tax_amount']}');
     }
     buffer.writeln('💰 *Grand Total:* $currencySymbol${q['grand_total']}');
@@ -388,21 +394,21 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
           const Divider(height: 24),
 
           // Financial Summary
-          _summaryRow(context.tr('Subtotal'), '$currencySymbol${q['subtotal']}'),
-          if ((q['discount'] as num?) != null && (q['discount'] as num) > 0) ...[
+          _summaryRow(context.tr('Subtotal'), '$currencySymbol${_parseDouble(q["subtotal"]).toStringAsFixed(2)}'),
+          if (_parseDouble(q['discount']) > 0) ...[
             const SizedBox(height: 6),
-            _summaryRow(context.tr('Discount'), '-$currencySymbol${q['discount']}'),
+            _summaryRow(context.tr('Discount'), '-$currencySymbol${_parseDouble(q["discount"]).toStringAsFixed(2)}'),
           ],
-          if ((q['tax_amount'] as num?) != null && (q['tax_amount'] as num) > 0) ...[
+          if (_parseDouble(q['tax_amount']) > 0) ...[
             const SizedBox(height: 6),
-            _summaryRow('${context.tr("Tax")} (${q["tax_percentage"]}%)', '$currencySymbol${q["tax_amount"]}'),
+            _summaryRow('${context.tr("Tax")} (${q["tax_percentage"]}%)', '$currencySymbol${_parseDouble(q["tax_amount"]).toStringAsFixed(2)}'),
           ],
           const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(context.tr('Grand Total'), style: GoogleFonts.inter(fontSize: 16.sp, fontWeight: FontWeight.w800, color: const Color(0xFF000080))),
-              Text('$currencySymbol${q['grand_total']}', style: GoogleFonts.inter(fontSize: 20.sp, fontWeight: FontWeight.w900, color: const Color(0xFF000080))),
+              Text('$currencySymbol${_parseDouble(q["grand_total"]).toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 20.sp, fontWeight: FontWeight.w900, color: const Color(0xFF000080))),
             ],
           ),
         ],
