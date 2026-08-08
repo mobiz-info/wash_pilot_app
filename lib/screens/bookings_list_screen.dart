@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
+import '../config/country_config.dart';
 import 'invoice_create_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -296,10 +297,8 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
           String phone = (customer['whatsapp_number']?.toString().isNotEmpty == true)
               ? customer['whatsapp_number'].toString()
               : (customer['phone']?.toString() ?? '');
-          String cleanedPhone = phone.replaceAll(RegExp(r'\D'), '');
-          if (cleanedPhone.length == 10) {
-            cleanedPhone = '91$cleanedPhone';
-          }
+          final String cleanedPhone = CountryConfig.formatPhoneForWhatsapp(phone);
+
           
           if (cleanedPhone.isNotEmpty) {
             final whatsappUrl = Uri.parse(

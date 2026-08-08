@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
+import '../config/country_config.dart';
 import 'package:http/http.dart' as http;
 
 
@@ -510,12 +511,9 @@ class InvoiceViewScreen extends StatelessWidget {
         ? customer['whatsapp_number'].toString()
         : (customer['phone']?.toString() ?? '');
     
-    String cleaned = phone.replaceAll(RegExp(r'\D'), '');
-    if (cleaned.length == 10) {
-      cleaned = '91$cleaned';
-    }
-    return cleaned;
+    return CountryConfig.formatPhoneForWhatsapp(phone);
   }
+
 
   // ── Share Invoice ────────────────────────────────────────────────────────
   void _shareInvoice(BuildContext context) {

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/language_provider.dart';
 import '../services/api_service.dart';
+import 'add_supplier_screen.dart';
 
 class SupplierScreen extends StatefulWidget {
   const SupplierScreen({super.key});
@@ -73,162 +74,24 @@ class _SupplierScreenState extends State<SupplierScreen> {
     }
   }
 
-  Future<void> _showSupplierFormDialog({Map<String, dynamic>? supplier}) async {
-    final auth = context.read<AuthProvider>();
-    final token = auth.token;
-    if (token == null) return;
-
-    final nameController = TextEditingController(text: supplier?['name']);
-    final addressController = TextEditingController(text: supplier?['address']);
-    final gstController = TextEditingController(text: supplier?['gst_no']);
-    final phoneController = TextEditingController(text: supplier?['phone_no']);
-    final formKey = GlobalKey<FormState>();
+  Future<void> _openSupplierPage({Map<String, dynamic>? supplier}) async {
     final isEditing = supplier != null;
-
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (ctx) {
-        bool isSaving = false;
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: Text(
-                context.tr(isEditing ? 'Edit Supplier' : 'Add Supplier'),
-                style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: const Color(0xFF000080)),
-              ),
-              content: SingleChildScrollView(
-                child: Form(
-                  key: formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      TextFormField(
-                        controller: nameController,
-                        decoration: InputDecoration(
-                          labelText: context.tr('Supplier Name *'),
-                          labelStyle: GoogleFonts.inter(),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return context.tr('Please enter a name');
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: phoneController,
-                        keyboardType: TextInputType.phone,
-                        decoration: InputDecoration(
-                          labelText: context.tr('Phone Number *'),
-                          labelStyle: GoogleFonts.inter(),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return context.tr('Please enter a phone number');
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: gstController,
-                        decoration: InputDecoration(
-                          labelText: context.tr('GST No. (Optional)'),
-                          labelStyle: GoogleFonts.inter(),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: addressController,
-                        maxLines: 3,
-                        decoration: InputDecoration(
-                          labelText: context.tr('Address *'),
-                          labelStyle: GoogleFonts.inter(),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return context.tr('Please enter address');
-                          }
-                          return null;
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isSaving ? null : () => Navigator.pop(context, false),
-                  child: Text(context.tr('Cancel'), style: GoogleFonts.inter(color: Colors.grey)),
-                ),
-                ElevatedButton(
-                  onPressed: isSaving
-                      ? null
-                      : () async {
-                          if (formKey.currentState!.validate()) {
-                            setDialogState(() => isSaving = true);
-                            try {
-                              final payload = {
-                                if (isEditing) 'id': supplier['id'],
-                                'name': nameController.text.trim(),
-                                'phone_no': phoneController.text.trim(),
-                                'gst_no': gstController.text.trim(),
-                                'address': addressController.text.trim(),
-                                'is_active': supplier?['is_active'] ?? true,
-                              };
-                              final res = await ApiService.createSupplier(token, payload);
-                              if (res['success'] == true) {
-                                Navigator.pop(context, true);
-                              } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(res['message'] ?? context.tr('Failed to save supplier')),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
-                                setDialogState(() => isSaving = false);
-                              }
-                            } catch (e) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
-                              );
-                              setDialogState(() => isSaving = false);
-                            }
-                          }
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF000080),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: isSaving
-                      ? const SizedBox(
-                          height: 18,
-                          width: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
-                      : Text(context.tr('Save')),
-                ),
-              ],
-            );
-          },
-        );
-      },
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AddSupplierScreen(supplier: supplier),
+      ),
     );
 
     if (result == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.tr(isEditing ? 'Supplier updated successfully!' : 'Supplier created successfully!')),
-          backgroundColor: Colors.green,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.tr(isEditing ? 'Supplier updated successfully!' : 'Supplier added successfully!')),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
       _fetchSuppliers();
     }
   }
@@ -364,70 +227,143 @@ class _SupplierScreenState extends State<SupplierScreen> {
                                         borderRadius: BorderRadius.circular(12),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: Colors.black.withValues(alpha: 0.02),
-                                            blurRadius: 6,
+                                            color: Colors.black.withValues(alpha: 0.03),
+                                            blurRadius: 8,
                                             offset: const Offset(0, 3),
                                           )
                                         ],
                                       ),
-                                      child: ListTile(
-                                        leading: const CircleAvatar(
-                                          backgroundColor: Color(0xFFE0E0FF),
-                                          foregroundColor: Color(0xFF000080),
-                                          child: Icon(Icons.business),
-                                        ),
-                                        title: Text(
-                                          name,
-                                          style: GoogleFonts.inter(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.black87,
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          // Info row
+                                          Padding(
+                                            padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
+                                            child: Row(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                const CircleAvatar(
+                                                  backgroundColor: Color(0xFFE0E0FF),
+                                                  foregroundColor: Color(0xFF000080),
+                                                  child: Icon(Icons.business),
+                                                ),
+                                                const SizedBox(width: 12),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      Text(
+                                                        name,
+                                                        style: GoogleFonts.inter(
+                                                          fontSize: 15,
+                                                          fontWeight: FontWeight.w700,
+                                                          color: Colors.black87,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(height: 4),
+                                                      Text(
+                                                        '📞 $phone',
+                                                        style: GoogleFonts.inter(fontSize: 13, color: Colors.black54),
+                                                      ),
+                                                      if (gst.toString().isNotEmpty) ...
+                                                      [
+                                                        const SizedBox(height: 2),
+                                                        Text(
+                                                          '🧾 ${context.tr("Tax")}: $gst',
+                                                          style: GoogleFonts.inter(fontSize: 13, color: Colors.black54),
+                                                        ),
+                                                      ],
+                                                      if (address.toString().isNotEmpty) ...
+                                                      [
+                                                        const SizedBox(height: 2),
+                                                        Text(
+                                                          '📍 $address',
+                                                          style: GoogleFonts.inter(fontSize: 12, color: Colors.black38),
+                                                          maxLines: 2,
+                                                          overflow: TextOverflow.ellipsis,
+                                                        ),
+                                                      ],
+                                                      // Supplier type badge
+                                                      if (supplier['supplier_type'] != null) ...
+                                                      [
+                                                        const SizedBox(height: 6),
+                                                        Container(
+                                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                          decoration: BoxDecoration(
+                                                            color: supplier['supplier_type'] == 'credit'
+                                                                ? Colors.orange.shade50
+                                                                : supplier['supplier_type'] == 'bill_to_bill'
+                                                                    ? Colors.purple.shade50
+                                                                    : Colors.green.shade50,
+                                                            borderRadius: BorderRadius.circular(6),
+                                                            border: Border.all(
+                                                              color: supplier['supplier_type'] == 'credit'
+                                                                  ? Colors.orange.shade200
+                                                                  : supplier['supplier_type'] == 'bill_to_bill'
+                                                                      ? Colors.purple.shade200
+                                                                      : Colors.green.shade200,
+                                                            ),
+                                                          ),
+                                                          child: Text(
+                                                            supplier['supplier_type'] == 'credit'
+                                                                ? context.tr('Credit')
+                                                                : supplier['supplier_type'] == 'bill_to_bill'
+                                                                    ? context.tr('Bill to Bill')
+                                                                    : context.tr('Cash'),
+                                                            style: GoogleFonts.inter(
+                                                              fontSize: 11,
+                                                              fontWeight: FontWeight.w600,
+                                                              color: supplier['supplier_type'] == 'credit'
+                                                                  ? Colors.orange.shade700
+                                                                  : supplier['supplier_type'] == 'bill_to_bill'
+                                                                      ? Colors.purple.shade700
+                                                                      : Colors.green.shade700,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                           ),
-                                        ),
-                                        subtitle: Padding(
-                                          padding: const EdgeInsets.only(top: 4.0),
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                          const Divider(height: 1, color: Color(0xFFEEEEEE)),
+                                          // Action buttons row
+                                          Row(
                                             children: [
-                                              Text('${context.tr("Phone")}: $phone', style: GoogleFonts.inter(fontSize: 13, color: Colors.black54)),
-                                              if (gst.toString().isNotEmpty)
-                                                Text('${context.tr("GST")}: $gst', style: GoogleFonts.inter(fontSize: 13, color: Colors.black54)),
-                                              Text('${context.tr("Address")}: $address', style: GoogleFonts.inter(fontSize: 13, color: Colors.black38), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                              Expanded(
+                                                child: TextButton.icon(
+                                                  onPressed: () => _openSupplierPage(supplier: supplier),
+                                                  icon: const Icon(Icons.edit_outlined, size: 16, color: Color(0xFF000080)),
+                                                  label: Text(
+                                                    context.tr('Edit'),
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 13,
+                                                      fontWeight: FontWeight.w600,
+                                                      color: const Color(0xFF000080),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              Container(width: 1, height: 36, color: const Color(0xFFEEEEEE)),
+                                              Expanded(
+                                                child: TextButton.icon(
+                                                  onPressed: () => _deleteSupplier(supplier),
+                                                  icon: const Icon(Icons.delete_outline, size: 16, color: Colors.red),
+                                                  label: Text(
+                                                    context.tr('Delete'),
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 13,
+                                                      fontWeight: FontWeight.w600,
+                                                      color: Colors.red,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
                                             ],
                                           ),
-                                        ),
-                                        trailing: PopupMenuButton<String>(
-                                          icon: const Icon(Icons.more_vert, color: Colors.grey),
-                                          onSelected: (value) {
-                                            if (value == 'edit') {
-                                              _showSupplierFormDialog(supplier: supplier);
-                                            } else if (value == 'delete') {
-                                              _deleteSupplier(supplier);
-                                            }
-                                          },
-                                          itemBuilder: (context) => [
-                                            PopupMenuItem(
-                                              value: 'edit',
-                                              child: Row(
-                                                children: [
-                                                  const Icon(Icons.edit, size: 18, color: Colors.blue),
-                                                  const SizedBox(width: 8),
-                                                  Text(context.tr('Edit'), style: GoogleFonts.inter()),
-                                                ],
-                                              ),
-                                            ),
-                                            PopupMenuItem(
-                                              value: 'delete',
-                                              child: Row(
-                                                children: [
-                                                  const Icon(Icons.delete, size: 18, color: Colors.red),
-                                                  const SizedBox(width: 8),
-                                                  Text(context.tr('Delete'), style: GoogleFonts.inter(color: Colors.red)),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
+                                        ],
                                       ),
                                     );
                                   },
@@ -439,7 +375,7 @@ class _SupplierScreenState extends State<SupplierScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showSupplierFormDialog(),
+        onPressed: () => _openSupplierPage(),
         backgroundColor: const Color(0xFF000080),
         foregroundColor: Colors.white,
         child: const Icon(Icons.add),

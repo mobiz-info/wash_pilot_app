@@ -316,4 +316,28 @@ class CountryConfig {
 
   /// e.g. 'India', 'Saudi Arabia'
   static String get displayName => _current.displayName;
+
+  /// Formats phone number for wa.me / WhatsApp links correctly without double-prefixing.
+  static String formatPhoneForWhatsapp(String phone) {
+    return formatPhoneWithCountryCode(phone, phoneDialCode);
+  }
+
+  /// Formats a raw input mobile number with the selected dial code, avoiding duplicate country codes.
+  static String formatPhoneWithCountryCode(String input, String selectedDialCode) {
+    String cleaned = input.replaceAll(RegExp(r'\D'), '');
+    if (cleaned.isEmpty) return '';
+
+    // Known country dial codes sorted by length descending
+    final knownCodes = ['971', '966', '965', '968', '974', '973', '91', '84', '66', '44', '86', '7', '1'];
+
+    for (final code in knownCodes) {
+      if (cleaned.startsWith(code)) {
+        return cleaned; // Already has country dial code!
+      }
+    }
+
+    final cleanCode = selectedDialCode.replaceAll('+', '');
+    return '$cleanCode$cleaned';
+  }
 }
+

@@ -220,19 +220,14 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     if (localPhone.isEmpty) { _showError('Please enter phone number.'); return; }
     if (_selectedCustomerType.value == null) { _showError('Please select a customer type.'); return; }
 
-    final cleanPhoneCode = _selectedPhoneCode.value.replaceAll('+', '');
-    if (localPhone.startsWith('+')) localPhone = localPhone.replaceFirst('+', '');
-    if (localPhone.startsWith(cleanPhoneCode)) localPhone = localPhone.substring(cleanPhoneCode.length);
-    final phone = cleanPhoneCode + localPhone;
+    final phone = CountryConfig.formatPhoneWithCountryCode(localPhone, _selectedPhoneCode.value);
 
     String localWhatsapp = _whatsappController.text.trim();
     String whatsappVal = '';
     if (localWhatsapp.isNotEmpty) {
-      final cleanWhatsappCode = _selectedWhatsappCode.value.replaceAll('+', '');
-      if (localWhatsapp.startsWith('+')) localWhatsapp = localWhatsapp.replaceFirst('+', '');
-      if (localWhatsapp.startsWith(cleanWhatsappCode)) localWhatsapp = localWhatsapp.substring(cleanWhatsappCode.length);
-      whatsappVal = cleanWhatsappCode + localWhatsapp;
+      whatsappVal = CountryConfig.formatPhoneWithCountryCode(localWhatsapp, _selectedWhatsappCode.value);
     }
+
 
     // Collect valid vehicles
     final vehicles = <Map<String, dynamic>>[];

@@ -9,6 +9,25 @@ import '../config/country_config.dart';
 import '../services/api_service.dart';
 import 'invoice_view_screen.dart';
 
+// ── Oil itemized row for oil / fluid replacement ─────────────────────────────
+class _OilItemRow {
+  String? selectedOilCategory;
+  String? selectedOilProductId;
+  String? selectedOilGroupKey;
+  double? selectedOilVolume;
+  int? selectedOilRunKm;
+  double? oilPricePerLitre;
+  bool isLoadingOilPrice = false;
+  final TextEditingController oilLitresController = TextEditingController();
+
+  double get oilLitres => double.tryParse(oilLitresController.text) ?? 0.0;
+  double get lineTotal => (oilPricePerLitre ?? 0.0) * oilLitres;
+
+  void dispose() {
+    oilLitresController.dispose();
+  }
+}
+
 // ── Tyre itemized row for tyre replacement ───────────────────────────────────
 class _TyreItemRow {
   String? selectedBrandId;
@@ -74,14 +93,10 @@ class _ServiceRow {
   // ── Category-specific Inputs ──
   String get serviceCategory => service['service_type_slug']?.toString() ?? '';
 
-  // Oil Change
-  String? selectedOilProductId;
-  String? selectedOilGroupKey;
-  double? selectedOilVolume;
-  int? selectedOilRunKm;
-  double? oilPricePerLitre;
-  bool isLoadingOilPrice = false;
-  final TextEditingController oilLitresController = TextEditingController();
+  // Oil Change (Itemized List - defaults to 1 item)
+  final List<_OilItemRow> oilItems = [
+    _OilItemRow(),
+  ];
   bool oilFilterChanged = false;
   String? selectedOilFilterId;
   double oilFilterPrice = 0.0;
@@ -89,8 +104,11 @@ class _ServiceRow {
   final TextEditingController odometerController = TextEditingController();
   final TextEditingController nextOilChangeKmController = TextEditingController();
 
-  double get oilLitres => double.tryParse(oilLitresController.text) ?? 0.0;
-  double get oilTotalCharge => ((oilPricePerLitre ?? 0.0) * oilLitres) + oilFilterPrice;
+  double get oilTotalCharge {
+    if (serviceCategory != 'oil_change') return 0.0;
+    final itemsCharge = oilItems.fold(0.0, (sum, item) => sum + item.lineTotal);
+    return itemsCharge + oilFilterPrice;
+  }
 
   // Tyre Change (Itemized List - defaults to 1 item)
   final List<_TyreItemRow> tyreItems = [
@@ -117,7 +135,8 @@ class _ServiceRow {
     final odo = int.tryParse(odometerController.text) ?? 0;
     if (odo > 0) {
       if (serviceCategory == 'oil_change') {
-        final runKm = selectedOilFilterRunKm ?? selectedOilRunKm ?? 5000;
+        final firstOilRunKm = oilItems.isNotEmpty ? oilItems.first.selectedOilRunKm : null;
+        final runKm = selectedOilFilterRunKm ?? firstOilRunKm ?? 5000;
         nextOilChangeKmController.text = (odo + runKm).toString();
       }
       if (serviceCategory == 'tyre_change' && nextTyreChangeKmController.text.isEmpty) {
@@ -153,7 +172,9 @@ class _ServiceRow {
   void dispose() {
     voucherController.dispose();
     discountController.dispose();
-    oilLitresController.dispose();
+    for (final item in oilItems) {
+      item.dispose();
+    }
     odometerController.removeListener(_onOdometerChanged);
     odometerController.dispose();
     nextOilChangeKmController.dispose();
@@ -220,6 +241,17 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
   List<dynamic> _enabledCategories = [];
   String _selectedCategoryFilter = 'all';
 
+  static const List<String> _oilCategories = [
+    'Engine Oil',
+    'Brake Fluid',
+    'Power Steering Oil',
+    'Transmission Fluid',
+    'Differential Oil',
+    'Coolant',
+    'Gear Oil',
+    'Transfer Case Fluid',
+  ];
+
 
 
   // Amount collected
@@ -231,6 +263,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
 
   // Payment mode selection state
   String _selectedPaymentMode = 'digital_payments';
+
+  // Sales type (Cash = show payment mode, Credit = hide payment mode)
+  String _selectedSalesType = 'cash';
 
   double get totalServicesAmount =>
       _rows.fold(0.0, (s, r) => s + r.subtotal);
@@ -360,12 +395,23 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
 
       if (svcRes['success'] == true) {
         _allServices = svcRes['services'] ?? [];
-        _enabledCategories = svcRes['enabled_categories'] ?? [];
+        final rawEnabled = (svcRes['enabled_categories'] as List<dynamic>? ?? []);
+        // Only keep categories that have at least one priced service available for this vehicle
+        _enabledCategories = rawEnabled.where((slug) {
+          return _allServices.any((s) => s['service_type_slug'] == slug && s['has_price'] == true);
+        }).toList();
+        if (_enabledCategories.isNotEmpty) {
+          _selectedCategoryFilter = _enabledCategories.first.toString();
+        }
         final rawTaxes = svcRes['taxes'] as List<dynamic>? ?? [];
         _availableTaxes =
             rawTaxes.map((t) => Map<String, dynamic>.from(t as Map)).toList();
         _selectedTaxIds =
             _availableTaxes.map((t) => t['id'] as String).toSet();
+        // Auto-enable tax if branch has taxes configured
+        if (_availableTaxes.isNotEmpty) {
+          _applyGst = true;
+        }
       }
       if (extRes['success'] == true) {
         _availableExtras = extRes['extras'] ?? [];
@@ -446,10 +492,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
     }
   }
 
-  Future<void> _fetchOilPriceForProduct(_ServiceRow row, String oilProductId) async {
+  Future<void> _fetchOilPriceForProduct(_OilItemRow item, String oilProductId) async {
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
-    row.isLoadingOilPrice = true;
+    item.isLoadingOilPrice = true;
     _updateUi();
 
     try {
@@ -460,17 +506,17 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
         vehicleTypeId: widget.vehicle['vehicle_type_id']?.toString(),
       );
       if (!mounted) return;
-      row.isLoadingOilPrice = false;
+      item.isLoadingOilPrice = false;
       if (res['success'] == true) {
         if (res['price_per_litre'] != null && (res['price_per_litre'] as num) > 0) {
-          row.oilPricePerLitre = (res['price_per_litre'] as num).toDouble();
+          item.oilPricePerLitre = (res['price_per_litre'] as num).toDouble();
         }
       }
       _syncAmountCollected();
       _updateUi();
     } catch (_) {
       if (!mounted) return;
-      row.isLoadingOilPrice = false;
+      item.isLoadingOilPrice = false;
       _updateUi();
     }
   }
@@ -545,8 +591,8 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
 
   // ── Save Invoice ─────────────────────────────────────────────────────────
   Future<void> _saveInvoice() async {
-    if (_rows.isEmpty) {
-      _snack(context.tr('Please select at least one service'), isError: true);
+    if (_rows.isEmpty && _selectedExtras.isEmpty) {
+      _snack(context.tr('Please select at least one service or extra item'), isError: true);
       return;
     }
 
@@ -570,22 +616,39 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
 
     try {
       // Use the primary scheme from the first row that has one
-      final primaryRow =
-          _rows.firstWhere((r) => r.selectedScheme != null, orElse: () => _rows.first);
-      final primarySchemeId = primaryRow.selectedScheme?['id'];
-      final primaryVoucherId = primaryRow.validatedVoucherId;
+      final primaryRow = _rows.isEmpty
+          ? null
+          : _rows.firstWhere((r) => r.selectedScheme != null, orElse: () => _rows.first);
+      final primarySchemeId = primaryRow?.selectedScheme?['id'];
+      final primaryVoucherId = primaryRow?.validatedVoucherId;
 
       final services = [
         ..._rows.map((r) {
           Map<String, dynamic>? detail;
           if (r.serviceCategory == 'oil_change') {
-            final p = _oilProducts.firstWhere((item) => item['id'] == r.selectedOilProductId, orElse: () => <String, dynamic>{});
-            final f = _oilFilters.firstWhere((item) => item['id'] == r.selectedOilFilterId, orElse: () => <String, dynamic>{});
+            final mappedOilItems = r.oilItems.map((item) {
+              final p = _oilProducts.firstWhere((o) => o['id'] == item.selectedOilProductId, orElse: () => <String, dynamic>{});
+              return {
+                'category': item.selectedOilCategory ?? 'Engine Oil',
+                'oil_product_id': item.selectedOilProductId,
+                'oil_product': p,
+                'oil_litres_used': item.oilLitres,
+                'price_per_litre': item.oilPricePerLitre ?? 0.0,
+                'line_total': item.lineTotal,
+                'oil_run_km': item.selectedOilRunKm,
+              };
+            }).toList();
+
+            final firstItem = r.oilItems.first;
+            final firstP = _oilProducts.firstWhere((item) => item['id'] == firstItem.selectedOilProductId, orElse: () => <String, dynamic>{});
+
             detail = {
               'service_category': 'oil_change',
-              'oil_product_id': r.selectedOilProductId,
-              'oil_product': p,
-              'oil_litres_used': double.tryParse(r.oilLitresController.text),
+              'oil_items': mappedOilItems,
+              'oil_product_id': firstItem.selectedOilProductId,
+              'oil_product': firstP,
+              'oil_litres_used': firstItem.oilLitres,
+              'total_oil_charge': r.oilTotalCharge,
               'oil_filter_changed': r.oilFilterChanged,
               'oil_filter_id': r.selectedOilFilterId,
               'oil_filter_price': r.oilFilterPrice,
@@ -664,7 +727,8 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
         'total': total,
         'amount_collected':
             double.tryParse(_amountCollectedController.text) ?? 0.0,
-        'payment_mode': _selectedPaymentMode,
+        'payment_mode': _selectedSalesType == 'cash' ? _selectedPaymentMode : null,
+        'sales_type': _selectedSalesType,
         'services': services,
         if (widget.bookingId != null) 'booking_id': widget.bookingId,
         if (primarySchemeId != null) 'scheme_id': primarySchemeId,
@@ -767,18 +831,23 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                         const SizedBox(height: 16),
                         _extrasCard(),
                       ],
-                      if (_rows.isNotEmpty) ...[
+                      if (_rows.isNotEmpty || _selectedExtras.isNotEmpty) ...[
                         _additionalDiscountCard(),
                         const SizedBox(height: 16),
                         _billSummary(),
                         const SizedBox(height: 16),
                         _amountCollectedField(),
                         const SizedBox(height: 16),
-                        _paymentModeField(),
-                        const SizedBox(height: 24),
+                        _salesTypeField(),
+                        const SizedBox(height: 16),
+                        if (_selectedSalesType == 'cash') ...[
+                          _paymentModeField(),
+                          const SizedBox(height: 24),
+                        ],
                         _saveBtn(),
                         const SizedBox(height: 24),
                       ],
+
                     ],
                   ),
                 ),
@@ -904,34 +973,31 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
-                children: [
-                  _filterChip('all', 'All'),
-                  ..._enabledCategories.map((slug) {
-                    final matchingService = _allServices.firstWhere(
-                      (s) => s['service_type_slug'] == slug,
-                      orElse: () => null,
-                    );
-                    String name;
-                    if (matchingService != null && matchingService['service_type'] != null) {
-                      name = matchingService['service_type'].toString();
-                    } else {
-                      if (slug == 'washing') name = 'Washing';
-                      else if (slug == 'oil_change') name = 'Oil Change';
-                      else if (slug == 'tyre_change') name = 'Tyre Change';
-                      else if (slug == 'wheel_alignment') name = 'Alignment';
-                      else {
-                        name = slug.toString()
-                            .replaceAll('_', ' ')
-                            .split(' ')
-                            .map((word) => word.isNotEmpty
-                                ? '${word[0].toUpperCase()}${word.substring(1)}'
-                                : '')
-                            .join(' ');
-                      }
+                children: _enabledCategories.map((slug) {
+                  final matchingService = _allServices.firstWhere(
+                    (s) => s['service_type_slug'] == slug,
+                    orElse: () => null,
+                  );
+                  String name;
+                  if (matchingService != null && matchingService['service_type'] != null) {
+                    name = matchingService['service_type'].toString();
+                  } else {
+                    if (slug == 'washing') name = 'Washing';
+                    else if (slug == 'oil_change') name = 'Oil Change';
+                    else if (slug == 'tyre_change') name = 'Tyre Change';
+                    else if (slug == 'wheel_alignment') name = 'Alignment';
+                    else {
+                      name = slug.toString()
+                          .replaceAll('_', ' ')
+                          .split(' ')
+                          .map((word) => word.isNotEmpty
+                              ? '${word[0].toUpperCase()}${word.substring(1)}'
+                              : '')
+                          .join(' ');
                     }
-                    return _filterChip(slug.toString(), name);
-                  }),
-                ],
+                  }
+                  return _filterChip(slug.toString(), name);
+                }).toList(),
               ),
             ),
             const SizedBox(height: 12),
@@ -1268,15 +1334,11 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     ),
                   ],
                 ),
-                if (row.selectedOilProductId != null || row.selectedOilFilterId != null || row.oilLitresController.text.isNotEmpty)
+                if (row.oilItems.any((i) => i.selectedOilProductId != null || i.oilLitres > 0) || row.selectedOilFilterId != null)
                   GestureDetector(
                     onTap: () {
-                      row.selectedOilProductId = null;
-                      row.selectedOilGroupKey = null;
-                      row.selectedOilVolume = null;
-                      row.selectedOilRunKm = null;
-                      row.oilPricePerLitre = null;
-                      row.oilLitresController.clear();
+                      row.oilItems.clear();
+                      row.oilItems.add(_OilItemRow());
                       row.selectedOilFilterId = null;
                       row.oilFilterPrice = 0.0;
                       row.selectedOilFilterRunKm = null;
@@ -1294,224 +1356,273 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            Builder(
-              builder: (context) {
-                // Group unique products by brand/grade/name
-                final uniqueGroupKeys = <String>{};
-                for (var oil in _oilProducts) {
-                  final brand = oil['brand']?.toString() ?? '';
-                  final grade = oil['grade']?.toString() ?? '';
-                  final name = oil['name']?.toString() ?? '';
-                  final key = [brand, grade, name].where((s) => s.isNotEmpty).join(' • ');
-                  uniqueGroupKeys.add(key);
-                }
-                final sortedGroupKeys = uniqueGroupKeys.toList()..sort();
+            // Itemized Oil Rows (1 by default)
+            for (int i = 0; i < row.oilItems.length; i++) ...[
+              Builder(
+                builder: (context) {
+                  final item = row.oilItems[i];
+                  final categoryOils = _oilProducts.where((oil) {
+                    final cat = oil['category']?.toString() ?? 'Engine Oil';
+                    if (item.selectedOilCategory != null && item.selectedOilCategory!.isNotEmpty) {
+                      return cat == item.selectedOilCategory;
+                    }
+                    return true;
+                  }).toList();
 
-                List<dynamic> getVariantsForGroup(String? groupKey) {
-                  if (groupKey == null) return [];
-                  return _oilProducts.where((oil) {
+                  final uniqueGroupKeys = <String>{};
+                  for (var oil in categoryOils) {
                     final brand = oil['brand']?.toString() ?? '';
                     final grade = oil['grade']?.toString() ?? '';
                     final name = oil['name']?.toString() ?? '';
                     final key = [brand, grade, name].where((s) => s.isNotEmpty).join(' • ');
-                    return key == groupKey;
-                  }).toList();
-                }
+                    uniqueGroupKeys.add(key);
+                  }
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    InkWell(
-                      onTap: () => _showOilProductSearchPicker(row),
-                      child: InputDecorator(
-                        decoration: InputDecoration(
-                          labelText: context.tr('Select Oil Product *'),
-                          labelStyle: const TextStyle(fontSize: 14),
-                          border: const OutlineInputBorder(),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          suffixIcon: const Icon(Icons.search, color: Colors.amber),
-                        ),
-                        child: Text(
-                          row.selectedOilGroupKey ?? context.tr('Tap to search & select oil product...'),
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: row.selectedOilGroupKey != null ? FontWeight.w600 : FontWeight.normal,
-                            color: row.selectedOilGroupKey != null ? Colors.black87 : Colors.grey.shade600,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ),
-                    if (row.selectedOilGroupKey != null) ...[
-                      const SizedBox(height: 12),
-                      Builder(
-                        builder: (context) {
-                          final variants = getVariantsForGroup(row.selectedOilGroupKey);
-                          final currentVolume = row.selectedOilVolume;
-                          final hasMatch = currentVolume != null &&
-                              variants.any((v) => (v['recommended_qty_litres'] as num).toDouble() == currentVolume);
-
-                          return DropdownButtonFormField<double>(
-                            isExpanded: true,
-                            value: hasMatch ? currentVolume : null,
-                            decoration: InputDecoration(
-                              labelText: context.tr('Select Litres (Volume) *'),
-                              labelStyle: const TextStyle(fontSize: 12),
-                              border: const OutlineInputBorder(),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            ),
-                            items: variants.map<DropdownMenuItem<double>>((v) {
-                              final vol = (v['recommended_qty_litres'] as num).toDouble();
-                              return DropdownMenuItem<double>(
-                                value: vol,
-                                child: Text(
-                                  '$vol L',
-                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              );
-                            }).toList(),
-                            onChanged: (val) {
-                              final v = variants.firstWhere(
-                                  (item) => (item['recommended_qty_litres'] as num).toDouble() == val,
-                                  orElse: () => {});
-                              if (v.isNotEmpty) {
-                                row.selectedOilVolume = val;
-                                row.selectedOilProductId = v['id'];
-                                row.selectedOilRunKm = v['oil_run_km'] as int?;
-                                row.oilPricePerLitre = (v['price_per_litre'] as num).toDouble();
-                                row.oilLitresController.text = val.toString();
-                                row._onOdometerChanged();
-                                _fetchOilPriceForProduct(row, v['id']);
-                              }
-                              _syncAmountCollected();
-                              _updateUi();
-                            },
-                          );
-                        },
-                      ),
-                    ],
-                  ],
-                );
-              },
-            ),
-            if (row.isLoadingOilPrice)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8.0),
-                child: LinearProgressIndicator(),
-              ),
-            if (row.selectedOilProductId != null) ...[
-              const SizedBox(height: 8),
-              Builder(
-                builder: (context) {
-                  final p = _oilProducts.firstWhere((item) => item['id'] == row.selectedOilProductId, orElse: () => {});
-                  final brand = p['brand']?.toString() ?? '';
-                  final grade = p['grade']?.toString() ?? '';
-                  final name = p['name']?.toString() ?? '';
-                  final fuelTypes = p['fuel_types_display']?.toString() ?? '';
-                  final runDays = p['oil_run_days'] ?? 180;
+                  List<dynamic> getVariantsForGroup(String? groupKey) {
+                    if (groupKey == null) return [];
+                    return categoryOils.where((oil) {
+                      final brand = oil['brand']?.toString() ?? '';
+                      final grade = oil['grade']?.toString() ?? '';
+                      final name = oil['name']?.toString() ?? '';
+                      final key = [brand, grade, name].where((s) => s.isNotEmpty).join(' • ');
+                      return key == groupKey;
+                    }).toList();
+                  }
 
                   return Container(
-                    padding: const EdgeInsets.all(10),
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.amber.shade100.withValues(alpha: 0.6),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.amber.shade300),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.amber.shade200),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4, offset: const Offset(0, 1)),
+                      ],
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 6,
-                          children: [
-                            if (brand.isNotEmpty)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: Colors.amber.shade400),
-                                ),
-                                child: Text(
-                                  'Brand: $brand',
-                                  style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
-                                ),
-                              ),
-                            if (grade.isNotEmpty)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: Colors.blue.shade300),
-                                ),
-                                child: Text(
-                                  'Grade: $grade',
-                                  style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
-                                ),
-                              ),
-                            if (name.isNotEmpty)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: Colors.grey.shade300),
-                                ),
-                                child: Text(
-                                  'Name: $name',
-                                  style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey.shade800),
-                                ),
-                              ),
-                            if (fuelTypes.isNotEmpty)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: Colors.purple.shade300),
-                                ),
-                                child: Text(
-                                  'Fuel: $fuelTypes',
-                                  style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.purple.shade900),
-                                ),
-                              ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(color: Colors.teal.shade300),
-                              ),
-                              child: Text(
-                                'Duration: $runDays Days',
-                                style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.teal.shade900),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              '${context.tr("Rate")}: ${CountryConfig.currencySymbol}${(row.oilPricePerLitre ?? 0.0).toStringAsFixed(2)} / L',
+                              '${context.tr("Oil / Fluid Item")} #${i + 1}',
                               style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.amber.shade900),
                             ),
-                            if (row.oilLitres > 0)
-                              Text(
-                                '${context.tr("Oil Charge")}: ${CountryConfig.currencySymbol}${((row.oilPricePerLitre ?? 0.0) * row.oilLitres).toStringAsFixed(2)}',
-                                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.green.shade800),
+                            if (row.oilItems.length > 1)
+                              IconButton(
+                                constraints: const BoxConstraints(),
+                                padding: EdgeInsets.zero,
+                                icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                                onPressed: () {
+                                  item.dispose();
+                                  row.oilItems.removeAt(i);
+                                  _syncAmountCollected();
+                                  _updateUi();
+                                },
                               ),
                           ],
                         ),
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<String>(
+                          isExpanded: true,
+                          value: item.selectedOilCategory,
+                          decoration: InputDecoration(
+                            labelText: context.tr('Select Category *'),
+                            labelStyle: const TextStyle(fontSize: 12),
+                            border: const OutlineInputBorder(),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          ),
+                          items: _oilCategories.map<DropdownMenuItem<String>>((cat) {
+                            return DropdownMenuItem<String>(
+                              value: cat,
+                              child: Text(
+                                context.tr(cat),
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (cat) {
+                            item.selectedOilCategory = cat;
+                            item.selectedOilGroupKey = null;
+                            item.selectedOilVolume = null;
+                            item.selectedOilProductId = null;
+                            item.selectedOilRunKm = null;
+                            item.oilPricePerLitre = null;
+                            item.oilLitresController.clear();
+                            _syncAmountCollected();
+                            _updateUi();
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                        InkWell(
+                          onTap: () => _showOilProductSearchPicker(item),
+                          child: InputDecorator(
+                            decoration: InputDecoration(
+                              labelText: context.tr('Select Oil Product *'),
+                              labelStyle: const TextStyle(fontSize: 12),
+                              border: const OutlineInputBorder(),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              suffixIcon: const Icon(Icons.search, color: Colors.amber, size: 20),
+                            ),
+                            child: Text(
+                              item.selectedOilGroupKey ?? context.tr('Tap to search & select oil product...'),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: item.selectedOilGroupKey != null ? FontWeight.w600 : FontWeight.normal,
+                                color: item.selectedOilGroupKey != null ? Colors.black87 : Colors.grey.shade600,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                        if (item.selectedOilGroupKey != null) ...[
+                          const SizedBox(height: 8),
+                          Builder(
+                            builder: (context) {
+                              final variants = getVariantsForGroup(item.selectedOilGroupKey);
+                              final currentVolume = item.selectedOilVolume;
+                              final hasMatch = currentVolume != null &&
+                                  variants.any((v) => (v['recommended_qty_litres'] as num).toDouble() == currentVolume);
+
+                              return DropdownButtonFormField<double>(
+                                isExpanded: true,
+                                value: hasMatch ? currentVolume : null,
+                                decoration: InputDecoration(
+                                  labelText: context.tr('Select Litres (Volume) *'),
+                                  labelStyle: const TextStyle(fontSize: 12),
+                                  border: const OutlineInputBorder(),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                ),
+                                items: variants.map<DropdownMenuItem<double>>((v) {
+                                  final vol = (v['recommended_qty_litres'] as num).toDouble();
+                                  return DropdownMenuItem<double>(
+                                    value: vol,
+                                    child: Text(
+                                      '$vol L',
+                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (val) {
+                                  final v = variants.firstWhere(
+                                      (o) => (o['recommended_qty_litres'] as num).toDouble() == val,
+                                      orElse: () => {});
+                                  if (v.isNotEmpty) {
+                                    item.selectedOilVolume = val;
+                                    item.selectedOilProductId = v['id'];
+                                    item.selectedOilRunKm = v['oil_run_km'] as int?;
+                                    item.oilPricePerLitre = (v['price_per_litre'] as num).toDouble();
+                                    item.oilLitresController.text = val.toString();
+                                    row._onOdometerChanged();
+                                    _fetchOilPriceForProduct(item, v['id']);
+                                  }
+                                  _syncAmountCollected();
+                                  _updateUi();
+                                },
+                              );
+                            },
+                          ),
+                        ],
+                        if (item.isLoadingOilPrice)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 6.0),
+                            child: LinearProgressIndicator(),
+                          ),
+                        if (item.selectedOilProductId != null) ...[
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              SizedBox(
+                                width: 100,
+                                child: TextFormField(
+                                  controller: item.oilLitresController,
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  decoration: InputDecoration(
+                                    labelText: context.tr('Litres Used *'),
+                                    labelStyle: const TextStyle(fontSize: 12),
+                                    border: const OutlineInputBorder(),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  ),
+                                  onChanged: (_) {
+                                    _syncAmountCollected();
+                                    _updateUi();
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber.shade50,
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: Colors.amber.shade200),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(context.tr('Rate / L'), style: TextStyle(fontSize: 10, color: Colors.amber.shade800)),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '$currencySymbol${(item.oilPricePerLitre ?? 0.0).toStringAsFixed(2)}',
+                                        style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.shade50,
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: Colors.green.shade200),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(context.tr('Line Total'), style: TextStyle(fontSize: 10, color: Colors.green.shade800)),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '$currencySymbol${item.lineTotal.toStringAsFixed(2)}',
+                                        style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green.shade900),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   );
                 },
               ),
             ],
+
+            // Add Another Oil / Fluid Button
+            OutlinedButton.icon(
+              onPressed: () {
+                row.oilItems.add(_OilItemRow());
+                _syncAmountCollected();
+                _updateUi();
+              },
+              icon: const Icon(Icons.add_circle_outline, size: 18, color: Colors.amber),
+              label: Text(
+                context.tr('+ Add Another Oil / Fluid Item'),
+                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.amber.shade900),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: Colors.amber.shade400),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
             const SizedBox(height: 10),
             Row(
               children: [
@@ -2421,26 +2532,28 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           for (final row in _rows) ...[
             _summaryRow(context.tr(row.serviceName), '$currencySymbol${row.rate.toStringAsFixed(2)}'),
             if (row.serviceCategory == 'oil_change') ...[
-              Builder(
-                builder: (context) {
-                  final oilCharge = (row.oilPricePerLitre ?? 0.0) * row.oilLitres;
-                  if (oilCharge <= 0) return const SizedBox.shrink();
-                  final p = _oilProducts.firstWhere((item) => item['id'] == row.selectedOilProductId, orElse: () => {});
-                  final brand = p['brand']?.toString() ?? '';
-                  final grade = p['grade']?.toString() ?? '';
-                  final oilLabel = brand.isNotEmpty
-                      ? '  + Oil ($brand $grade ${row.oilLitres}L)'
-                      : '  + Oil (${row.oilLitres}L)';
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 4.0),
-                    child: _summaryRow(
-                      oilLabel,
-                      '+$currencySymbol${oilCharge.toStringAsFixed(2)}',
-                      valueColor: Colors.amber.shade900,
-                    ),
-                  );
-                },
-              ),
+              for (final item in row.oilItems) ...[
+                Builder(
+                  builder: (context) {
+                    if (item.lineTotal <= 0) return const SizedBox.shrink();
+                    final p = _oilProducts.firstWhere((o) => o['id'] == item.selectedOilProductId, orElse: () => {});
+                    final brand = p['brand']?.toString() ?? '';
+                    final grade = p['grade']?.toString() ?? '';
+                    final cat = item.selectedOilCategory ?? 'Oil';
+                    final oilLabel = brand.isNotEmpty
+                        ? '  + $cat ($brand $grade ${item.oilLitres}L)'
+                        : '  + $cat (${item.oilLitres}L)';
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 4.0),
+                      child: _summaryRow(
+                        oilLabel,
+                        '+$currencySymbol${item.lineTotal.toStringAsFixed(2)}',
+                        valueColor: Colors.amber.shade900,
+                      ),
+                    );
+                  },
+                ),
+              ],
               Builder(
                 builder: (context) {
                   if (!row.oilFilterChanged || row.oilFilterPrice <= 0) return const SizedBox.shrink();
@@ -2684,6 +2797,71 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
     );
   }
 
+  // ── Sales Type selector ────────────────────────────────────────────────────
+  Widget _salesTypeField() {
+    return _card(
+      title: 'Sales Type',
+      child: Row(
+        children: [
+          _salesTypeOption('cash', 'Cash', Icons.money),
+          _salesTypeOption('credit', 'Credit', Icons.credit_score),
+        ],
+      ),
+    );
+  }
+
+  Widget _salesTypeOption(String type, String label, IconData icon) {
+    final isSelected = _selectedSalesType == type;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          _selectedSalesType = type;
+          if (type == 'credit') {
+            // Credit: amount collected must be 0
+            _amountCollectedController.text = '0';
+          } else {
+            // Cash: restore amount collected to invoice total
+            _syncAmountCollected();
+          }
+          _updateUi();
+        },
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? const Color(0xFF000080).withValues(alpha: 0.08)
+                : Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isSelected ? const Color(0xFF000080) : Colors.grey.shade200,
+              width: isSelected ? 2 : 1,
+            ),
+          ),
+          child: Column(
+            children: [
+              Icon(
+                icon,
+                color: isSelected ? const Color(0xFF000080) : Colors.grey.shade600,
+                size: 20,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                context.tr(label),
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  color: isSelected ? const Color(0xFF000080) : Colors.grey.shade700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   // ── Payment Mode selector ──────────────────────────────────────────────────
   Widget _paymentModeField() {
     return _card(
@@ -2797,6 +2975,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
             ..._selectedExtras.map((extraMap) {
               final extra = extraMap['extra'] as Map<String, dynamic>;
               final name = extra['name'] as String;
+              final categoryName = (extra['service_type_name'] ?? '').toString();
               final controller = extraMap['priceController'] as TextEditingController;
 
               return Container(
@@ -2810,13 +2989,36 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        name,
-                        style: GoogleFonts.inter(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: const Color(0xFF1e293b),
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name,
+                            style: GoogleFonts.inter(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: const Color(0xFF1e293b),
+                            ),
+                          ),
+                          if (categoryName.isNotEmpty) ...[
+                            const SizedBox(height: 3),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF000080).withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                categoryName,
+                                style: GoogleFonts.inter(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF000080),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -2882,6 +3084,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
     }
 
     final searchController = TextEditingController();
+    String modalCategoryFilter = 'all';
 
     showModalBottomSheet(
       context: context,
@@ -2893,10 +3096,30 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             final query = searchController.text.trim().toLowerCase();
+
+            // Extract unique categories available in remainingExtras
+            final Map<String, String> categoryNames = {};
+            for (final ext in remainingExtras) {
+              final id = ext['service_type_id']?.toString() ?? 'general';
+              final name = (ext['service_type_name']?.toString() ?? '').trim();
+              categoryNames[id] = name.isNotEmpty ? name : 'General';
+            }
+
             final filteredExtras = remainingExtras.where((ext) {
               final name = (ext['name']?.toString() ?? '').toLowerCase();
-              return name.contains(query);
+              final catId = ext['service_type_id']?.toString() ?? 'general';
+              final matchesQuery = name.contains(query);
+              final matchesCategory = modalCategoryFilter == 'all' || catId == modalCategoryFilter;
+              return matchesQuery && matchesCategory;
             }).toList();
+
+            // Group filtered extras by category name
+            final Map<String, List<dynamic>> grouped = {};
+            for (final ext in filteredExtras) {
+              final cat = (ext['service_type_name']?.toString() ?? '').trim();
+              final key = cat.isNotEmpty ? cat : 'General';
+              grouped.putIfAbsent(key, () => []).add(ext);
+            }
 
             return Container(
               height: MediaQuery.of(context).size.height * 0.75,
@@ -2946,7 +3169,56 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     ),
                     onChanged: (_) => setModalState(() {}),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
+                  if (categoryNames.length > 1) ...[
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          ChoiceChip(
+                            label: Text(
+                              context.tr('All'),
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: modalCategoryFilter == 'all' ? Colors.white : const Color(0xFF1E293B),
+                                fontWeight: modalCategoryFilter == 'all' ? FontWeight.bold : FontWeight.normal,
+                              ),
+                            ),
+                            selected: modalCategoryFilter == 'all',
+                            selectedColor: const Color(0xFF000080),
+                            backgroundColor: const Color(0xFFF1F5F9),
+                            onSelected: (selected) {
+                              if (selected) setModalState(() => modalCategoryFilter = 'all');
+                            },
+                          ),
+                          const SizedBox(width: 6),
+                          ...categoryNames.entries.map((entry) {
+                            final isSel = modalCategoryFilter == entry.key;
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 6),
+                              child: ChoiceChip(
+                                label: Text(
+                                  entry.value,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    color: isSel ? Colors.white : const Color(0xFF1E293B),
+                                    fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
+                                  ),
+                                ),
+                                selected: isSel,
+                                selectedColor: const Color(0xFF000080),
+                                backgroundColor: const Color(0xFFF1F5F9),
+                                onSelected: (selected) {
+                                  if (selected) setModalState(() => modalCategoryFilter = entry.key);
+                                },
+                              ),
+                            );
+                          }),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
                   Expanded(
                     child: filteredExtras.isEmpty
                         ? Center(
@@ -2955,42 +3227,75 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                               style: TextStyle(color: Colors.grey.shade600),
                             ),
                           )
-                        : ListView.separated(
-                            itemCount: filteredExtras.length,
-                            separatorBuilder: (_, __) => const Divider(height: 1),
-                            itemBuilder: (context, index) {
-                              final ext = filteredExtras[index];
-                              return ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: const Color(0xFF000080).withValues(alpha: 0.08),
-                                  child: const Icon(Icons.stars, color: Color(0xFF000080), size: 18),
-                                ),
-                                title: Text(
-                                  ext['name'] ?? '',
-                                  style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14),
-                                ),
-                                trailing: Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF000080).withValues(alpha: 0.1),
-                                    shape: BoxShape.circle,
+                        : ListView.builder(
+                            itemCount: grouped.keys.length,
+                            itemBuilder: (context, catIdx) {
+                              final catName = grouped.keys.elementAt(catIdx);
+                              final catItems = grouped[catName]!;
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    margin: const EdgeInsets.only(top: 8, bottom: 4),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF000080).withValues(alpha: 0.06),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      catName,
+                                      style: GoogleFonts.inter(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                        color: const Color(0xFF000080),
+                                      ),
+                                    ),
                                   ),
-                                  child: const Icon(Icons.add, color: Color(0xFF000080), size: 16),
-                                ),
-                                onTap: () {
-                                  Navigator.pop(ctx);
-                                  final controller = TextEditingController(text: '0');
-                                  controller.addListener(() {
-                                    _syncAmountCollected();
-                                    _updateUi();
-                                  });
-                                  _selectedExtras.add({
-                                    'extra': ext,
-                                    'priceController': controller,
-                                  });
-                                  _syncAmountCollected();
-                                  _updateUi();
-                                },
+                                  ...catItems.map((ext) {
+                                    final name = ext['name'] ?? '';
+                                    final catLabel = ext['service_type_name'] ?? '';
+                                    return ListTile(
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                      leading: CircleAvatar(
+                                        backgroundColor: const Color(0xFF000080).withValues(alpha: 0.08),
+                                        child: const Icon(Icons.stars, color: Color(0xFF000080), size: 18),
+                                      ),
+                                      title: Text(
+                                        name,
+                                        style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14),
+                                      ),
+                                      subtitle: catLabel.isNotEmpty
+                                          ? Text(
+                                              catLabel,
+                                              style: GoogleFonts.inter(fontSize: 11, color: Colors.grey.shade600),
+                                            )
+                                          : null,
+                                      trailing: Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF000080).withValues(alpha: 0.1),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(Icons.add, color: Color(0xFF000080), size: 16),
+                                      ),
+                                      onTap: () {
+                                        Navigator.pop(ctx);
+                                        final controller = TextEditingController(text: '0');
+                                        controller.addListener(() {
+                                          _syncAmountCollected();
+                                          _updateUi();
+                                        });
+                                        _selectedExtras.add({
+                                          'extra': ext,
+                                          'priceController': controller,
+                                        });
+                                        _syncAmountCollected();
+                                        _updateUi();
+                                      },
+                                    );
+                                  }),
+                                ],
                               );
                             },
                           ),
@@ -3005,28 +3310,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
   }
 
 
-  void _showOilProductSearchPicker(_ServiceRow row) {
-    final uniqueGroupKeys = <String>{};
-    for (var oil in _oilProducts) {
-      final brand = oil['brand']?.toString() ?? '';
-      final grade = oil['grade']?.toString() ?? '';
-      final name = oil['name']?.toString() ?? '';
-      final key = [brand, grade, name].where((s) => s.isNotEmpty).join(' • ');
-      uniqueGroupKeys.add(key);
-    }
-    final sortedGroupKeys = uniqueGroupKeys.toList()..sort();
 
-    List<dynamic> getVariantsForGroup(String? groupKey) {
-      if (groupKey == null) return [];
-      return _oilProducts.where((oil) {
-        final brand = oil['brand']?.toString() ?? '';
-        final grade = oil['grade']?.toString() ?? '';
-        final name = oil['name']?.toString() ?? '';
-        final key = [brand, grade, name].where((s) => s.isNotEmpty).join(' • ');
-        return key == groupKey;
-      }).toList();
-    }
-
+  void _showOilProductSearchPicker(_OilItemRow item) {
+    String selectedCategory = item.selectedOilCategory ?? 'Engine Oil';
     final searchController = TextEditingController();
 
     showModalBottomSheet(
@@ -3038,11 +3324,38 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setModalState) {
+            // Filter products by selected category
+            final categoryOils = _oilProducts.where((oil) {
+              final cat = oil['category']?.toString() ?? 'Engine Oil';
+              return cat == selectedCategory;
+            }).toList();
+
+            final uniqueGroupKeys = <String>{};
+            for (var oil in categoryOils) {
+              final brand = oil['brand']?.toString() ?? '';
+              final grade = oil['grade']?.toString() ?? '';
+              final name = oil['name']?.toString() ?? '';
+              final key = [brand, grade, name].where((s) => s.isNotEmpty).join(' • ');
+              uniqueGroupKeys.add(key);
+            }
+            final sortedGroupKeys = uniqueGroupKeys.toList()..sort();
+
+            List<dynamic> getVariantsForGroup(String? groupKey) {
+              if (groupKey == null) return [];
+              return categoryOils.where((oil) {
+                final brand = oil['brand']?.toString() ?? '';
+                final grade = oil['grade']?.toString() ?? '';
+                final name = oil['name']?.toString() ?? '';
+                final key = [brand, grade, name].where((s) => s.isNotEmpty).join(' • ');
+                return key == groupKey;
+              }).toList();
+            }
+
             final query = searchController.text.trim().toLowerCase();
             final filteredKeys = sortedGroupKeys.where((k) => k.toLowerCase().contains(query)).toList();
 
             return Container(
-              height: MediaQuery.of(context).size.height * 0.75,
+              height: MediaQuery.of(context).size.height * 0.8,
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
@@ -3050,7 +3363,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        context.tr('Select Oil Product'),
+                        context.tr('Select Product'),
                         style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                       IconButton(
@@ -3058,6 +3371,40 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                         onPressed: () => Navigator.pop(ctx),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 6),
+                  // Category Filter Chips
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: _oilCategories.map((cat) {
+                        final isSel = selectedCategory == cat;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: ChoiceChip(
+                            label: Text(
+                              context.tr(cat),
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
+                                color: isSel ? Colors.white : Colors.black87,
+                              ),
+                            ),
+                            selected: isSel,
+                            selectedColor: const Color(0xFF000080),
+                            backgroundColor: Colors.grey.shade100,
+                            onSelected: (val) {
+                              if (val) {
+                                setModalState(() {
+                                  selectedCategory = cat;
+                                  item.selectedOilCategory = cat;
+                                });
+                              }
+                            },
+                          ),
+                        );
+                      }).toList(),
+                    ),
                   ),
                   const SizedBox(height: 8),
                   TextField(
@@ -3084,9 +3431,13 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                   Expanded(
                     child: filteredKeys.isEmpty
                         ? Center(
-                            child: Text(
-                              context.tr('No oil products found'),
-                              style: TextStyle(color: Colors.grey.shade600),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Text(
+                                context.tr('No products found in ${context.tr(selectedCategory)}'),
+                                style: TextStyle(color: Colors.grey.shade600),
+                                textAlign: TextAlign.center,
+                              ),
                             ),
                           )
                         : ListView.separated(
@@ -3094,18 +3445,18 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                             separatorBuilder: (_, __) => const Divider(height: 1),
                             itemBuilder: (_, index) {
                               final key = filteredKeys[index];
-                              final isSelected = row.selectedOilGroupKey == key;
+                              final isSelected = item.selectedOilGroupKey == key;
                               final variants = getVariantsForGroup(key);
 
                               return ListTile(
                                 selected: isSelected,
-                                selectedTileColor: Colors.amber.shade50,
+                                selectedTileColor: const Color(0xFF000080).withValues(alpha: 0.08),
                                 leading: CircleAvatar(
-                                  backgroundColor: isSelected ? Colors.amber.shade700 : Colors.grey.shade200,
+                                  backgroundColor: isSelected ? const Color(0xFF000080) : Colors.grey.shade200,
                                   child: Icon(
                                     Icons.oil_barrel,
                                     size: 18,
-                                    color: isSelected ? Colors.white : Colors.amber.shade800,
+                                    color: isSelected ? Colors.white : const Color(0xFF000080),
                                   ),
                                 ),
                                 title: Text(
@@ -3120,27 +3471,27 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                                   style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                                 ),
                                 trailing: isSelected
-                                    ? const Icon(Icons.check_circle, color: Colors.amber)
+                                    ? const Icon(Icons.check_circle, color: Color(0xFF000080))
                                     : const Icon(Icons.chevron_right, size: 18),
                                 onTap: () {
                                   Navigator.pop(ctx);
-                                  row.selectedOilGroupKey = key;
-                                  row.selectedOilVolume = null;
-                                  row.selectedOilProductId = null;
-                                  row.selectedOilRunKm = null;
-                                  row.oilPricePerLitre = null;
-                                  row.oilLitresController.clear();
+                                  item.selectedOilCategory = selectedCategory;
+                                  item.selectedOilGroupKey = key;
+                                  item.selectedOilVolume = null;
+                                  item.selectedOilProductId = null;
+                                  item.selectedOilRunKm = null;
+                                  item.oilPricePerLitre = null;
+                                  item.oilLitresController.clear();
 
                                   if (variants.length == 1) {
                                     final v = variants.first;
                                     final vol = (v['recommended_qty_litres'] as num).toDouble();
-                                    row.selectedOilVolume = vol;
-                                    row.selectedOilProductId = v['id'];
-                                    row.selectedOilRunKm = v['oil_run_km'] as int?;
-                                    row.oilPricePerLitre = (v['price_per_litre'] as num).toDouble();
-                                    row.oilLitresController.text = vol.toString();
-                                    row._onOdometerChanged();
-                                    _fetchOilPriceForProduct(row, v['id']);
+                                    item.selectedOilVolume = vol;
+                                    item.selectedOilProductId = v['id'];
+                                    item.selectedOilRunKm = v['oil_run_km'] as int?;
+                                    item.oilPricePerLitre = (v['price_per_litre'] as num).toDouble();
+                                    item.oilLitresController.text = vol.toString();
+                                    _fetchOilPriceForProduct(item, v['id']);
                                   }
                                   _syncAmountCollected();
                                   _updateUi();

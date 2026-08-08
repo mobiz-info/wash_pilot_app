@@ -8,6 +8,7 @@ import 'dart:async';
 
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
+import '../config/country_config.dart';
 import 'invoice_create_screen.dart';
 import 'vehicle_service_history_screen.dart';
 
@@ -202,8 +203,8 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
           );
         } else {
           final message = "Hello $customerName, your vehicle ($vehicleNumber) is ready for pickup! Thank you for choosing our service.";
-          String cleanedPhone = phone.replaceAll(RegExp(r'\D'), '');
-          if (cleanedPhone.length == 10) cleanedPhone = '91$cleanedPhone';
+          final String cleanedPhone = CountryConfig.formatPhoneForWhatsapp(phone);
+
           if (cleanedPhone.isNotEmpty) {
             final whatsappUrl = Uri.parse("https://wa.me/$cleanedPhone?text=${Uri.encodeComponent(message)}");
             await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);

@@ -145,8 +145,7 @@ class NewJobScreen extends StatelessWidget {
             isVehicle: true,
           );
         } else {
-          final cleanCode = _selectedCountryCodeNotifier.value.replaceAll('+', '');
-          final formattedMobile = queryText.startsWith(cleanCode) ? queryText : '$cleanCode$queryText';
+          final formattedMobile = CountryConfig.formatPhoneWithCountryCode(queryText, _selectedCountryCodeNotifier.value);
           context.read<CustomerProvider>().searchCustomer(
             formattedMobile,
             token,
@@ -434,9 +433,9 @@ class NewJobScreen extends StatelessWidget {
                             const SizedBox(height: 16),
                             ElevatedButton.icon(
                               onPressed: () async {
-                                final rawMobile = _mobileController.text.trim();
-                                final cleanCode = _selectedCountryCodeNotifier.value.replaceAll('+', '');
-                                final formattedMobile = rawMobile.startsWith(cleanCode) ? rawMobile : '$cleanCode$rawMobile';
+                                 final rawMobile = _mobileController.text.trim();
+                                 final formattedMobile = CountryConfig.formatPhoneWithCountryCode(rawMobile, _selectedCountryCodeNotifier.value);
+
                                 final result = await Navigator.push(
                                   context,
                                   MaterialPageRoute(
@@ -987,10 +986,8 @@ class NewJobScreen extends StatelessWidget {
       } else {
         final String messageText = res['message_text']?.toString() ?? '';
 
-        String cleanedPhone = phone.replaceAll(RegExp(r'\D'), '');
-        if (cleanedPhone.length == 10) {
-          cleanedPhone = '91$cleanedPhone';
-        }
+        final String cleanedPhone = CountryConfig.formatPhoneForWhatsapp(phone);
+
 
         final whatsappUrl = Uri.parse(
           "https://wa.me/$cleanedPhone?text=${Uri.encodeComponent(messageText)}"

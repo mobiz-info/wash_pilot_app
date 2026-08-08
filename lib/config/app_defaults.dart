@@ -16,4 +16,4 @@ import 'country_config.dart';
 const CountryCode kDefaultCountry = CountryCode.india;
 
 /// App Version name extracted from pubspec.yaml
-const String kAppVersion = '1.4.2';
+const String kAppVersion = '1.4.4';

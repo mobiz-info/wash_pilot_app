@@ -72,6 +72,69 @@ class _ExtrasScreenState extends State<ExtrasScreen> {
     }
   }
 
+  Future<void> _deleteExtraItem(Map<String, dynamic> item) async {
+    final auth = context.read<AuthProvider>();
+    final token = auth.token;
+    if (token == null) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          context.tr('Delete Extra Item'),
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.red),
+        ),
+        content: Text(
+          '${context.tr('Are you sure you want to delete')} "${item['name']}"?',
+          style: GoogleFonts.inter(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(context.tr('Cancel'), style: GoogleFonts.inter(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: Text(context.tr('Delete')),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      final messenger = ScaffoldMessenger.of(context);
+      try {
+        final res = await ApiService.deleteExtra(token, item['id'].toString());
+        if (res['success'] == true) {
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(res['message'] ?? context.tr('Extra item deleted successfully')),
+              backgroundColor: Colors.green,
+            ),
+          );
+          _fetchExtras();
+        } else {
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(res['message'] ?? context.tr('Failed to delete extra item')),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } catch (e) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   Future<void> _addNewExtraItem() async {
     final auth = context.read<AuthProvider>();
     final token = auth.token;
@@ -79,6 +142,17 @@ class _ExtrasScreenState extends State<ExtrasScreen> {
 
     final nameController = TextEditingController();
     final formKey = GlobalKey<FormState>();
+    String? selectedCategoryId;
+    List<dynamic> categories = [];
+    bool isLoadingCategories = true;
+
+    try {
+      final catRes = await ApiService.getServiceCategories(token);
+      if (catRes['success'] == true) {
+        categories = catRes['categories'] ?? [];
+      }
+    } catch (_) {}
+    isLoadingCategories = false;
 
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
@@ -97,6 +171,33 @@ class _ExtrasScreenState extends State<ExtrasScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    DropdownButtonFormField<String>(
+                      value: selectedCategoryId,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: context.tr('Select Service Category'),
+                        labelStyle: GoogleFonts.inter(),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      items: [
+                        DropdownMenuItem<String>(
+                          value: null,
+                          child: Text(context.tr('None / General'), style: GoogleFonts.inter(color: Colors.grey)),
+                        ),
+                        ...categories.map((c) {
+                          return DropdownMenuItem<String>(
+                            value: c['id'].toString(),
+                            child: Text(c['name'].toString(), style: GoogleFonts.inter()),
+                          );
+                        }),
+                      ],
+                      onChanged: (val) {
+                        setDialogState(() {
+                          selectedCategoryId = val;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
                     TextFormField(
                       controller: nameController,
                       autofocus: true,
@@ -133,6 +234,7 @@ class _ExtrasScreenState extends State<ExtrasScreen> {
                               final res = await ApiService.createExtra(
                                 token,
                                 nameController.text.trim(),
+                                serviceTypeId: selectedCategoryId,
                               );
                               if (res['success'] == true && res['extra'] != null) {
                                 nav.pop(Map<String, dynamic>.from(res['extra']));
@@ -259,6 +361,7 @@ class _ExtrasScreenState extends State<ExtrasScreen> {
                                   itemBuilder: (ctx, i) {
                                     final item = Map<String, dynamic>.from(filtered[i] as Map);
                                     final name = item['name'] ?? '';
+                                    final categoryName = item['service_type_name'] ?? '';
                                     return Container(
                                       margin: const EdgeInsets.only(bottom: 10),
                                       decoration: BoxDecoration(
@@ -273,6 +376,13 @@ class _ExtrasScreenState extends State<ExtrasScreen> {
                                           child: Icon(Icons.more_horiz_outlined),
                                         ),
                                         title: Text(name, style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black87)),
+                                        subtitle: categoryName.isNotEmpty
+                                            ? Text(categoryName, style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade600))
+                                            : null,
+                                        trailing: IconButton(
+                                          icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                          onPressed: () => _deleteExtraItem(item),
+                                        ),
                                       ),
                                     );
                                   },
@@ -292,3 +402,4 @@ class _ExtrasScreenState extends State<ExtrasScreen> {
     );
   }
 }
+

@@ -35,6 +35,8 @@ import 'customer_collection_screen.dart';
 import '../services/api_service.dart';
 import 'oil_stock_screen.dart';
 import 'stock_management_screen.dart';
+import 'quotation_search_screen.dart';
+
 
 
 class MenuScreen extends StatefulWidget {
@@ -60,6 +62,11 @@ class _MenuScreenState extends State<MenuScreen> {
       'title': 'New Job',
       'icon': Icons.add_circle_outline,
       'color': Color(0xFF3B82F6),
+    },
+    {
+      'title': 'Quotation',
+      'icon': Icons.request_quote_outlined,
+      'color': Color(0xFF0284C7),
     },
     {
       'title': 'Book Now',
@@ -138,6 +145,11 @@ class _MenuScreenState extends State<MenuScreen> {
       'title': 'New Job',
       'icon': Icons.add_circle_outline,
       'color': Color(0xFF3B82F6),
+    },
+    {
+      'title': 'Quotation',
+      'icon': Icons.request_quote_outlined,
+      'color': Color(0xFF0284C7),
     },
     {
       'title': 'Book Now',
@@ -239,6 +251,7 @@ class _MenuScreenState extends State<MenuScreen> {
   void _navigate(BuildContext context, String title) {
     final routes = <String, Widget>{
       'New Job': NewJobScreen(),
+      'Quotation': const QuotationSearchScreen(),
       'Book Now': BookNowScreen(),
       'Bookings': const BookingsListScreen(),
       'Bill': BillsScreen(),
@@ -271,6 +284,7 @@ class _MenuScreenState extends State<MenuScreen> {
       Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
     }
   }
+
 
   // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -357,6 +371,13 @@ class _MenuScreenState extends State<MenuScreen> {
                       'Dashboard',
                       () => Navigator.pop(context),
                     ),
+                    _drawerItem(Icons.request_quote_outlined, 'Quotation', () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const QuotationSearchScreen()),
+                      );
+                    }),
                     if (!isCompany) ...[
                       _drawerItem(Icons.receipt_long_outlined, 'Bills', () {
                         Navigator.pop(context);

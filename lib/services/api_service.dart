@@ -1700,8 +1700,9 @@ class ApiService {
 
   static Future<Map<String, dynamic>> createExtra(
     String token,
-    String name,
-  ) async {
+    String name, {
+    String? serviceTypeId,
+  }) async {
     final response = await http.post(
       Uri.parse('$baseUrl/extras/create/'),
       headers: {
@@ -1710,6 +1711,7 @@ class ApiService {
       },
       body: jsonEncode({
         'name': name,
+        if (serviceTypeId != null && serviceTypeId.isNotEmpty) 'service_type_id': serviceTypeId,
       }),
     );
     if (response.statusCode == 200 || response.statusCode == 400) {
@@ -1718,6 +1720,40 @@ class ApiService {
       throw Exception('Failed to create extra item.');
     }
   }
+
+  static Future<Map<String, dynamic>> deleteExtra(
+    String token,
+    String id,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/extras/delete/$id/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200 || response.statusCode == 400 || response.statusCode == 403) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to delete extra item.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getServiceCategories(String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/service-categories/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load service categories.');
+    }
+  }
+
 
   static Future<Map<String, dynamic>> getExpenseHeadWiseReport(
     String token,
@@ -2335,6 +2371,41 @@ class ApiService {
     }
     throw Exception('Failed to update tyre stock.');
   }
+
+  /// Create a new quotation.
+  static Future<Map<String, dynamic>> createQuotation(
+    Map<String, dynamic> data,
+    String token,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/quotation/create/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(data),
+    );
+    if (response.statusCode == 200 || response.statusCode == 400) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to create quotation (Status: ${response.statusCode}).');
+  }
+
+  /// Get list of quotations.
+  static Future<Map<String, dynamic>> getQuotationList(String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/quotation/list/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to load quotation list.');
+  }
 }
+
 
 

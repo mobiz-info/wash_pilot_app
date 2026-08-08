@@ -21,8 +21,9 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
   final ValueNotifier<List<dynamic>> _expensesNotifier = ValueNotifier([]);
   final ValueNotifier<List<dynamic>> _branchesNotifier = ValueNotifier([]);
   final ValueNotifier<String?> _selectedFilterBranchIdNotifier = ValueNotifier(null);
-  final ValueNotifier<DateTime?> _fromDateNotifier = ValueNotifier(null);
-  final ValueNotifier<DateTime?> _toDateNotifier = ValueNotifier(null);
+  final ValueNotifier<DateTime?> _fromDateNotifier = ValueNotifier(DateTime.now());
+  final ValueNotifier<DateTime?> _toDateNotifier = ValueNotifier(DateTime.now());
+
   final TextEditingController _searchController = TextEditingController();
 
   @override

@@ -18,16 +18,40 @@ import '../config/country_config.dart';
 import '../services/api_service.dart';
 import 'package:http/http.dart' as http;
 
-class BillsScreen extends StatelessWidget {
-  BillsScreen({super.key}) {
+class BillsScreen extends StatefulWidget {
+  const BillsScreen({super.key});
+
+  @override
+  State<BillsScreen> createState() => _BillsScreenState();
+}
+
+class _BillsScreenState extends State<BillsScreen> {
+  late final ValueNotifier<DateTime?> _fromDateNotifier;
+  late final ValueNotifier<DateTime?> _toDateNotifier;
+  late final ValueNotifier<String?> _paymentModeNotifier;
+
+  @override
+  void initState() {
+    super.initState();
     final now = DateTime.now();
-    _fromDateNotifier.value = DateTime(now.year, now.month, now.day);
-    _toDateNotifier.value = DateTime(now.year, now.month, now.day);
+    final today = DateTime(now.year, now.month, now.day);
+    _fromDateNotifier = ValueNotifier(today);
+    _toDateNotifier = ValueNotifier(today);
+    _paymentModeNotifier = ValueNotifier(null);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchInvoices(context);
+    });
   }
 
-  final ValueNotifier<DateTime?> _fromDateNotifier = ValueNotifier(null);
-  final ValueNotifier<DateTime?> _toDateNotifier = ValueNotifier(null);
-  final ValueNotifier<String?> _paymentModeNotifier = ValueNotifier(null);
+  @override
+  void dispose() {
+    _fromDateNotifier.dispose();
+    _toDateNotifier.dispose();
+    _paymentModeNotifier.dispose();
+    super.dispose();
+  }
+
 
   String currencySymbol(BuildContext context) {
     try {
@@ -291,12 +315,9 @@ class BillsScreen extends StatelessWidget {
         ? customer['whatsapp_number'].toString()
         : (customer['phone']?.toString() ?? '');
     
-    String cleaned = phone.replaceAll(RegExp(r'\D'), '');
-    if (cleaned.length == 10) {
-      cleaned = '91$cleaned';
-    }
-    return cleaned;
+    return CountryConfig.formatPhoneForWhatsapp(phone);
   }
+
 
   void _shareInvoice(BuildContext context, Map<String, dynamic> inv) {
     _showShareOptions(context, inv);
