@@ -2405,7 +2405,43 @@ class ApiService {
     }
     throw Exception('Failed to load quotation list.');
   }
+
+  /// Get quotation details by ID.
+  static Future<Map<String, dynamic>> getQuotationDetail(String id, String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/quotation/detail/$id/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to load quotation details.');
+  }
+
+  /// Update an existing quotation.
+  static Future<Map<String, dynamic>> updateQuotation(
+    String id,
+    Map<String, dynamic> data,
+    String token,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/quotation/edit/$id/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(data),
+    );
+    if (response.statusCode == 200 || response.statusCode == 400) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to update quotation (Status: ${response.statusCode}).');
+  }
 }
+
 
 
 

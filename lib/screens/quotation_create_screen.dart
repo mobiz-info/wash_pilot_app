@@ -7,13 +7,14 @@ import '../config/country_config.dart';
 import '../providers/auth_provider.dart';
 import '../providers/language_provider.dart';
 import '../services/api_service.dart';
+import 'quotation_view_screen.dart';
 
 class _QuotationItemRow {
   final Map<String, dynamic> service;
   final Map<String, dynamic>? stockItem;
   final double warrantyYears;
   final double rate;
-  final String freeTopup;
+  final int freeTopup;
 
   _QuotationItemRow({
     required this.service,
@@ -39,11 +40,13 @@ class _QuotationExtraRow {
 class QuotationCreateScreen extends StatefulWidget {
   final Map<String, dynamic> customer;
   final Map<String, dynamic> vehicle;
+  final Map<String, dynamic>? existingQuotation;
 
   const QuotationCreateScreen({
     super.key,
     required this.customer,
     required this.vehicle,
+    this.existingQuotation,
   });
 
   @override
@@ -64,8 +67,11 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
   String _errorMessage = '';
 
   List<dynamic> _allServices = [];
+  List<dynamic> _filteredServices = [];
+  List<dynamic> _enabledCategories = [];
+  String _selectedCategoryFilter = 'all';
+
   List<dynamic> _allStockItems = [];
-  List<dynamic> _filteredStockItems = [];
 
   // Active form inputs for adding an item
   Map<String, dynamic>? _selectedService;
@@ -73,7 +79,7 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
 
   final TextEditingController _warrantyController = TextEditingController(text: '1');
   final TextEditingController _rateController = TextEditingController(text: '0');
-  final TextEditingController _freeTopupController = TextEditingController(text: 'Yes');
+  final TextEditingController _freeTopupController = TextEditingController(text: '0');
 
   // Lists of added items and extras
   final List<_QuotationItemRow> _items = [];
@@ -85,10 +91,10 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
 
   // Additional fields
   final TextEditingController _additionalServiceController = TextEditingController();
-  final TextEditingController _additionalDaysController = TextEditingController(text: '1');
+  final TextEditingController _additionalDaysController = TextEditingController(text: '0');
 
   // Tax & Discount
-  double _taxPercent = 0.0; // e.g. 5% or 18% or 0%
+  double _taxPercent = 0.0;
   final TextEditingController _discountController = TextEditingController(text: '0');
 
   double get itemsSubtotal => _items.fold(0.0, (sum, item) => sum + item.rate);
@@ -99,6 +105,8 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
   double get taxableValue => (subtotal - discountAmount).clamp(0.0, double.infinity);
   double get taxAmount => taxableValue * (_taxPercent / 100.0);
   double get grandTotal => (taxableValue + taxAmount).clamp(0.0, double.infinity);
+
+  bool get isEditing => widget.existingQuotation != null;
 
   @override
   void initState() {
@@ -138,6 +146,9 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
 
       if (svcRes['success'] == true) {
         _allServices = svcRes['services'] ?? [];
+        _filteredServices = List.from(_allServices);
+        _enabledCategories = (svcRes['enabled_categories'] as List<dynamic>? ?? []);
+
         final rawTaxes = svcRes['taxes'] as List<dynamic>? ?? [];
         if (rawTaxes.isNotEmpty) {
           _taxPercent = (rawTaxes.first['percent'] as num?)?.toDouble() ?? 0.0;
@@ -145,7 +156,45 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
       }
       if (stockRes['success'] == true) {
         _allStockItems = stockRes['stocks'] ?? [];
-        _filteredStockItems = List.from(_allStockItems);
+      }
+
+      // Pre-fill existing quotation data if editing
+      if (isEditing && widget.existingQuotation != null) {
+        final eq = widget.existingQuotation!;
+        _additionalServiceController.text = eq['additional_services'] ?? '';
+        _additionalDaysController.text = (eq['additional_days_needed'] ?? 0).toString();
+        _discountController.text = (eq['discount'] ?? 0).toString();
+        _taxPercent = (eq['tax_percentage'] as num?)?.toDouble() ?? _taxPercent;
+
+        final rawItems = eq['items'] as List<dynamic>? ?? [];
+        for (final it in rawItems) {
+          final sId = it['service_id']?.toString();
+          final matchingSvc = _allServices.firstWhere(
+            (s) => s['id']?.toString() == sId,
+            orElse: () => {'id': sId, 'name': it['service_name'] ?? ''},
+          );
+          final stkId = it['stock_item_id']?.toString();
+          final matchingStk = _allStockItems.firstWhere(
+            (s) => s['id']?.toString() == stkId,
+            orElse: () => {'id': stkId, 'item_name': it['stock_item_name'] ?? ''},
+          );
+
+          _items.add(_QuotationItemRow(
+            service: matchingSvc,
+            stockItem: matchingStk,
+            warrantyYears: (it['warranty_years'] as num?)?.toDouble() ?? 0.0,
+            rate: (it['rate'] as num?)?.toDouble() ?? 0.0,
+            freeTopup: int.tryParse(it['free_topup']?.toString() ?? '0') ?? 0,
+          ));
+        }
+
+        final rawExtras = eq['extras'] as List<dynamic>? ?? [];
+        for (final ex in rawExtras) {
+          _extras.add(_QuotationExtraRow(
+            name: ex['name'] ?? '',
+            price: (ex['price'] as num?)?.toDouble() ?? 0.0,
+          ));
+        }
       }
 
       _isLoading = false;
@@ -155,6 +204,18 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
       _isLoading = false;
       _updateUi();
     }
+  }
+
+  void _filterServicesByCategory(String slug) {
+    setState(() {
+      _selectedCategoryFilter = slug;
+      if (slug == 'all') {
+        _filteredServices = List.from(_allServices);
+      } else {
+        _filteredServices = _allServices.where((s) => s['service_type_slug'] == slug).toList();
+      }
+      _selectedService = null;
+    });
   }
 
   // ── Stock Item Search Picker Bottom Sheet ─────────────────────────────────
@@ -251,7 +312,7 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
 
     final warranty = double.tryParse(_warrantyController.text) ?? 0.0;
     final rate = double.tryParse(_rateController.text) ?? 0.0;
-    final freeTopup = _freeTopupController.text.trim();
+    final freeTopup = int.tryParse(_freeTopupController.text) ?? 0;
 
     setState(() {
       _items.add(_QuotationItemRow(
@@ -259,14 +320,13 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
         stockItem: _selectedStockItem,
         warrantyYears: warranty,
         rate: rate,
-        freeTopup: freeTopup.isEmpty ? 'N/A' : freeTopup,
+        freeTopup: freeTopup,
       ));
 
-      // Reset stock item & rates for next addition
       _selectedStockItem = null;
       _rateController.text = '0';
       _warrantyController.text = '1';
-      _freeTopupController.text = 'Yes';
+      _freeTopupController.text = '0';
     });
   }
 
@@ -275,7 +335,7 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
       _selectedStockItem = null;
       _rateController.text = '0';
       _warrantyController.text = '1';
-      _freeTopupController.text = 'Yes';
+      _freeTopupController.text = '0';
     });
   }
 
@@ -300,7 +360,7 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
     });
   }
 
-  // ── Save Quotation ────────────────────────────────────────────────────────
+  // ── Save / Update Quotation ───────────────────────────────────────────────
   Future<void> _saveQuotation() async {
     if (_items.isEmpty && _extras.isEmpty) {
       _snack(context.tr('Please add at least one service item or extra'), isError: true);
@@ -323,7 +383,7 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
           'stock_item_name': it.stockItemName,
           'warranty_years': it.warrantyYears,
           'rate': it.rate,
-          'free_topup': it.freeTopup,
+          'free_topup': it.freeTopup.toString(),
         }).toList(),
         'extras': _extras.map((ex) => {
           'name': ex.name,
@@ -338,49 +398,22 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
         'grand_total': grandTotal,
       };
 
-      final response = await ApiService.createQuotation(data, token);
+      final response = isEditing
+          ? await ApiService.updateQuotation(widget.existingQuotation!['id'], data, token)
+          : await ApiService.createQuotation(data, token);
+
       setState(() => _isSaving = false);
 
       if (response['success'] == true) {
-        final qNum = response['quotation_number'] ?? 'QT-XXXX';
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.green, size: 28),
-                const SizedBox(width: 10),
-                Text(context.tr('Quotation Saved')),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('${context.tr('Quotation Number')}: $qNum', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16.sp)),
-                SizedBox(height: 8.h),
-                Text('${context.tr('Customer')}: ${widget.customer['name']}', style: GoogleFonts.inter(fontSize: 14.sp)),
-                Text('${context.tr('Vehicle')}: ${widget.vehicle['no']}', style: GoogleFonts.inter(fontSize: 14.sp)),
-                SizedBox(height: 8.h),
-                Text('${context.tr('Grand Total')}: $currencySymbol${grandTotal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: const Color(0xFF000080), fontSize: 16.sp)),
-              ],
-            ),
-            actions: [
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  Navigator.pop(context);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF000080),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                child: Text(context.tr('Done')),
-              ),
-            ],
+        final qId = response['quotation_id'] ?? widget.existingQuotation?['id'];
+        _snack(isEditing ? context.tr('Quotation updated successfully') : context.tr('Quotation saved successfully'));
+
+        if (!mounted) return;
+        // Direct navigation to Quotation Preview Screen
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => QuotationViewScreen(quotationId: qId),
           ),
         );
       } else {
@@ -406,7 +439,10 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
       appBar: AppBar(
-        title: Text(context.tr('Create Quotation'), style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+        title: Text(
+          isEditing ? context.tr('Edit Quotation') : context.tr('Create Quotation'),
+          style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+        ),
         backgroundColor: const Color(0xFF000080),
         foregroundColor: Colors.white,
         elevation: 0,
@@ -420,33 +456,33 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ── Top Card: Customer & Vehicle Details ─────────────
+                      // Customer & Vehicle Header
                       _buildHeaderCard(),
                       const SizedBox(height: 16),
 
-                      // ── Select Service & Stock Item Section ──────────────
+                      // Service Selection & Category Tabs
                       _buildServiceStockSection(),
                       const SizedBox(height: 16),
 
-                      // ── Added Items Display ──────────────────────────────
+                      // Added Items List
                       if (_items.isNotEmpty) ...[
                         _buildItemsListCard(),
                         const SizedBox(height: 16),
                       ],
 
-                      // ── Extras Section ───────────────────────────────────
+                      // Extras Section
                       _buildExtrasSection(),
                       const SizedBox(height: 16),
 
-                      // ── Additional Services & Duration ────────────────────
+                      // Additional Service & Days Needed
                       _buildAdditionalFieldsCard(),
                       const SizedBox(height: 16),
 
-                      // ── Financial Summary Breakdown ─────────────────────
+                      // Quotation Summary
                       _buildSummaryCard(),
                       const SizedBox(height: 24),
 
-                      // ── Save Button ──────────────────────────────────────
+                      // Save Button
                       SizedBox(
                         width: double.infinity,
                         height: 52.h,
@@ -456,7 +492,9 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
                               ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                               : const Icon(Icons.save, color: Colors.white),
                           label: Text(
-                            _isSaving ? context.tr('Saving Quotation...') : context.tr('Save Quotation'),
+                            _isSaving
+                                ? (isEditing ? context.tr('Updating Quotation...') : context.tr('Saving Quotation...'))
+                                : (isEditing ? context.tr('Update & View Quotation') : context.tr('Save & View Quotation')),
                             style: GoogleFonts.inter(fontSize: 16.sp, fontWeight: FontWeight.bold, color: Colors.white),
                           ),
                           style: ElevatedButton.styleFrom(
@@ -472,7 +510,6 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
     );
   }
 
-  // ── Header Card ───────────────────────────────────────────────────────────
   Widget _buildHeaderCard() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -480,9 +517,6 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2)),
-        ],
       ),
       child: Row(
         children: [
@@ -504,11 +538,6 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
                   '${widget.customer['phone'] ?? ''}  •  ${widget.vehicle['no'] ?? ''}',
                   style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.grey.shade600),
                 ),
-                if (widget.vehicle['type'] != null)
-                  Text(
-                    widget.vehicle['type'] ?? '',
-                    style: GoogleFonts.inter(fontSize: 12.sp, color: const Color(0xFF000080), fontWeight: FontWeight.w600),
-                  ),
               ],
             ),
           ),
@@ -517,7 +546,6 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
     );
   }
 
-  // ── Select Service & Stock Section ───────────────────────────────────────
   Widget _buildServiceStockSection() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -529,19 +557,49 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Icon(Icons.build, color: Color(0xFF000080), size: 20),
-              const SizedBox(width: 8),
-              Text(
-                context.tr('Select Service & Stock Item'),
-                style: GoogleFonts.inter(fontSize: 15.sp, fontWeight: FontWeight.bold, color: const Color(0xFF000080)),
-              ),
-            ],
+          Text(
+            context.tr('Service Category under Services'),
+            style: GoogleFonts.inter(fontSize: 15.sp, fontWeight: FontWeight.bold, color: const Color(0xFF000080)),
+          ),
+          const SizedBox(height: 10),
+
+          // Category Pills Filter (Same as Create Invoice Page)
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                ChoiceChip(
+                  label: Text(context.tr('ALL')),
+                  selected: _selectedCategoryFilter == 'all',
+                  selectedColor: const Color(0xFF000080),
+                  labelStyle: TextStyle(color: _selectedCategoryFilter == 'all' ? Colors.white : Colors.black),
+                  onSelected: (selected) {
+                    if (selected) _filterServicesByCategory('all');
+                  },
+                ),
+                const SizedBox(width: 8),
+                ..._enabledCategories.map((slug) {
+                  final title = slug.toString().replaceAll('_', ' ').toUpperCase();
+                  final isSel = _selectedCategoryFilter == slug.toString();
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(context.tr(title)),
+                      selected: isSel,
+                      selectedColor: const Color(0xFF000080),
+                      labelStyle: TextStyle(color: isSel ? Colors.white : Colors.black),
+                      onSelected: (selected) {
+                        if (selected) _filterServicesByCategory(slug.toString());
+                      },
+                    ),
+                  );
+                }),
+              ],
+            ),
           ),
           const SizedBox(height: 14),
 
-          // 1. Service Dropdown
+          // Service Dropdown
           DropdownButtonFormField<Map<String, dynamic>>(
             value: _selectedService,
             decoration: InputDecoration(
@@ -551,7 +609,7 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
               fillColor: Colors.grey.shade50,
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
             ),
-            items: _allServices.map((svc) {
+            items: _filteredServices.map((svc) {
               return DropdownMenuItem<Map<String, dynamic>>(
                 value: svc as Map<String, dynamic>,
                 child: Text(svc['name'] ?? '', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
@@ -568,7 +626,7 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
           ),
           const SizedBox(height: 14),
 
-          // 2. Searchable Stock Item Dropdown (shown when service is selected)
+          // Searchable Stock Item Dropdown
           if (_selectedService != null) ...[
             InkWell(
               onTap: _openStockSearchPicker,
@@ -601,7 +659,7 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
             ),
             const SizedBox(height: 14),
 
-            // Warranty, Rate, Free Topup Inputs
+            // Warranty Years, Rate, Numeric Free Topup Inputs
             Row(
               children: [
                 Expanded(
@@ -633,10 +691,13 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
             ),
             const SizedBox(height: 14),
 
+            // Numeric Free Top-up
             TextField(
               controller: _freeTopupController,
+              keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                labelText: context.tr('Free Topup (e.g. Yes / 6 Months)'),
+                labelText: context.tr('Free Top Up (Numeric)'),
+                hintText: 'e.g. 1 or 2',
                 filled: true,
                 fillColor: Colors.grey.shade50,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -644,7 +705,6 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Add & Add Another Stock Item Buttons
             Row(
               children: [
                 Expanded(
@@ -682,7 +742,6 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
     );
   }
 
-  // ── Added Items List Card ─────────────────────────────────────────────────
   Widget _buildItemsListCard() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -724,7 +783,7 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
                               style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade700),
                             ),
                           Text(
-                            '${context.tr('Warranty')}: ${item.warrantyYears} yrs  •  ${context.tr('Topup')}: ${item.freeTopup}',
+                            '${context.tr('Warranty')}: ${item.warrantyYears} yrs  •  ${context.tr('Free Topup')}: ${item.freeTopup}',
                             style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade600),
                           ),
                         ],
@@ -752,7 +811,6 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
     );
   }
 
-  // ── Extras Section ────────────────────────────────────────────────────────
   Widget _buildExtrasSection() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -857,7 +915,6 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
     );
   }
 
-  // ── Additional Services & Duration ────────────────────────────────────────
   Widget _buildAdditionalFieldsCard() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -890,7 +947,7 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
             controller: _additionalDaysController,
             keyboardType: TextInputType.number,
             decoration: InputDecoration(
-              labelText: context.tr('Additional Days Needed (Days)'),
+              labelText: context.tr('Additional Days Needed (Numeric)'),
               hintText: 'e.g. 2',
               filled: true,
               fillColor: Colors.grey.shade50,
@@ -902,7 +959,6 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
     );
   }
 
-  // ── Summary Breakdown Card ────────────────────────────────────────────────
   Widget _buildSummaryCard() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -922,7 +978,6 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
           _summaryRow(context.tr('Subtotal'), '$currencySymbol${subtotal.toStringAsFixed(2)}'),
           const SizedBox(height: 10),
 
-          // Discount Field
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

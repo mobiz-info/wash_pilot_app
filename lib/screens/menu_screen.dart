@@ -36,6 +36,8 @@ import '../services/api_service.dart';
 import 'oil_stock_screen.dart';
 import 'stock_management_screen.dart';
 import 'quotation_search_screen.dart';
+import 'quotation_list_screen.dart';
+
 
 
 
@@ -251,8 +253,9 @@ class _MenuScreenState extends State<MenuScreen> {
   void _navigate(BuildContext context, String title) {
     final routes = <String, Widget>{
       'New Job': NewJobScreen(),
-      'Quotation': const QuotationSearchScreen(),
+      'Quotation': const QuotationListScreen(),
       'Book Now': BookNowScreen(),
+
       'Bookings': const BookingsListScreen(),
       'Bill': BillsScreen(),
       'Outstanding': const CollectionScreen(),
@@ -375,7 +378,7 @@ class _MenuScreenState extends State<MenuScreen> {
                       Navigator.pop(context);
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const QuotationSearchScreen()),
+                        MaterialPageRoute(builder: (_) => const QuotationListScreen()),
                       );
                     }),
                     if (!isCompany) ...[
