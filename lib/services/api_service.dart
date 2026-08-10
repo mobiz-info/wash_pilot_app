@@ -240,6 +240,21 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> getBatteries(String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/batteries/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200 || response.statusCode == 401) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load batteries.');
+    }
+  }
+
   static Future<Map<String, dynamic>> addCustomer(
     Map<String, dynamic> data,
     String token,
