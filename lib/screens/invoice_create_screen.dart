@@ -71,6 +71,43 @@ class _TyreItemRow {
   }
 }
 
+// ── Battery itemized row for battery replacement ──────────────────────────────
+class _BatteryItemRow {
+  String? selectedBatteryId;
+  String makeName = '';
+  String ampereName = '';
+  String segmentName = '';
+  double warrantyYears = 1.0;
+  double defaultPrice = 0.0;
+  final TextEditingController priceController = TextEditingController();
+  final TextEditingController warrantyController = TextEditingController();
+  final TextEditingController qtyController = TextEditingController(text: '1');
+
+  _BatteryItemRow({
+    this.selectedBatteryId,
+    this.makeName = '',
+    this.ampereName = '',
+    this.segmentName = '',
+    this.warrantyYears = 1.0,
+    double initialPrice = 0.0,
+  }) {
+    defaultPrice = initialPrice;
+    priceController.text = initialPrice > 0 ? initialPrice.toStringAsFixed(2) : '0.00';
+    warrantyController.text = warrantyYears.toString();
+  }
+
+  double get price => double.tryParse(priceController.text) ?? defaultPrice;
+  int get quantity => int.tryParse(qtyController.text) ?? 1;
+  double get lineTotal => price * quantity;
+  String get displayName => '$makeName $ampereName ($segmentName)';
+
+  void dispose() {
+    priceController.dispose();
+    warrantyController.dispose();
+    qtyController.dispose();
+  }
+}
+
 // ── Per-service row state ────────────────────────────────────────────────────
 class _ServiceRow {
   final Map<String, dynamic> service;
@@ -121,6 +158,14 @@ class _ServiceRow {
     return tyreItems.fold(0.0, (sum, item) => sum + item.lineTotal);
   }
 
+  // Battery Change (Itemized List)
+  final List<_BatteryItemRow> batteryItems = [];
+
+  double get batteryTotalCharge {
+    if (serviceCategory != 'battery_change' && serviceCategory != 'battery' && !serviceName.toLowerCase().contains('battery')) return 0.0;
+    return batteryItems.fold(0.0, (sum, item) => sum + item.lineTotal);
+  }
+
   // Wheel Alignment
   bool alignmentDone = true;
   bool balancingDone = true;
@@ -154,6 +199,8 @@ class _ServiceRow {
       base += oilTotalCharge;
     } else if (serviceCategory == 'tyre_change') {
       base += tyreTotalCharge;
+    } else if (serviceCategory == 'battery_change' || serviceCategory == 'battery' || serviceName.toLowerCase().contains('battery')) {
+      base += batteryTotalCharge;
     }
     return base;
   }
@@ -3317,6 +3364,239 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               },
               icon: const Icon(Icons.add_shopping_cart, color: Colors.white, size: 18),
               label: Text(context.tr('Add Battery'), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF000080),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ── Battery Search Picker for Service Row ─────────────────────────────────
+  void _openBatterySearchPickerForRow(_ServiceRow row) {
+    final searchCtrl = TextEditingController();
+    List<dynamic> localList = List.from(_batteries);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                top: 20,
+                left: 20,
+                right: 20,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+              ),
+              child: SizedBox(
+                height: MediaQuery.of(context).size.height * 0.7,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          context.tr('Select Battery'),
+                          style: GoogleFonts.inter(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF000080),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: searchCtrl,
+                      decoration: InputDecoration(
+                        hintText: context.tr('Search make, ampere, segment...'),
+                        prefixIcon: const Icon(Icons.search, color: Color(0xFF000080)),
+                        filled: true,
+                        fillColor: Colors.grey.shade100,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                      onChanged: (query) {
+                        setModalState(() {
+                          final q = query.toLowerCase();
+                          localList = _batteries.where((b) {
+                            final name = (b['display_name'] ?? '').toString().toLowerCase();
+                            final make = (b['make_name'] ?? '').toString().toLowerCase();
+                            final amp = (b['ampere_name'] ?? '').toString().toLowerCase();
+                            final seg = (b['segment_name'] ?? '').toString().toLowerCase();
+                            return name.contains(q) || make.contains(q) || amp.contains(q) || seg.contains(q);
+                          }).toList();
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: localList.isEmpty
+                          ? Center(
+                              child: Text(
+                                context.tr('No batteries found'),
+                                style: TextStyle(color: Colors.grey.shade500),
+                              ),
+                            )
+                          : ListView.separated(
+                              itemCount: localList.length,
+                              separatorBuilder: (_, __) => const Divider(height: 1),
+                              itemBuilder: (ctx, idx) {
+                                final item = localList[idx];
+                                final displayName = item['display_name'] ?? '';
+                                final warranty = item['warranty_years'] ?? 1.0;
+                                final price = (item['price'] as num?)?.toDouble() ?? 0.0;
+
+                                return ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundColor: const Color(0xFF000080).withValues(alpha: 0.1),
+                                    child: const Icon(Icons.battery_charging_full, color: Color(0xFF000080)),
+                                  ),
+                                  title: Text(
+                                    displayName,
+                                    style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+                                  ),
+                                  subtitle: Text(
+                                    'Warranty: $warranty Yrs · Stock: ${item['stock_qty'] ?? 0}',
+                                    style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade600),
+                                  ),
+                                  trailing: Text(
+                                    '$currencySymbol${price.toStringAsFixed(2)}',
+                                    style: GoogleFonts.inter(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                      color: const Color(0xFF10b981),
+                                    ),
+                                  ),
+                                  onTap: () {
+                                    Navigator.pop(ctx);
+                                    _showBatteryPriceEditDialogForRow(row, item);
+                                  },
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showBatteryPriceEditDialogForRow(_ServiceRow row, Map<String, dynamic> battery) {
+    final defaultPrice = (battery['price'] as num?)?.toDouble() ?? 0.0;
+    final priceCtrl = TextEditingController(text: defaultPrice > 0 ? defaultPrice.toStringAsFixed(2) : '0.00');
+
+    showDialog(
+      context: context,
+      builder: (dlgCtx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Icon(Icons.battery_charging_full, color: Color(0xFF000080)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  battery['display_name'] ?? 'Battery Details',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF000080).withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Make: ${battery['make_name'] ?? ''}', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
+                    Text('Ampere: ${battery['ampere_name'] ?? ''}', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
+                    Text('Segment: ${battery['segment_name'] ?? ''}', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
+                    Text('Warranty: ${battery['warranty_years'] ?? 1.0} Years', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
+                    Text('Default Price: $currencySymbol${defaultPrice.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF000080))),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text('Battery Price ($currencySymbol) - Editable:', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: const Color(0xFF000080))),
+              const SizedBox(height: 6),
+              TextField(
+                controller: priceCtrl,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                autofocus: true,
+                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16, color: const Color(0xFF000080)),
+                decoration: InputDecoration(
+                  prefixText: '$currencySymbol ',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF000080))),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dlgCtx),
+              child: Text(context.tr('Cancel'), style: const TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                final finalPrice = double.tryParse(priceCtrl.text) ?? defaultPrice;
+                Navigator.pop(dlgCtx);
+
+                for (final item in row.batteryItems) {
+                  item.dispose();
+                }
+                row.batteryItems.clear();
+
+                final bRow = _BatteryItemRow(
+                  selectedBatteryId: battery['id']?.toString(),
+                  makeName: battery['make_name']?.toString() ?? '',
+                  ampereName: battery['ampere_name']?.toString() ?? '',
+                  segmentName: battery['segment_name']?.toString() ?? '',
+                  warrantyYears: (battery['warranty_years'] as num?)?.toDouble() ?? 1.0,
+                  initialPrice: finalPrice,
+                );
+
+                bRow.priceController.addListener(() {
+                  _syncAmountCollected();
+                  _updateUi();
+                });
+
+                row.batteryItems.add(bRow);
+                _syncAmountCollected();
+                _updateUi();
+              },
+              icon: const Icon(Icons.add_shopping_cart, color: Colors.white, size: 18),
+              label: Text(context.tr('Confirm Battery'), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF000080),
                 foregroundColor: Colors.white,
