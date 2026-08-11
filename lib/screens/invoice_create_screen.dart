@@ -2160,6 +2160,202 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           ],
         ),
       );
+    } else if (row.serviceCategory == 'battery_service' || row.serviceCategory == 'battery_change' || row.serviceCategory == 'battery' || row.serviceName.toLowerCase().contains('battery')) {
+      return Container(
+        margin: const EdgeInsets.only(top: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF000080).withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFF000080).withValues(alpha: 0.2)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.battery_charging_full, color: Color(0xFF000080), size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      context.tr('Battery Details'),
+                      style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, color: const Color(0xFF000080)),
+                    ),
+                  ],
+                ),
+                if (row.batteryItems.isNotEmpty)
+                  GestureDetector(
+                    onTap: () {
+                      row.batteryItems.clear();
+                      _syncAmountCollected();
+                      _updateUi();
+                    },
+                    child: Text(
+                      context.tr('Clear'),
+                      style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.red.shade700),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (row.batteryItems.isEmpty) ...[
+              InkWell(
+                onTap: () => _openBatterySearchPickerForRow(row),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFF000080).withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.search, color: Color(0xFF000080), size: 18),
+                      const SizedBox(width: 8),
+                      Text(
+                        context.tr('Select Battery from Master...'),
+                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, color: const Color(0xFF000080)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ] else ...[
+              for (int i = 0; i < row.batteryItems.length; i++) ...[
+                Builder(
+                  builder: (context) {
+                    final item = row.batteryItems[i];
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFF000080).withValues(alpha: 0.2)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  item.displayName,
+                                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, color: const Color(0xFF1e293b)),
+                                ),
+                              ),
+                              IconButton(
+                                constraints: const BoxConstraints(),
+                                padding: EdgeInsets.zero,
+                                icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                                onPressed: () {
+                                  item.dispose();
+                                  row.batteryItems.removeAt(i);
+                                  _syncAmountCollected();
+                                  _updateUi();
+                                },
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF000080).withValues(alpha: 0.04),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              children: [
+                                Text('Make: ${item.makeName}  •  ', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                                Text('Ampere: ${item.ampereName}  •  ', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                                Text('Segment: ${item.segmentName}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              SizedBox(
+                                width: 75,
+                                child: TextFormField(
+                                  controller: item.qtyController,
+                                  keyboardType: TextInputType.number,
+                                  decoration: InputDecoration(
+                                    labelText: context.tr('Qty *'),
+                                    labelStyle: const TextStyle(fontSize: 11),
+                                    border: const OutlineInputBorder(),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                  ),
+                                  onChanged: (_) {
+                                    _syncAmountCollected();
+                                    _updateUi();
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              SizedBox(
+                                width: 90,
+                                child: TextFormField(
+                                  controller: item.warrantyController,
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  decoration: InputDecoration(
+                                    labelText: context.tr('Warranty (Yrs)'),
+                                    labelStyle: const TextStyle(fontSize: 11),
+                                    border: const OutlineInputBorder(),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: TextFormField(
+                                  controller: item.priceController,
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: const Color(0xFF000080)),
+                                  decoration: InputDecoration(
+                                    labelText: context.tr('Price ($currencySymbol) *'),
+                                    labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                    border: const OutlineInputBorder(),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  ),
+                                  onChanged: (_) {
+                                    _syncAmountCollected();
+                                    _updateUi();
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              TextButton.icon(
+                                onPressed: () => _openBatterySearchPickerForRow(row),
+                                icon: const Icon(Icons.swap_horiz, size: 16, color: Color(0xFF000080)),
+                                label: Text(context.tr('Change Battery'), style: const TextStyle(fontSize: 11, color: Color(0xFF000080), fontWeight: FontWeight.bold)),
+                              ),
+                              Text(
+                                'Line Total: $currencySymbol${item.lineTotal.toStringAsFixed(2)}',
+                                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, color: const Color(0xFF10b981)),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ],
+          ],
+        ),
+      );
     }
     return const SizedBox.shrink();
   }
