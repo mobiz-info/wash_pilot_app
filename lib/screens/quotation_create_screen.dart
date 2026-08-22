@@ -94,7 +94,10 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
   final TextEditingController _additionalDaysController = TextEditingController(text: '0');
 
   // Tax & Discount
-  double _taxPercent = 0.0;
+  List<dynamic> _availableTaxes = [];
+  final Set<String> _selectedTaxIds = {};
+  bool _applyGst = true;
+  bool _isGrandTotal = true;
   final TextEditingController _discountController = TextEditingController(text: '0');
 
   double get itemsSubtotal => _items.fold(0.0, (sum, item) => sum + item.rate);
@@ -103,7 +106,19 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
 
   double get discountAmount => double.tryParse(_discountController.text) ?? 0.0;
   double get taxableValue => (subtotal - discountAmount).clamp(0.0, double.infinity);
-  double get taxAmount => taxableValue * (_taxPercent / 100.0);
+
+  double get totalTaxPercent {
+    if (!_applyGst) return 0.0;
+    double p = 0.0;
+    for (final tax in _availableTaxes) {
+      if (_selectedTaxIds.contains(tax['id'] as String)) {
+        p += (tax['percent'] as num).toDouble();
+      }
+    }
+    return p;
+  }
+
+  double get taxAmount => taxableValue * (totalTaxPercent / 100.0);
   double get grandTotal => (taxableValue + taxAmount).clamp(0.0, double.infinity);
 
   bool get isEditing => widget.existingQuotation != null;
@@ -150,8 +165,14 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
         _enabledCategories = (svcRes['enabled_categories'] as List<dynamic>? ?? []);
 
         final rawTaxes = svcRes['taxes'] as List<dynamic>? ?? [];
-        if (rawTaxes.isNotEmpty) {
-          _taxPercent = (rawTaxes.first['percent'] as num?)?.toDouble() ?? 0.0;
+        _availableTaxes = rawTaxes.map((t) => Map<String, dynamic>.from(t as Map)).toList();
+        if (_availableTaxes.isEmpty) {
+          _availableTaxes = [
+            {'id': 'tax_vat_5', 'name': 'VAT', 'percent': 5.0}
+          ];
+        }
+        if (!isEditing && _availableTaxes.isNotEmpty) {
+          _selectedTaxIds.addAll(_availableTaxes.map((t) => (t['id'] ?? '').toString()));
         }
       }
       if (stockRes['success'] == true) {
@@ -164,7 +185,24 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
         _additionalServiceController.text = eq['additional_services'] ?? '';
         _additionalDaysController.text = (eq['additional_days_needed'] ?? 0).toString();
         _discountController.text = (eq['discount'] ?? 0).toString();
-        _taxPercent = (eq['tax_percentage'] as num?)?.toDouble() ?? _taxPercent;
+        _isGrandTotal = (eq['is_grand_total'] as bool?) ?? true;
+
+        final eqTaxPct = (eq['tax_percentage'] as num?)?.toDouble() ?? 0.0;
+        final eqTaxAmt = (eq['tax_amount'] as num?)?.toDouble() ?? 0.0;
+        if (eqTaxPct == 0.0 && eqTaxAmt == 0.0) {
+          _applyGst = false;
+        } else {
+          _applyGst = true;
+          for (final tax in _availableTaxes) {
+            final pct = (tax['percent'] as num).toDouble();
+            if (pct == eqTaxPct || _availableTaxes.length == 1) {
+              _selectedTaxIds.add(tax['id'] as String);
+            }
+          }
+          if (_selectedTaxIds.isEmpty && _availableTaxes.isNotEmpty) {
+            _selectedTaxIds.addAll(_availableTaxes.map((t) => t['id'] as String));
+          }
+        }
 
         final rawItems = eq['items'] as List<dynamic>? ?? [];
         for (final it in rawItems) {
@@ -216,6 +254,113 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
       }
       _selectedService = null;
     });
+  }
+
+  // ── Service Search Picker Bottom Sheet ────────────────────────────────────
+  void _openServiceSearchPicker() {
+    final searchCtrl = TextEditingController();
+    List<dynamic> localList = List.from(_filteredServices);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                top: 20,
+                left: 20,
+                right: 20,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+              ),
+              child: SizedBox(
+                height: 450.h,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          context.tr('Select Service'),
+                          style: GoogleFonts.inter(fontSize: 18.sp, fontWeight: FontWeight.bold, color: const Color(0xFF000080)),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: searchCtrl,
+                      decoration: InputDecoration(
+                        hintText: context.tr('Search service name...'),
+                        prefixIcon: const Icon(Icons.search, color: Color(0xFF000080)),
+                        filled: true,
+                        fillColor: Colors.grey.shade100,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      ),
+                      onChanged: (query) {
+                        setModalState(() {
+                          localList = _filteredServices.where((s) {
+                            final name = (s['name'] ?? '').toString().toLowerCase();
+                            final cat = (s['service_type_name'] ?? s['service_type_slug'] ?? '').toString().toLowerCase();
+                            return name.contains(query.toLowerCase()) || cat.contains(query.toLowerCase());
+                          }).toList();
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: localList.isEmpty
+                          ? Center(child: Text(context.tr('No services found'), style: TextStyle(color: Colors.grey.shade500)))
+                          : ListView.separated(
+                              itemCount: localList.length,
+                              separatorBuilder: (_, __) => const Divider(height: 1),
+                              itemBuilder: (ctx, idx) {
+                                final svc = localList[idx];
+                                final rate = (svc['rate'] as num?)?.toDouble() ?? 0.0;
+                                final category = svc['service_type_name'] ?? svc['service_type_slug'] ?? '';
+                                return ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundColor: const Color(0xFF000080).withValues(alpha: 0.1),
+                                    child: const Icon(Icons.cleaning_services, color: Color(0xFF000080), size: 20),
+                                  ),
+                                  title: Text(svc['name'] ?? '', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                                  subtitle: category.toString().isNotEmpty
+                                      ? Text(category.toString().replaceAll('_', ' ').toUpperCase(), style: GoogleFonts.inter(fontSize: 11.sp, color: Colors.grey.shade600))
+                                      : null,
+                                  trailing: Text(
+                                    '$currencySymbol${rate.toStringAsFixed(2)}',
+                                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14.sp, color: const Color(0xFF000080)),
+                                  ),
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedService = svc as Map<String, dynamic>;
+                                      if (svc['rate'] != null) {
+                                        _rateController.text = (svc['rate'] as num).toDouble().toString();
+                                      }
+                                    });
+                                    Navigator.pop(ctx);
+                                  },
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   // ── Stock Item Search Picker Bottom Sheet ─────────────────────────────────
@@ -348,8 +493,8 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
       _snack(context.tr('Please enter extra item name'), isError: true);
       return;
     }
-    if (price <= 0) {
-      _snack(context.tr('Please enter a valid price for extra item'), isError: true);
+    if (price < 0) {
+      _snack(context.tr('Price cannot be negative'), isError: true);
       return;
     }
 
@@ -392,10 +537,11 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
         'additional_services': _additionalServiceController.text.trim(),
         'additional_days_needed': int.tryParse(_additionalDaysController.text) ?? 0,
         'subtotal': subtotal,
-        'tax_percentage': _taxPercent,
+        'tax_percentage': totalTaxPercent,
         'tax_amount': taxAmount,
         'discount': discountAmount,
         'grand_total': grandTotal,
+        'is_grand_total': _isGrandTotal,
       };
 
       final response = isEditing
@@ -406,10 +552,9 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
 
       if (response['success'] == true) {
         final qId = response['quotation_id'] ?? widget.existingQuotation?['id'];
+        if (!mounted) return;
         _snack(isEditing ? context.tr('Quotation updated successfully') : context.tr('Quotation saved successfully'));
 
-        if (!mounted) return;
-        // Direct navigation to Quotation Preview Screen
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -417,6 +562,7 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
           ),
         );
       } else {
+        if (!mounted) return;
         _snack(response['message'] ?? context.tr('Failed to save quotation'), isError: true);
       }
     } catch (e) {
@@ -478,9 +624,49 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
                       _buildAdditionalFieldsCard(),
                       const SizedBox(height: 16),
 
-                      // Quotation Summary
-                      _buildSummaryCard(),
-                      const SizedBox(height: 24),
+                      // Is Grand Total Checkbox Tile
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            Checkbox(
+                              value: _isGrandTotal,
+                              activeColor: const Color(0xFF000080),
+                              onChanged: (val) {
+                                setState(() {
+                                  _isGrandTotal = val ?? true;
+                                });
+                              },
+                            ),
+                            Expanded(
+                              child: Text(
+                                context.tr('Is Grand Total'),
+                                style: GoogleFonts.inter(
+                                  fontSize: 15.sp,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF000080),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      if (_isGrandTotal) ...[
+                        // Tax Selection Section
+                        _taxSelectionSection(),
+                        const SizedBox(height: 16),
+
+                        // Quotation Summary
+                        _buildSummaryCard(),
+                        const SizedBox(height: 24),
+                      ],
 
                       // Save Button
                       SizedBox(
@@ -599,30 +785,46 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
           ),
           const SizedBox(height: 14),
 
-          // Service Dropdown
-          DropdownButtonFormField<Map<String, dynamic>>(
-            value: _selectedService,
-            decoration: InputDecoration(
-              labelText: context.tr('Select Service'),
-              labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, color: const Color(0xFF000080)),
-              filled: true,
-              fillColor: Colors.grey.shade50,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
+          // Searchable Service Selector
+          InkWell(
+            onTap: _openServiceSearchPicker,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          context.tr('Select Service'),
+                          style: GoogleFonts.inter(fontSize: 11.sp, color: const Color(0xFF000080), fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _selectedService != null
+                              ? _selectedService!['name'] ?? ''
+                              : context.tr('Tap to search & select service...'),
+                          style: GoogleFonts.inter(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14.sp,
+                            color: _selectedService != null ? const Color(0xFF1E293B) : Colors.grey.shade500,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.arrow_drop_down, color: Color(0xFF000080)),
+                ],
+              ),
             ),
-            items: _filteredServices.map((svc) {
-              return DropdownMenuItem<Map<String, dynamic>>(
-                value: svc as Map<String, dynamic>,
-                child: Text(svc['name'] ?? '', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-              );
-            }).toList(),
-            onChanged: (svc) {
-              setState(() {
-                _selectedService = svc;
-                if (svc != null && svc['rate'] != null) {
-                  _rateController.text = (svc['rate'] as num).toDouble().toString();
-                }
-              });
-            },
           ),
           const SizedBox(height: 14),
 
@@ -696,7 +898,7 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
               controller: _freeTopupController,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                labelText: context.tr('Free Top Up (Numeric)'),
+                labelText: context.tr('Free Top Up'),
                 hintText: 'e.g. 1 or 2',
                 filled: true,
                 fillColor: Colors.grey.shade50,
@@ -947,7 +1149,7 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
             controller: _additionalDaysController,
             keyboardType: TextInputType.number,
             decoration: InputDecoration(
-              labelText: context.tr('Additional Days Needed (Numeric)'),
+              labelText: context.tr('Days Needed'),
               hintText: 'e.g. 2',
               filled: true,
               fillColor: Colors.grey.shade50,
@@ -999,9 +1201,16 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
           ),
           const SizedBox(height: 10),
 
-          if (_taxPercent > 0) ...[
-            _summaryRow(context.tr('Tax ($_taxPercent%)'), '$currencySymbol${taxAmount.toStringAsFixed(2)}'),
-            const SizedBox(height: 10),
+          if (_applyGst && _selectedTaxIds.isNotEmpty) ...[
+            ..._availableTaxes.where((tax) => _selectedTaxIds.contains((tax['id'] ?? '').toString())).map((tax) {
+              final name = (tax['name'] ?? 'Tax').toString();
+              final pct = (tax['percent'] as num?)?.toDouble() ?? 0.0;
+              final amt = taxableValue * (pct / 100.0);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10.0),
+                child: _summaryRow('${context.tr(name)} (${pct.toStringAsFixed(1)}%)', '$currencySymbol${amt.toStringAsFixed(2)}'),
+              );
+            }),
           ],
 
           const Divider(),
@@ -1013,6 +1222,94 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
               Text('$currencySymbol${grandTotal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 20.sp, fontWeight: FontWeight.w800, color: const Color(0xFF000080))),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  // ── Tax Selection Section ──────────────────────────────────────────────────
+  Widget _taxSelectionSection() {
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Checkbox(
+                value: _applyGst,
+                activeColor: const Color(0xFF000080),
+                onChanged: (val) {
+                  setState(() {
+                    _applyGst = val ?? false;
+                  });
+                },
+              ),
+              Expanded(
+                child: Text(
+                  context.tr('TAX'),
+                  style: GoogleFonts.inter(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF1E293B),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (_applyGst) ...[
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Divider(),
+            ),
+            ..._availableTaxes.map((tax) {
+              final id = (tax['id'] ?? '').toString();
+              final name = (tax['name'] ?? 'Tax').toString();
+              final percent = (tax['percent'] as num?)?.toDouble() ?? 0.0;
+              final isSelected = _selectedTaxIds.contains(id);
+              final calculatedTax = taxableValue * (percent / 100.0);
+              return Row(
+                children: [
+                  Checkbox(
+                    value: isSelected,
+                    activeColor: const Color(0xFF000080),
+                    onChanged: (val) {
+                      setState(() {
+                        if (val == true) {
+                          _selectedTaxIds.add(id);
+                        } else {
+                          _selectedTaxIds.remove(id);
+                        }
+                      });
+                    },
+                  ),
+                  Expanded(
+                    child: Text(
+                      '${context.tr(name)} (${percent.toStringAsFixed(1)}%)',
+                      style: GoogleFonts.inter(
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF1E293B),
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '$currencySymbol${calculatedTax.toStringAsFixed(2)}',
+                    style: GoogleFonts.inter(
+                      fontSize: 13.sp,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                ],
+              );
+            }),
+          ],
         ],
       ),
     );

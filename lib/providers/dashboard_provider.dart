@@ -14,6 +14,9 @@ class DashboardProvider extends ChangeNotifier {
   int _totalCustomers = 0;
   List<Map<String, dynamic>> _recentInvoices = [];
 
+  List<Map<String, dynamic>> _branches = [];
+  String? _selectedBranchId;
+
   bool get isLoading => _isLoading;
   bool get hasLoaded => _hasLoaded;
   int get totalJobs => _totalJobs;
@@ -26,12 +29,33 @@ class DashboardProvider extends ChangeNotifier {
   int get totalCustomers => _totalCustomers;
   List<Map<String, dynamic>> get recentInvoices => _recentInvoices;
 
+  List<Map<String, dynamic>> get branches => _branches;
+  String? get selectedBranchId => _selectedBranchId;
+
+  Future<void> fetchBranches(String token) async {
+    try {
+      final res = await ApiService.getCompanyBranches(token);
+      if (res['success'] == true) {
+        _branches = List<Map<String, dynamic>>.from(res['branches'] ?? []);
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error fetching company branches: $e');
+    }
+  }
+
+  void setSelectedBranchId(String? branchId, String token) {
+    _selectedBranchId = branchId;
+    notifyListeners();
+    loadStats(token);
+  }
+
   Future<Map<String, dynamic>?> loadStats(String token) async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      final res = await ApiService.getDashboardStats(token);
+      final res = await ApiService.getDashboardStats(token, branchId: _selectedBranchId);
       if (res['success'] == true) {
         _totalJobs = res['today_jobs'] ?? 0;
         _todayRevenue = res['today_revenue'] ?? '0';

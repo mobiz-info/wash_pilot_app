@@ -28,15 +28,15 @@ import 'supplier_screen.dart';
 import 'staff_leave_screen.dart';
 import 'purchase_request_screen.dart';
 import 'expense_head_screen.dart';
-import 'stock_item_screen.dart';
 import 'extras_screen.dart';
 import 'booking_settings_screen.dart';
 import 'customer_collection_screen.dart';
 import '../services/api_service.dart';
-import 'oil_stock_screen.dart';
 import 'stock_management_screen.dart';
-import 'quotation_search_screen.dart';
+import 'stock_item_screen.dart';
 import 'quotation_list_screen.dart';
+import 'supplier_payables_screen.dart';
+import 'purchase_invoice_create_screen.dart';
 
 
 
@@ -119,15 +119,32 @@ class _MenuScreenState extends State<MenuScreen> {
       'color': Color(0xFF0F766E),
     },
     {
-      'title': 'Purchase',
+      'title': 'Supplier Payables',
+      'icon': Icons.payments_outlined,
+      'color': Color(0xFFDC2626),
+    },
+    {
+      'title': 'Purchase Entry',
+      'icon': Icons.add_shopping_cart_outlined,
+      'color': Color(0xFF2563EB),
+    },
+    /*
+    {
+      'title': 'Purchase Req',
       'icon': Icons.shopping_cart_outlined,
       'color': Color(0xFF6366F1),
     },
+    */
  
     {
       'title': 'Complaints',
       'icon': Icons.assignment_late_outlined,
       'color': Color(0xFFF43F5E),
+    },
+    {
+      'title': 'Stock Items',
+      'icon': Icons.inventory_outlined,
+      'color': Color(0xFF0D9488),
     },
     {
       'title': 'Stock Management',
@@ -202,19 +219,36 @@ class _MenuScreenState extends State<MenuScreen> {
       'color': Color(0xFF0F766E),
     },
     {
+      'title': 'Supplier Payables',
+      'icon': Icons.payments_outlined,
+      'color': Color(0xFFDC2626),
+    },
+    {
+      'title': 'Purchase Entry',
+      'icon': Icons.add_shopping_cart_outlined,
+      'color': Color(0xFF2563EB),
+    },
+    {
       'title': 'Staff Leaves',
       'icon': Icons.calendar_month_outlined,
       'color': Color(0xFF10B981),
     },
+    /*
     {
-      'title': 'Purchase',
+      'title': 'Purchase Req',
       'icon': Icons.shopping_cart_outlined,
       'color': Color(0xFF6366F1),
     },
+    */
     {
       'title': 'Expense Heads',
       'icon': Icons.label_outline,
       'color': Color(0xFF8B5CF6),
+    },
+    {
+      'title': 'Stock Items',
+      'icon': Icons.inventory_outlined,
+      'color': Color(0xFF0D9488),
     },
     {
       'title': 'Stock Management',
@@ -272,11 +306,14 @@ class _MenuScreenState extends State<MenuScreen> {
       'Country': const CountryScreen(),
       'Expense': ExpenseScreen(),
       'Suppliers': const SupplierScreen(),
+      'Supplier Payables': const SupplierPayablesScreen(),
+      'Purchase Entry': const PurchaseInvoiceCreateScreen(),
       'Staff Leaves': const StaffLeaveScreen(),
+      'Purchase Req': const PurchaseRequestScreen(),
       'Purchase': const PurchaseRequestScreen(),
       'Expense Heads': const ExpenseHeadScreen(),
       'Stock Management': const StockManagementScreen(initialCategory: 'ALL'),
-      'Stock Items': const StockManagementScreen(initialCategory: 'GENERAL'),
+      'Stock Items': const StockItemScreen(),
       'Oil Stock': const StockManagementScreen(initialCategory: 'OIL'),
       'Extras': const ExtrasScreen(),
       'Booking Settings': const BookingSettingsScreen(),
@@ -452,6 +489,20 @@ class _MenuScreenState extends State<MenuScreen> {
                         MaterialPageRoute(builder: (_) => const SupplierScreen()),
                       );
                     }),
+                    _drawerItem(Icons.payments_outlined, 'Supplier Payables', () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const SupplierPayablesScreen()),
+                      );
+                    }),
+                    _drawerItem(Icons.add_shopping_cart_outlined, 'Purchase Entry', () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const PurchaseInvoiceCreateScreen()),
+                      );
+                    }),
                     if (isCompany)
                       _drawerItem(Icons.calendar_month_outlined, 'Staff Leaves', () {
                         Navigator.pop(context);
@@ -476,6 +527,17 @@ class _MenuScreenState extends State<MenuScreen> {
                         );
                       }),
                     ],
+                    _drawerItem(
+                      Icons.inventory_outlined,
+                      'Stock Items',
+                      () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const StockItemScreen()),
+                        );
+                      },
+                    ),
                     _drawerItem(
                       Icons.inventory_2_outlined,
                       'Stock Management',

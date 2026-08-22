@@ -1,7 +1,7 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
@@ -49,6 +49,21 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
     return double.tryParse(val.toString()) ?? 0.0;
   }
 
+  String _formatDateWithTime(String dateStrRaw) {
+    if (dateStrRaw.trim().isEmpty) return '';
+    try {
+      final dt = DateTime.parse(dateStrRaw);
+      final d = dt.day.toString().padLeft(2, '0');
+      final m = dt.month.toString().padLeft(2, '0');
+      final y = dt.year.toString();
+      final h = dt.hour.toString().padLeft(2, '0');
+      final min = dt.minute.toString().padLeft(2, '0');
+      return '$d-$m-$y $h:$min';
+    } catch (_) {
+      return dateStrRaw;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -85,63 +100,7 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
     }
   }
 
-  // ── Share Text Summary via WhatsApp / System ──────────────────────────────
-  void _shareTextSummary() {
-    if (_quotation == null) return;
-    final q = _quotation!;
-    final items = (q['items'] as List<dynamic>? ?? []);
-    final extras = (q['extras'] as List<dynamic>? ?? []);
 
-    final buffer = StringBuffer();
-    buffer.writeln('📋 *QUOTATION: ${q['quotation_number']}*');
-    buffer.writeln('📅 Date: ${q['date']}');
-    buffer.writeln('----------------------------------');
-    buffer.writeln('👤 *Customer Details:*');
-    buffer.writeln('Name: ${q['customer_name']}');
-    buffer.writeln('Phone: ${q['customer_phone']}');
-    buffer.writeln('Vehicle: ${q['vehicle_number']} (${q['vehicle_type'] ?? ''} ${q['vehicle_model'] ?? ''})');
-    buffer.writeln('----------------------------------');
-
-    if (items.isNotEmpty) {
-      buffer.writeln('🛠️ *Services & Stock Items:*');
-      for (final it in items) {
-        buffer.writeln('• ${it['service_name']}');
-        if (it['stock_item_name'] != null && it['stock_item_name'].toString().isNotEmpty) {
-          buffer.writeln('  Stock: ${it['stock_item_name']}');
-        }
-        buffer.writeln('  Warranty: ${it['warranty_years']} yrs | Free Topup: ${it['free_topup']} | Rate: $currencySymbol${it['rate']}');
-      }
-      buffer.writeln('----------------------------------');
-    }
-
-    if (extras.isNotEmpty) {
-      buffer.writeln('✨ *Extras:*');
-      for (final ex in extras) {
-        buffer.writeln('• ${ex['name']}: $currencySymbol${ex['price']}');
-      }
-      buffer.writeln('----------------------------------');
-    }
-
-    if (q['additional_services'] != null && q['additional_services'].toString().trim().isNotEmpty) {
-      buffer.writeln('📝 *Additional Service Notes:* ${q['additional_services']}');
-    }
-    if (q['additional_days_needed'] != null && _parseDouble(q['additional_days_needed']) > 0) {
-      buffer.writeln('⏱️ *Additional Days Needed:* ${q['additional_days_needed']} days');
-    }
-    buffer.writeln('----------------------------------');
-    buffer.writeln('💵 *Subtotal:* $currencySymbol${_parseDouble(q['subtotal']).toStringAsFixed(2)}');
-    if (_parseDouble(q['discount']) > 0) {
-      buffer.writeln('🏷️ *Discount:* -$currencySymbol${_parseDouble(q['discount']).toStringAsFixed(2)}');
-    }
-    if (_parseDouble(q['tax_amount']) > 0) {
-      buffer.writeln('🏛️ *Tax (${q['tax_percentage']}%):* $currencySymbol${_parseDouble(q['tax_amount']).toStringAsFixed(2)}');
-    }
-    buffer.writeln('💰 *Grand Total:* $currencySymbol${_parseDouble(q['grand_total']).toStringAsFixed(2)}');
-    buffer.writeln('----------------------------------');
-    buffer.writeln('Thank you for choosing us!');
-
-    Share.share(buffer.toString());
-  }
 
   // ── Build PDF Document Bytes ──────────────────────────────────────────────
   Future<Uint8List> _buildQuotationPdfBytes(BuildContext context) async {
@@ -150,6 +109,16 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
     final branchName = q['branch_name'] ?? context.read<AuthProvider>().branchName ?? '';
     final branchLogoUrl = q['branch_logo'] ?? '';
     final companyLogoUrl = q['company_logo'] ?? '';
+
+    pw.Font? notoFont;
+    try {
+      final fontData = await rootBundle.load('assets/fonts/NotoSans-Regular.ttf');
+      notoFont = pw.Font.ttf(fontData);
+    } catch (_) {
+      try {
+        notoFont = await PdfGoogleFonts.notoSansRegular();
+      } catch (_) {}
+    }
 
     pw.MemoryImage? logoImage;
     try {
@@ -162,6 +131,13 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
       }
     } catch (_) {}
 
+    if (logoImage == null) {
+      try {
+        final logoData = await rootBundle.load('assets/icons/Wash-Pilot_Blue-Icon.png');
+        logoImage = pw.MemoryImage(logoData.buffer.asUint8List());
+      } catch (_) {}
+    }
+
     final items = (q['items'] as List<dynamic>? ?? []);
     final extras = (q['extras'] as List<dynamic>? ?? []);
     final subtotal = _parseDouble(q['subtotal']);
@@ -169,10 +145,19 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
     final taxAmount = _parseDouble(q['tax_amount']);
     final taxPercent = _parseDouble(q['tax_percentage']);
     final grandTotal = _parseDouble(q['grand_total']);
+    final isGrandTotal = (q['is_grand_total'] as bool?) ?? true;
     final qNumber = q['quotation_number'] ?? '';
-    final dateStr = q['date'] ?? '';
+    final dateStr = _formatDateWithTime(q['date'] ?? '');
 
-    final pdf = pw.Document();
+    final pdf = pw.Document(
+      title: qNumber.isNotEmpty ? qNumber : 'Quotation',
+      theme: notoFont != null
+          ? pw.ThemeData.withFont(
+              base: notoFont,
+              bold: notoFont,
+            )
+          : null,
+    );
 
     pdf.addPage(
       pw.Page(
@@ -224,9 +209,9 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
                   ),
                 ],
               ),
-              pw.SizedBox(height: 8),
+              pw.SizedBox(height: 12),
               pw.Divider(color: PdfColors.indigo900, thickness: 1.5),
-              pw.SizedBox(height: 16),
+              pw.SizedBox(height: 20),
 
               // Customer & Vehicle Details
               pw.Row(
@@ -259,13 +244,13 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
                   ),
                 ],
               ),
-              pw.SizedBox(height: 20),
+              pw.SizedBox(height: 24),
 
               // Services Table
               if (items.isNotEmpty) ...[
                 pw.Text('SERVICES & STOCK ITEMS',
-                    style: pw.TextStyle(fontSize: 9, color: PdfColors.grey600, fontWeight: pw.FontWeight.bold)),
-                pw.SizedBox(height: 6),
+                    style: pw.TextStyle(fontSize: 10, color: PdfColors.indigo900, fontWeight: pw.FontWeight.bold)),
+                pw.SizedBox(height: 8),
                 pw.Table(
                   columnWidths: const {
                     0: pw.FlexColumnWidth(4),
@@ -320,13 +305,13 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
                       ),
                   ],
                 ),
-                pw.SizedBox(height: 14),
+                pw.SizedBox(height: 24),
               ],
 
               // Extras Table
               if (extras.isNotEmpty) ...[
-                pw.Text('EXTRAS', style: pw.TextStyle(fontSize: 9, color: PdfColors.grey600, fontWeight: pw.FontWeight.bold)),
-                pw.SizedBox(height: 6),
+                pw.Text('EXTRAS', style: pw.TextStyle(fontSize: 10, color: PdfColors.indigo900, fontWeight: pw.FontWeight.bold)),
+                pw.SizedBox(height: 8),
                 pw.Table(
                   columnWidths: const {
                     0: pw.FlexColumnWidth(4),
@@ -350,69 +335,75 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
                       ),
                   ],
                 ),
-                pw.SizedBox(height: 14),
+                pw.SizedBox(height: 24),
               ],
 
               // Additional Services / Notes
               if (q['additional_services'] != null && q['additional_services'].toString().trim().isNotEmpty) ...[
-                pw.Text('ADDITIONAL SERVICES / NOTES:', style: pw.TextStyle(fontSize: 9, color: PdfColors.grey600, fontWeight: pw.FontWeight.bold)),
-                pw.SizedBox(height: 2),
+                pw.Text('ADDITIONAL SERVICES / NOTES:', style: pw.TextStyle(fontSize: 10, color: PdfColors.grey600, fontWeight: pw.FontWeight.bold)),
+                pw.SizedBox(height: 4),
                 pw.Text(q['additional_services'].toString(), style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey800)),
-                pw.SizedBox(height: 8),
+                pw.SizedBox(height: 24),
               ],
 
               // Financial Summary Box
-              pw.Align(
-                alignment: pw.Alignment.centerRight,
-                child: pw.Container(
-                  width: 220,
-                  padding: const pw.EdgeInsets.all(10),
-                  decoration: pw.BoxDecoration(
-                    border: pw.Border.all(color: PdfColors.grey300),
-                    borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
-                  ),
-                  child: pw.Column(
-                    children: [
-                      pw.Row(
-                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                        children: [
-                          pw.Text('Subtotal', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
-                          pw.Text('$currencySymbol${subtotal.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
-                        ],
-                      ),
-                      if (discount > 0) ...[
-                        pw.SizedBox(height: 4),
+              if (isGrandTotal) ...[
+                pw.Align(
+                  alignment: pw.Alignment.centerRight,
+                  child: pw.Container(
+                    width: 230,
+                    padding: const pw.EdgeInsets.all(12),
+                    decoration: pw.BoxDecoration(
+                      border: pw.Border.all(color: PdfColors.grey300),
+                      borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+                    ),
+                    child: pw.Column(
+                      children: [
                         pw.Row(
                           mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                           children: [
-                            pw.Text('Discount', style: const pw.TextStyle(fontSize: 10, color: PdfColors.green700)),
-                            pw.Text('-$currencySymbol${discount.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.green700)),
+                            pw.Text('Subtotal', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+                            pw.Text('$currencySymbol${subtotal.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
                           ],
                         ),
-                      ],
-                      if (taxAmount > 0) ...[
-                        pw.SizedBox(height: 4),
+                        if (discount > 0) ...[
+                          pw.SizedBox(height: 6),
+                          pw.Row(
+                            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                            children: [
+                              pw.Text('Discount', style: const pw.TextStyle(fontSize: 10, color: PdfColors.green700)),
+                              pw.Text('-$currencySymbol${discount.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.green700)),
+                            ],
+                          ),
+                        ],
+                        if (taxAmount > 0) ...[
+                          pw.SizedBox(height: 6),
+                          pw.Row(
+                            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                            children: [
+                              pw.Text('Tax ($taxPercent%)', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+                              pw.Text('$currencySymbol${taxAmount.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                            ],
+                          ),
+                        ],
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(vertical: 6),
+                          child: pw.Divider(color: PdfColors.grey300),
+                        ),
                         pw.Row(
                           mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                           children: [
-                            pw.Text('Tax ($taxPercent%)', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
-                            pw.Text('$currencySymbol${taxAmount.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                            pw.Text('GRAND TOTAL', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
+                            pw.Text('$currencySymbol${grandTotal.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
                           ],
                         ),
                       ],
-                      pw.Divider(color: PdfColors.grey300),
-                      pw.Row(
-                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                        children: [
-                          pw.Text('GRAND TOTAL', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
-                          pw.Text('$currencySymbol${grandTotal.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
-                        ],
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
+              ],
 
+              pw.SizedBox(height: 24),
               pw.Spacer(),
               pw.Center(
                 child: pw.Column(
@@ -433,8 +424,81 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
     return pdf.save();
   }
 
+  String _buildQuotationShareText() {
+    if (_quotation == null) return '';
+    final q = _quotation!;
+    final companyName = context.read<AuthProvider>().companyName ?? ApiService.appName;
+    final branchName = q['branch_name'] ?? context.read<AuthProvider>().branchName ?? 'our branch';
+    final currencySymbol = this.currencySymbol;
+    final qNum = q['quotation_number'] ?? '';
+    final items = (q['items'] as List<dynamic>? ?? []);
+    final extras = (q['extras'] as List<dynamic>? ?? []);
+    final subtotal = _parseDouble(q['subtotal']);
+    final discount = _parseDouble(q['discount']);
+    final taxAmount = _parseDouble(q['tax_amount']);
+    final grandTotal = _parseDouble(q['grand_total']);
+    final isGrandTotal = (q['is_grand_total'] as bool?) ?? true;
+
+    final itemLines = <String>[];
+    for (final item in items) {
+      final name = item['service_name'] ?? '';
+      final rate = _parseDouble(item['rate']);
+      final warranty = item['warranty_years'];
+      String line = "- $name: $currencySymbol${rate.toStringAsFixed(2)}";
+      if (warranty != null && warranty.toString().isNotEmpty && warranty.toString() != '0') {
+        line += " ($warranty yrs warranty)";
+      }
+      itemLines.add(line);
+    }
+    for (final ex in extras) {
+      final name = ex['name'] ?? '';
+      final price = _parseDouble(ex['price']);
+      itemLines.add("- $name (Extra): $currencySymbol${price.toStringAsFixed(2)}");
+    }
+    final servicesStr = itemLines.join("\n");
+
+    final buffer = StringBuffer();
+    buffer.writeln("Dear ${q['customer_name'] ?? 'Customer'},\n");
+    buffer.writeln("Here is your *Quotation $qNum* from $companyName:\n");
+    buffer.writeln("*Quotation Details:*");
+    if ((q['vehicle_number'] ?? '').toString().isNotEmpty) {
+      final vType = (q['vehicle_type'] ?? '').toString();
+      final vModel = (q['vehicle_model'] ?? '').toString();
+      String vInfo = q['vehicle_number'].toString();
+      if (vType.isNotEmpty) vInfo += " · $vType";
+      if (vModel.isNotEmpty) vInfo += " · $vModel";
+      buffer.writeln("Vehicle: $vInfo");
+    }
+    if (servicesStr.isNotEmpty) {
+      buffer.writeln("Services:\n$servicesStr");
+    }
+    if (q['additional_services'] != null && q['additional_services'].toString().trim().isNotEmpty) {
+      buffer.writeln("Notes: ${q['additional_services']}");
+    }
+    if (q['additional_days_needed'] != null && _parseDouble(q['additional_days_needed']) > 0) {
+      buffer.writeln("Days Needed: ${q['additional_days_needed']} days");
+    }
+    if (isGrandTotal) {
+      buffer.writeln("\nSubtotal: $currencySymbol${subtotal.toStringAsFixed(2)}");
+      if (discount > 0) {
+        buffer.writeln("Discount: -$currencySymbol${discount.toStringAsFixed(2)}");
+      }
+      if (taxAmount > 0) {
+        buffer.writeln("Tax: $currencySymbol${taxAmount.toStringAsFixed(2)}");
+      }
+      buffer.writeln("Grand Total: *$currencySymbol${grandTotal.toStringAsFixed(2)}*");
+    }
+    buffer.writeln("\nThank you for choosing $branchName!");
+    buffer.writeln("Powered by Mobiz Technologies");
+
+    return buffer.toString();
+  }
+
   // ── Share PDF Document File ───────────────────────────────────────────────
   Future<void> _shareQuotationPdf(BuildContext context) async {
+    final nav = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
     try {
       showDialog(
         context: context,
@@ -443,19 +507,91 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
       );
 
       final pdfBytes = await _buildQuotationPdfBytes(context);
-      if (mounted) Navigator.pop(context); // Dismiss loader
+      if (mounted) nav.pop(); // Dismiss loader
 
       final qNum = (_quotation?['quotation_number'] ?? 'quotation').replaceAll('/', '_');
       final output = await getTemporaryDirectory();
       final file = File('${output.path}/$qNum.pdf');
       await file.writeAsBytes(pdfBytes);
 
-      final xFile = XFile(file.path);
-      await Share.shareXFiles([xFile], text: 'Quotation Document: $qNum');
+      final messageText = _buildQuotationShareText();
+      final xFile = XFile(file.path, mimeType: 'application/pdf');
+
+      if (!mounted) return;
+
+      // Show dialog with quotation text + share button
+      await showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(children: [
+            const Icon(Icons.picture_as_pdf, color: Color(0xFF000080)),
+            const SizedBox(width: 8),
+            Text('Share Quotation', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16)),
+          ]),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Quotation details to send with PDF:', style: GoogleFonts.inter(fontSize: 12, color: Colors.grey[600])),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
+                  constraints: const BoxConstraints(maxHeight: 200),
+                  child: SingleChildScrollView(
+                    child: Text(messageText, style: GoogleFonts.inter(fontSize: 12)),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: messageText));
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      const SnackBar(content: Text('Text copied to clipboard!'), backgroundColor: Colors.green),
+                    );
+                  },
+                  icon: const Icon(Icons.copy, size: 16),
+                  label: Text('Copy Text', style: GoogleFonts.inter(fontSize: 13)),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Cancel', style: GoogleFonts.inter(color: Colors.grey)),
+            ),
+            ElevatedButton.icon(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                await Share.shareXFiles(
+                  [xFile],
+                  text: messageText,
+                  subject: 'Quotation $qNum',
+                );
+              },
+              icon: const Icon(Icons.share, size: 16),
+              label: Text('Share PDF', style: GoogleFonts.inter()),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF000080),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ],
+        ),
+      );
     } catch (e) {
       if (mounted) {
-        if (Navigator.canPop(context)) Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (nav.canPop()) nav.pop();
+        messenger.showSnackBar(
           SnackBar(content: Text('Error sharing PDF: $e'), backgroundColor: Colors.red),
         );
       }
@@ -464,6 +600,8 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
 
   // ── Print PDF Document ───────────────────────────────────────────────────
   Future<void> _printQuotationPdf(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+
     try {
       final pdfBytes = await _buildQuotationPdfBytes(context);
       final qNum = (_quotation?['quotation_number'] ?? 'quotation').replaceAll('/', '_');
@@ -473,7 +611,7 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(content: Text('Error printing PDF: $e'), backgroundColor: Colors.red),
         );
       }
@@ -514,7 +652,7 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
                     style: GoogleFonts.inter(fontWeight: FontWeight.w600),
                   ),
                   subtitle: Text(
-                    context.tr('Generates PDF file and opens sharing menu'),
+                    context.tr('Shares PDF file along with pre-filled quotation summary text'),
                     style: GoogleFonts.inter(fontSize: 12.sp),
                   ),
                   onTap: () {
@@ -538,24 +676,6 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
                   onTap: () {
                     Navigator.pop(bc);
                     _printQuotationPdf(context);
-                  },
-                ),
-                ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.green.shade50,
-                    child: const Icon(Icons.chat_bubble_outline, color: Colors.green),
-                  ),
-                  title: Text(
-                    context.tr('Share Text Summary'),
-                    style: GoogleFonts.inter(fontWeight: FontWeight.w600),
-                  ),
-                  subtitle: Text(
-                    context.tr('Shares pre-filled quotation summary text'),
-                    style: GoogleFonts.inter(fontSize: 12.sp),
-                  ),
-                  onTap: () {
-                    Navigator.pop(bc);
-                    _shareTextSummary();
                   },
                 ),
                 const SizedBox(height: 12),
@@ -613,7 +733,7 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
                             children: [
                               Expanded(
                                 child: ElevatedButton.icon(
-                                  onPressed: () => _showShareOptions(context),
+                                  onPressed: () => _shareQuotationPdf(context),
                                   icon: const Icon(Icons.share, color: Colors.white),
                                   label: Text(context.tr('Share Quotation'), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
                                   style: ElevatedButton.styleFrom(
@@ -698,8 +818,8 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
             ],
           ),
           const SizedBox(height: 6),
-          Text('${context.tr("Date")}: ${q['date'] ?? ''}', style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade500)),
-          const Divider(height: 24),
+          Text('${context.tr("Date")}: ${_formatDateWithTime(q['date'] ?? '')}', style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade500)),
+          const Divider(height: 28),
 
           // Customer & Vehicle Box
           Container(
@@ -731,7 +851,7 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
 
           // Items Table
           if (items.isNotEmpty) ...[
@@ -783,7 +903,7 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
                 }),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
           ],
 
           // Extras Table
@@ -805,7 +925,7 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
                 ),
               );
             }),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
           ],
 
           // Additional Service Notes & Days Needed
@@ -821,33 +941,35 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
           if (q['additional_days_needed'] != null && _parseDouble(q['additional_days_needed']) > 0) ...[
             Row(
               children: [
-                Text('${context.tr("Additional Days Needed")}: ', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13.sp)),
+                Text('${context.tr("Days Needed")}: ', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13.sp)),
                 Text('${q['additional_days_needed']} days', style: GoogleFonts.inter(fontSize: 13.sp, color: const Color(0xFF000080), fontWeight: FontWeight.bold)),
               ],
             ),
             const SizedBox(height: 12),
           ],
 
-          const Divider(height: 24),
+          if ((q['is_grand_total'] as bool?) ?? true) ...[
+            const Divider(height: 24),
 
-          // Financial Summary
-          _summaryRow(context.tr('Subtotal'), '$currencySymbol${_parseDouble(q["subtotal"]).toStringAsFixed(2)}'),
-          if (_parseDouble(q['discount']) > 0) ...[
-            const SizedBox(height: 6),
-            _summaryRow(context.tr('Discount'), '-$currencySymbol${_parseDouble(q["discount"]).toStringAsFixed(2)}'),
-          ],
-          if (_parseDouble(q['tax_amount']) > 0) ...[
-            const SizedBox(height: 6),
-            _summaryRow('${context.tr("Tax")} (${q["tax_percentage"]}%)', '$currencySymbol${_parseDouble(q["tax_amount"]).toStringAsFixed(2)}'),
-          ],
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(context.tr('Grand Total'), style: GoogleFonts.inter(fontSize: 16.sp, fontWeight: FontWeight.w800, color: const Color(0xFF000080))),
-              Text('$currencySymbol${_parseDouble(q["grand_total"]).toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 20.sp, fontWeight: FontWeight.w900, color: const Color(0xFF000080))),
+            // Financial Summary
+            _summaryRow(context.tr('Subtotal'), '$currencySymbol${_parseDouble(q["subtotal"]).toStringAsFixed(2)}'),
+            if (_parseDouble(q['discount']) > 0) ...[
+              const SizedBox(height: 6),
+              _summaryRow(context.tr('Discount'), '-$currencySymbol${_parseDouble(q["discount"]).toStringAsFixed(2)}'),
             ],
-          ),
+            if (_parseDouble(q['tax_amount']) > 0) ...[
+              const SizedBox(height: 6),
+              _summaryRow('${context.tr("Tax")} (${q["tax_percentage"]}%)', '$currencySymbol${_parseDouble(q["tax_amount"]).toStringAsFixed(2)}'),
+            ],
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(context.tr('Grand Total'), style: GoogleFonts.inter(fontSize: 16.sp, fontWeight: FontWeight.w800, color: const Color(0xFF000080))),
+                Text('$currencySymbol${_parseDouble(q["grand_total"]).toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 20.sp, fontWeight: FontWeight.w900, color: const Color(0xFF000080))),
+              ],
+            ),
+          ],
         ],
       ),
     );

@@ -307,7 +307,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
       String rawPhone = c['phone'] ?? '';
       String phoneCode = '+91';
       for (final code in ['971', '966', '965', '968', '974', '973', '91']) {
-        if (rawPhone.startsWith(code)) {
+        if (rawPhone.startsWith(code) && rawPhone.length > 10) {
           phoneCode = '+$code';
           rawPhone = rawPhone.substring(code.length);
           break;
@@ -316,7 +316,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
       String rawWhatsapp = c['whatsapp_number'] ?? '';
       String whatsappCode = '+91';
       for (final code in ['971', '966', '965', '968', '974', '973', '91']) {
-        if (rawWhatsapp.startsWith(code)) {
+        if (rawWhatsapp.startsWith(code) && rawWhatsapp.length > 10) {
           whatsappCode = '+$code';
           rawWhatsapp = rawWhatsapp.substring(code.length);
           break;
@@ -348,6 +348,9 @@ class _CustomersScreenState extends State<CustomersScreen> {
             ? vehicleTypes.firstWhere((t) => t['id'].toString() == matchedSegment['vehicle_type_id'].toString(), orElse: () => null)
             : (vehicleTypes.isNotEmpty ? vehicleTypes.first : null);
 
+        final availableSegs = matchedType != null ? vehicleTypeModels.where((m) => m['vehicle_type_id']?.toString() == matchedType['id']?.toString()).toList() : [];
+        final finalSegment = matchedSegment ?? (availableSegs.isNotEmpty ? availableSegs.first : null);
+
         final matchedMake = makeId != null
             ? makes.firstWhere((m) => m['id'].toString() == makeId, orElse: () => null)
             : null;
@@ -364,15 +367,19 @@ class _CustomersScreenState extends State<CustomersScreen> {
           'id': v['id'],
           'controller': TextEditingController(text: v['vehicle_number'] ?? ''),
           'vehicle_type': matchedType,
-          'vehicle_type_model': matchedSegment,
+          'vehicle_type_model': finalSegment,
           'make': matchedMake,
           'brand_model': matchedBrand,
           'color': matchedColor,
+          'wheel_type': v['wheel_type'] ?? 'normal_wheel',
         });
       }
 
+      final validVehicleTypeIds = vehicleTypeModels.map((m) => m['vehicle_type_id']?.toString()).where((id) => id != null && id.isNotEmpty).toSet();
+      final filteredVehicleTypes = vehicleTypes.where((vt) => validVehicleTypeIds.contains(vt['id']?.toString())).toList();
+
       _customerTypes = types;
-      _vehicleTypes = vehicleTypes;
+      _vehicleTypes = filteredVehicleTypes.isNotEmpty ? filteredVehicleTypes : vehicleTypes;
       _vehicleTypeModels = vehicleTypeModels;
       _makes = makes;
       _brandModels = brandModels;
@@ -426,40 +433,60 @@ class _CustomersScreenState extends State<CustomersScreen> {
 
     // Collect updated existing vehicles
     final updatedVehicles = <Map<String, dynamic>>[];
-    for (final row in _existingVehicleRows) {
-      final num = (row['controller'] as TextEditingController).text.trim();
+    for (int i = 0; i < _existingVehicleRows.length; i++) {
+      final row = _existingVehicleRows[i];
+      final num = (row['controller'] as TextEditingController).text.trim().toUpperCase();
       final model = row['vehicle_type_model'];
       final brand = row['brand_model'];
       final make = row['make'];
       final color = row['color'];
+
       if (num.isNotEmpty) {
+        if (model == null) {
+          _showMsg('Please select Segment/Model for Vehicle ${i + 1} ($num)', isError: true);
+          return;
+        }
         updatedVehicles.add({
           'id': row['id'],
           'vehicle_number': num,
-          'vehicle_model_id': model != null ? model['id'] : null,
+          'vehicle_model_id': model['id'],
           'brand_model_id': brand != null ? brand['id'] : null,
           'make_id': make != null ? make['id'] : null,
           'color_id': color != null ? color['id'] : null,
+          'wheel_type': row['wheel_type'] ?? 'normal_wheel',
         });
+      } else {
+        _showMsg('Please enter Vehicle Number for Vehicle ${i + 1}', isError: true);
+        return;
       }
     }
 
     // Collect new vehicles
     final newVehicles = <Map<String, dynamic>>[];
-    for (final row in _newVehicleRows) {
-      final num = (row['controller'] as TextEditingController).text.trim();
+    for (int i = 0; i < _newVehicleRows.length; i++) {
+      final row = _newVehicleRows[i];
+      final num = (row['controller'] as TextEditingController).text.trim().toUpperCase();
       final model = row['vehicle_type_model'];
       final brand = row['brand_model'];
       final make = row['make'];
       final color = row['color'];
-      if (num.isNotEmpty && model != null) {
+
+      if (num.isNotEmpty) {
+        if (model == null) {
+          _showMsg('Please select Segment/Model for New Vehicle ${i + 1} ($num)', isError: true);
+          return;
+        }
         newVehicles.add({
           'vehicle_number': num,
           'vehicle_model_id': model['id'],
           'brand_model_id': brand != null ? brand['id'] : null,
           'make_id': make != null ? make['id'] : null,
           'color_id': color != null ? color['id'] : null,
+          'wheel_type': row['wheel_type'] ?? 'normal_wheel',
         });
+      } else {
+        _showMsg('Please enter Vehicle Number for New Vehicle ${i + 1}', isError: true);
+        return;
       }
     }
 
@@ -1319,29 +1346,32 @@ class _CustomersScreenState extends State<CustomersScreen> {
           const SizedBox(height: 20),
 
           // ── Existing Vehicles (editable) ──
-          _buildCard(
-            title: 'Vehicles',
-            icon: Icons.directions_car_outlined,
-            trailing: TextButton.icon(
-              onPressed: _addNewVehicleRow,
-              icon: const Icon(Icons.add, size: 18),
-              label: Text(context.tr('Add New')),
-              style: TextButton.styleFrom(foregroundColor: const Color(0xFF000080)),
+          ValueListenableBuilder<int>(
+            valueListenable: _vehicleRowsNotifier,
+            builder: (context, _, __) => _buildCard(
+              title: 'Vehicles',
+              icon: Icons.directions_car_outlined,
+              trailing: TextButton.icon(
+                onPressed: _addNewVehicleRow,
+                icon: const Icon(Icons.add, size: 18),
+                label: Text(context.tr('Add New')),
+                style: TextButton.styleFrom(foregroundColor: const Color(0xFF000080)),
+              ),
+              children: [
+                if (_existingVehicleRows.isEmpty && _newVehicleRows.isEmpty)
+                  Center(
+                      child: Text(context.tr('No vehicles registered.'),
+                          style: GoogleFonts.inter(color: Colors.grey.shade500))),
+
+                // Existing
+                ...List.generate(
+                    _existingVehicleRows.length, (i) => _buildVehicleRow(i, isNew: false)),
+
+                // New
+                ...List.generate(
+                    _newVehicleRows.length, (i) => _buildVehicleRow(i, isNew: true)),
+              ],
             ),
-            children: [
-              if (_existingVehicleRows.isEmpty && _newVehicleRows.isEmpty)
-                Center(
-                    child: Text(context.tr('No vehicles registered.'),
-                        style: GoogleFonts.inter(color: Colors.grey.shade500))),
-
-              // Existing
-              ...List.generate(
-                  _existingVehicleRows.length, (i) => _buildVehicleRow(i, isNew: false)),
-
-              // New
-              ...List.generate(
-                  _newVehicleRows.length, (i) => _buildVehicleRow(i, isNew: true)),
-            ],
           ),
 
           const SizedBox(height: 32),
@@ -1454,7 +1484,8 @@ class _CustomersScreenState extends State<CustomersScreen> {
               hint: 'Select vehicle type',
               onChanged: (val) {
                 row['vehicle_type'] = val;
-                row['vehicle_type_model'] = null;
+                final availableSegs = _segmentsForType(val?['id']?.toString());
+                row['vehicle_type_model'] = availableSegs.isNotEmpty ? availableSegs.first : null;
                 row['make'] = null;
                 row['brand_model'] = null;
                 _vehicleRowsNotifier.value++;
@@ -1463,7 +1494,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
             const SizedBox(height: 12),
 
             // Level 2 — Segment
-            if (selectedType != null) ...[
+            if (selectedType != null && segments.isNotEmpty) ...[
               _buildDropdown<Map<String, dynamic>>(
                 label: 'Segment *',
                 value: selectedSegment,
@@ -1498,7 +1529,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
             ],
 
             // Level 4 — Brand Model (Optional)
-            if (selectedSegment != null && selectedMake != null) ...[
+            if (selectedSegment != null) ...[
               _buildDropdown<Map<String, dynamic>>(
                 label: 'Brand',
                 value: selectedBrand,
@@ -1544,6 +1575,53 @@ class _CustomersScreenState extends State<CustomersScreen> {
                 isDense: true,
               ),
             ),
+            const SizedBox(height: 12),
+
+            // Wheel Type selection
+            Text(context.tr('Wheel Type *'), style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Expanded(
+                  child: RadioListTile<String>(
+                    title: Text(
+                      context.tr('Alloy Wheel'),
+                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500),
+                    ),
+                    value: 'alloy_wheel',
+                    groupValue: row['wheel_type'] ?? 'normal_wheel',
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    activeColor: const Color(0xFF000080),
+                    onChanged: (val) {
+                      if (val != null) {
+                        row['wheel_type'] = val;
+                        _vehicleRowsNotifier.value++;
+                      }
+                    },
+                  ),
+                ),
+                Expanded(
+                  child: RadioListTile<String>(
+                    title: Text(
+                      context.tr('Normal Wheel'),
+                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500),
+                    ),
+                    value: 'normal_wheel',
+                    groupValue: row['wheel_type'] ?? 'normal_wheel',
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    activeColor: const Color(0xFF000080),
+                    onChanged: (val) {
+                      if (val != null) {
+                        row['wheel_type'] = val;
+                        _vehicleRowsNotifier.value++;
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -1580,6 +1658,26 @@ class _CustomersScreenState extends State<CustomersScreen> {
     bool required = false,
     String? hint,
   }) {
+    T? matchedValue;
+    if (value != null && items.isNotEmpty) {
+      if (value is Map && value.containsKey('id')) {
+        final valId = value['id']?.toString();
+        for (final item in items) {
+          if (item is Map && item['id']?.toString() == valId) {
+            matchedValue = item;
+            break;
+          }
+        }
+      } else {
+        for (final item in items) {
+          if (item == value) {
+            matchedValue = item;
+            break;
+          }
+        }
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1596,7 +1694,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
             child: DropdownButton<T>(
               isExpanded: true,
               menuMaxHeight: 350,
-              value: value,
+              value: matchedValue,
               hint: Text(hint ?? 'Select...', style: GoogleFonts.inter(color: Colors.grey.shade500)),
               items: items.map((item) {
                 return DropdownMenuItem<T>(
@@ -1613,13 +1711,18 @@ class _CustomersScreenState extends State<CustomersScreen> {
   }
 
   void _addNewVehicleRow() {
+    final defaultType = _vehicleTypes.isNotEmpty ? _vehicleTypes.first as Map<String, dynamic>? : null;
+    final availableSegs = defaultType != null ? _segmentsForType(defaultType['id']?.toString()) : [];
+    final defaultSegment = availableSegs.isNotEmpty ? availableSegs.first as Map<String, dynamic>? : null;
+
     _newVehicleRows.add({
       'controller': TextEditingController(),
-      'vehicle_type': _vehicleTypes.isNotEmpty ? _vehicleTypes.first : null,
-      'vehicle_type_model': null,
+      'vehicle_type': defaultType,
+      'vehicle_type_model': defaultSegment,
       'make': null,
       'brand_model': null,
       'color': null,
+      'wheel_type': 'normal_wheel',
     });
     _vehicleRowsNotifier.value++;
   }

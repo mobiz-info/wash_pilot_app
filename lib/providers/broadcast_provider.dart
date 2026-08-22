@@ -34,15 +34,23 @@ class BroadcastProvider extends ChangeNotifier {
 
   // ── Date and Reminders Selection State ─────────────────────────────────────
   DateTime _selectedReminderDate = DateTime.now();
+  bool _showAllReminders = false;
   final Set<String> _selectedReminderIds = {};
   final Set<String> _selectedCustomerIds = {};
 
   DateTime get selectedReminderDate => _selectedReminderDate;
+  bool get showAllReminders => _showAllReminders;
   Set<String> get selectedReminderIds => _selectedReminderIds;
   Set<String> get selectedCustomerIds => _selectedCustomerIds;
 
   void setSelectedReminderDate(DateTime date) {
     _selectedReminderDate = date;
+    _showAllReminders = false;
+    notifyListeners();
+  }
+
+  void setShowAllReminders(bool showAll) {
+    _showAllReminders = showAll;
     notifyListeners();
   }
 
@@ -98,11 +106,14 @@ class BroadcastProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final initialDateStr = _showAllReminders
+          ? 'all'
+          : "${_selectedReminderDate.year}-${_selectedReminderDate.month.toString().padLeft(2, '0')}-${_selectedReminderDate.day.toString().padLeft(2, '0')}";
       final results = await Future.wait([
         ApiService.listCustomers(token),
         ApiService.getInactiveCustomers(token, days: inactiveDays),
         ApiService.getWhatsAppTemplates(token),
-        ApiService.getReminderPlans(token),
+        ApiService.getReminderPlans(token, date: initialDateStr),
       ]);
 
       if (results[0]['success'] == true) _allCustomers = results[0]['customers'] ?? [];
@@ -122,8 +133,9 @@ class BroadcastProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final dateStr =
-          "${_selectedReminderDate.year}-${_selectedReminderDate.month.toString().padLeft(2, '0')}-${_selectedReminderDate.day.toString().padLeft(2, '0')}";
+      final dateStr = _showAllReminders
+          ? 'all'
+          : "${_selectedReminderDate.year}-${_selectedReminderDate.month.toString().padLeft(2, '0')}-${_selectedReminderDate.day.toString().padLeft(2, '0')}";
       final res = await ApiService.getReminderPlans(token, date: dateStr);
       if (res['success'] == true) {
         _reminderPlans = res['plans'] ?? [];
@@ -144,6 +156,7 @@ class BroadcastProvider extends ChangeNotifier {
     required String var1,
     required String var2,
     required String customMessage,
+    String templateName = '',
   }) async {
     _isSending = true;
     notifyListeners();
@@ -154,6 +167,7 @@ class BroadcastProvider extends ChangeNotifier {
         recipientType: recipientType,
         message: customMessage,
         var2: var2,
+        templateName: templateName,
         customerIds: recipientPhoneNumbers,
       );
     } catch (e) {
@@ -168,9 +182,17 @@ class BroadcastProvider extends ChangeNotifier {
     String token,
     List<String> planIds, {
     String? action,
+    String? templateName = 'wheelalignment',
+    Map<String, dynamic>? planDetails,
   }) async {
     try {
-      final res = await ApiService.sendReminders(token, planIds, action: action);
+      final res = await ApiService.sendReminders(
+        token,
+        planIds,
+        action: action,
+        templateName: templateName ?? 'wheelalignment',
+        planDetails: planDetails,
+      );
       if (res['success'] == true || action == 'mark_sent') {
         _reminderPlans.removeWhere((p) => planIds.contains(p['id']));
         for (var id in planIds) {

@@ -327,16 +327,18 @@ class CountryConfig {
     String cleaned = input.replaceAll(RegExp(r'\D'), '');
     if (cleaned.isEmpty) return '';
 
-    // Known country dial codes sorted by length descending
-    final knownCodes = ['971', '966', '965', '968', '974', '973', '91', '84', '66', '44', '86', '7', '1'];
+    final cleanCode = selectedDialCode.replaceAll('+', '').trim();
 
-    for (final code in knownCodes) {
-      if (cleaned.startsWith(code)) {
-        return cleaned; // Already has country dial code!
-      }
+    // If cleaned already starts with cleanCode AND has extra digits (total length > 10)
+    if (cleaned.startsWith(cleanCode) && cleaned.length > 10) {
+      return cleaned;
     }
 
-    final cleanCode = selectedDialCode.replaceAll('+', '');
+    // If input had an explicit leading '+' sign
+    if (input.trim().startsWith('+')) {
+      return cleaned;
+    }
+
     return '$cleanCode$cleaned';
   }
 }

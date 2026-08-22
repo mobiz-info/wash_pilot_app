@@ -66,20 +66,27 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     String initialPhoneCode = CountryConfig.phoneDialCode;
     String initialWhatsappCode = CountryConfig.phoneDialCode;
 
-    if (widget.phoneNumber != null) {
-      String rawPhone = widget.phoneNumber!;
-      String detectedCode = CountryConfig.phoneDialCode;
-      for (final code in ['971', '966', '965', '968', '974', '973', '91']) {
-        if (rawPhone.startsWith(code)) {
-          detectedCode = '+$code';
-          rawPhone = rawPhone.substring(code.length);
-          break;
+    if (widget.phoneNumber != null && widget.phoneNumber!.isNotEmpty) {
+      String rawPhone = widget.phoneNumber!.replaceAll(RegExp(r'\D'), '');
+      String targetDialCode = initialPhoneCode.replaceAll('+', '').trim();
+
+      // Strip dial code ONLY if rawPhone starts with targetDialCode AND length > 10 (e.g. 12 digits for India)
+      if (rawPhone.startsWith(targetDialCode) && rawPhone.length > 10) {
+        rawPhone = rawPhone.substring(targetDialCode.length);
+      } else {
+        // Fallback: check other known dial codes ONLY if length exceeds 10 digits
+        for (final code in ['971', '966', '965', '968', '974', '973', '91']) {
+          if (rawPhone.startsWith(code) && rawPhone.length > 10) {
+            initialPhoneCode = '+$code';
+            initialWhatsappCode = '+$code';
+            rawPhone = rawPhone.substring(code.length);
+            break;
+          }
         }
       }
+
       _phoneController.text = rawPhone;
       _whatsappController.text = rawPhone;
-      initialPhoneCode = detectedCode;
-      initialWhatsappCode = detectedCode;
     }
 
     _selectedPhoneCode = ValueNotifier<String>(initialPhoneCode);
@@ -129,8 +136,11 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
         final colors = res['colors'] as List<dynamic>? ?? [];
         final branches = res['branches'] as List<dynamic>? ?? [];
 
+        final validVehicleTypeIds = vehicleTypeModels.map((m) => m['vehicle_type_id']?.toString()).where((id) => id != null && id.isNotEmpty).toSet();
+        final filteredVehicleTypes = vehicleTypes.where((vt) => validVehicleTypeIds.contains(vt['id']?.toString())).toList();
+
         _customerTypes = types;
-        _vehicleTypes = vehicleTypes;
+        _vehicleTypes = filteredVehicleTypes.isNotEmpty ? filteredVehicleTypes : vehicleTypes;
         _vehicleTypeModels = vehicleTypeModels;
         _makes = makes;
         _brandModels = brandModels;
@@ -175,6 +185,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       'make': null,
       'brand_model': null,
       'color': null,
+      'wheel_type': 'normal_wheel',
     });
     _vehicleRowsNotifier.value++;
   }
@@ -239,6 +250,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       final vehicleData = <String, dynamic>{
         'vehicle_number': num,
         'vehicle_model_id': segment['id'],
+        'wheel_type': row['wheel_type'] ?? 'normal_wheel',
       };
       final brandModel = row['brand_model'] as Map<String, dynamic>?;
       if (brandModel != null) vehicleData['brand_model_id'] = brandModel['id'];
@@ -404,7 +416,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                                           style: OutlinedButton.styleFrom(
                                             side: const BorderSide(color: Color(0xFF000080)),
                                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                            padding: const EdgeInsets.symmetric(vertical: 12),
+                                            padding: const EdgeInsets.symmetric(vertical: 15,horizontal:13),
                                           ),
                                         ),
                                       ],
@@ -535,6 +547,26 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     bool required = false,
     String? hint,
   }) {
+    T? matchedValue;
+    if (value != null && items.isNotEmpty) {
+      if (value is Map && value.containsKey('id')) {
+        final valId = value['id']?.toString();
+        for (final item in items) {
+          if (item is Map && item['id']?.toString() == valId) {
+            matchedValue = item;
+            break;
+          }
+        }
+      } else {
+        for (final item in items) {
+          if (item == value) {
+            matchedValue = item;
+            break;
+          }
+        }
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -551,7 +583,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
             child: DropdownButton<T>(
               isExpanded: true,
               menuMaxHeight: 350,
-              value: value,
+              value: matchedValue,
               hint: Text(hint ?? 'Select...', style: GoogleFonts.inter(color: Colors.grey.shade500)),
               items: items.map((item) {
                 return DropdownMenuItem<T>(
@@ -625,7 +657,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
             const SizedBox(height: 12),
 
             // Level 2 — Segment
-            if (selectedType != null) ...[
+            if (selectedType != null && segments.isNotEmpty) ...[
               _buildDropdown<Map<String, dynamic>>(
                 label: 'Segment *',
                 value: selectedSegment,
@@ -707,6 +739,53 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 isDense: true,
               ),
+            ),
+            const SizedBox(height: 12),
+
+            // Wheel Type selection
+            Text('Wheel Type *', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Expanded(
+                  child: RadioListTile<String>(
+                    title: Text(
+                      context.tr('Alloy Wheel'),
+                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500),
+                    ),
+                    value: 'alloy_wheel',
+                    groupValue: row['wheel_type'] ?? 'normal_wheel',
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    activeColor: const Color(0xFF000080),
+                    onChanged: (val) {
+                      if (val != null) {
+                        row['wheel_type'] = val;
+                        _vehicleRowsNotifier.value++;
+                      }
+                    },
+                  ),
+                ),
+                Expanded(
+                  child: RadioListTile<String>(
+                    title: Text(
+                      context.tr('Normal Wheel'),
+                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500),
+                    ),
+                    value: 'normal_wheel',
+                    groupValue: row['wheel_type'] ?? 'normal_wheel',
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    activeColor: const Color(0xFF000080),
+                    onChanged: (val) {
+                      if (val != null) {
+                        row['wheel_type'] = val;
+                        _vehicleRowsNotifier.value++;
+                      }
+                    },
+                  ),
+                ),
+              ],
             ),
           ],
         ),

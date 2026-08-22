@@ -13,6 +13,7 @@ import '../providers/customer_provider.dart';
 import '../services/api_service.dart';
 import 'add_customer_screen.dart';
 import 'invoice_create_screen.dart';
+import 'vehicle_service_history_screen.dart';
 
 class NewJobScreen extends StatelessWidget {
   NewJobScreen({super.key});
@@ -96,7 +97,7 @@ class NewJobScreen extends StatelessWidget {
     String phoneCode = '+91';
     String countryIso = 'IN';
     for (final code in ['971', '966', '965', '968', '974', '973', '91']) {
-      if (rawPhone.startsWith(code)) {
+      if (rawPhone.startsWith(code) && rawPhone.length > 10) {
         phoneCode = '+$code';
         rawPhone = rawPhone.substring(code.length);
         countryIso = _isoFromDialCode(phoneCode);
@@ -675,6 +676,26 @@ class NewJobScreen extends StatelessWidget {
                                               ],
                                             ),
                                           ),
+                                          ElevatedButton.icon(
+                                            onPressed: () => _navigateToVehicleHistory(context, v),
+                                            icon: const Icon(Icons.history, size: 14),
+                                            label: Text(
+                                              context.tr('History'),
+                                              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12),
+                                            ),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: const Color(0xFF000080).withValues(alpha: 0.08),
+                                              foregroundColor: const Color(0xFF000080),
+                                              elevation: 0,
+                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                              minimumSize: Size.zero,
+                                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(8),
+                                                side: const BorderSide(color: Color(0xFF000080), width: 1),
+                                              ),
+                                            ),
+                                          ),
                                         ],
                                       ),
                                       const Padding(
@@ -880,6 +901,23 @@ class NewJobScreen extends StatelessWidget {
     }
   }
 
+  void _navigateToVehicleHistory(BuildContext context, Map<String, dynamic> vehicle) {
+    final vehicleId = vehicle['id']?.toString() ?? '';
+    final vehicleNo = vehicle['no']?.toString() ?? vehicle['number']?.toString() ?? '';
+
+    if (vehicleId.isEmpty) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => VehicleServiceHistoryScreen(
+          vehicleId: vehicleId,
+          vehicleNumber: vehicleNo,
+        ),
+      ),
+    );
+  }
+
   Widget _msgButton(
     BuildContext context, {
     required String label,
@@ -1033,6 +1071,7 @@ class _AddVehicleDialog extends StatelessWidget {
   final ValueNotifier<Map<String, dynamic>?> _selectedMakeNotifier = ValueNotifier(null);
   final ValueNotifier<Map<String, dynamic>?> _selectedBrandNotifier = ValueNotifier(null);
   final ValueNotifier<Map<String, dynamic>?> _selectedColorNotifier = ValueNotifier(null);
+  final ValueNotifier<String> _selectedWheelTypeNotifier = ValueNotifier('normal_wheel');
 
   final TextEditingController _numberController = TextEditingController();
 
@@ -1112,6 +1151,7 @@ class _AddVehicleDialog extends StatelessWidget {
       final vehicleData = <String, dynamic>{
         'vehicle_number': number,
         'vehicle_model_id': _selectedSegmentNotifier.value!['id'],
+        'wheel_type': _selectedWheelTypeNotifier.value,
       };
       if (_selectedMakeNotifier.value != null) vehicleData['make_id'] = _selectedMakeNotifier.value!['id'];
       if (_selectedBrandNotifier.value != null) vehicleData['brand_model_id'] = _selectedBrandNotifier.value!['id'];
@@ -1150,6 +1190,26 @@ class _AddVehicleDialog extends StatelessWidget {
     void Function(T?)? onChanged,
     String? hint,
   }) {
+    T? matchedValue;
+    if (value != null && items.isNotEmpty) {
+      if (value is Map && value.containsKey('id')) {
+        final valId = value['id']?.toString();
+        for (final item in items) {
+          if (item is Map && item['id']?.toString() == valId) {
+            matchedValue = item;
+            break;
+          }
+        }
+      } else {
+        for (final item in items) {
+          if (item == value) {
+            matchedValue = item;
+            break;
+          }
+        }
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1166,7 +1226,7 @@ class _AddVehicleDialog extends StatelessWidget {
             child: DropdownButton<T>(
               isExpanded: true,
               menuMaxHeight: 300,
-              value: value,
+              value: matchedValue,
               hint: Text(hint ?? 'Select...', style: TextStyle(color: Colors.grey.shade500, fontSize: 14)),
               items: items.map((item) {
                 return DropdownMenuItem<T>(
@@ -1364,6 +1424,55 @@ class _AddVehicleDialog extends StatelessWidget {
                           },
                         );
                       },
+                    );
+                  },
+                ),
+                const SizedBox(height: 14),
+
+                // Wheel Type selection
+                Text(
+                  context.tr('Wheel Type *'),
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
+                ),
+                const SizedBox(height: 6),
+                ValueListenableBuilder<String>(
+                  valueListenable: _selectedWheelTypeNotifier,
+                  builder: (context, selectedWheelType, child) {
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: RadioListTile<String>(
+                            title: Text(
+                              context.tr('Alloy Wheel'),
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                            ),
+                            value: 'alloy_wheel',
+                            groupValue: selectedWheelType,
+                            contentPadding: EdgeInsets.zero,
+                            dense: true,
+                            activeColor: const Color(0xFF000080),
+                            onChanged: (val) {
+                              if (val != null) _selectedWheelTypeNotifier.value = val;
+                            },
+                          ),
+                        ),
+                        Expanded(
+                          child: RadioListTile<String>(
+                            title: Text(
+                              context.tr('Normal Wheel'),
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                            ),
+                            value: 'normal_wheel',
+                            groupValue: selectedWheelType,
+                            contentPadding: EdgeInsets.zero,
+                            dense: true,
+                            activeColor: const Color(0xFF000080),
+                            onChanged: (val) {
+                              if (val != null) _selectedWheelTypeNotifier.value = val;
+                            },
+                          ),
+                        ),
+                      ],
                     );
                   },
                 ),

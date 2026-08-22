@@ -20,6 +20,9 @@ class DashboardScreen extends StatelessWidget {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final token = context.read<AuthProvider>().token;
         if (token != null) {
+          if (context.read<AuthProvider>().isCompanyAdmin) {
+            context.read<DashboardProvider>().fetchBranches(token);
+          }
           context.read<DashboardProvider>().loadStats(token).then((res) {
             if (res != null && context.mounted) {
               context.read<AuthProvider>().updateSubscriptionStatus(
@@ -49,6 +52,9 @@ class DashboardScreen extends StatelessWidget {
             onPressed: () {
               final token = context.read<AuthProvider>().token;
               if (token != null) {
+                if (context.read<AuthProvider>().isCompanyAdmin) {
+                  context.read<DashboardProvider>().fetchBranches(token);
+                }
                 context.read<DashboardProvider>().loadStats(token).then((res) {
                   if (res != null && context.mounted) {
                     context.read<AuthProvider>().updateSubscriptionStatus(
@@ -97,6 +103,13 @@ class DashboardScreen extends StatelessWidget {
                   ],
                 ),
               ),
+
+            // ── Branch Filter for Company Admin ──────────────────────
+            if (auth.isCompanyAdmin) ...[
+              _buildBranchDropdown(dashProvider, auth, context),
+              SizedBox(height: 16.h),
+            ],
+
             // ── Today's Stats ───────────────────────────────────────────
             buildSectionTitle(context.tr("Today's Summary"), Icons.today_outlined),
             SizedBox(height: 10.h),
@@ -392,6 +405,92 @@ class DashboardScreen extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBranchDropdown(DashboardProvider p, AuthProvider auth, BuildContext context) {
+    final token = auth.token;
+    return Container(
+      padding: REdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 6.r,
+            offset: Offset(0, 2.h),
+          ),
+        ],
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String?>(
+          isExpanded: true,
+          value: p.selectedBranchId,
+          icon: Icon(Icons.keyboard_arrow_down_rounded, color: const Color(0xFF000080), size: 22.r),
+          hint: Row(
+            children: [
+              Icon(Icons.storefront_outlined, size: 18.r, color: const Color(0xFF000080)),
+              SizedBox(width: 10.w),
+              Text(
+                context.tr('All Branches'),
+                style: GoogleFonts.inter(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF1E293B),
+                ),
+              ),
+            ],
+          ),
+          items: [
+            DropdownMenuItem<String?>(
+              value: null,
+              child: Row(
+                children: [
+                  Icon(Icons.storefront_outlined, size: 18.r, color: const Color(0xFF000080)),
+                  SizedBox(width: 10.w),
+                  Text(
+                    context.tr('All Branches'),
+                    style: GoogleFonts.inter(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF1E293B),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ...p.branches.map((b) {
+              return DropdownMenuItem<String?>(
+                value: b['id']?.toString(),
+                child: Row(
+                  children: [
+                    Icon(Icons.location_on_outlined, size: 18.r, color: const Color(0xFF3B82F6)),
+                    SizedBox(width: 10.w),
+                    Expanded(
+                      child: Text(
+                        b['name'] ?? '',
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF1E293B),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ],
+          onChanged: (val) {
+            if (token != null) {
+              p.setSelectedBranchId(val, token);
+            }
+          },
+        ),
       ),
     );
   }

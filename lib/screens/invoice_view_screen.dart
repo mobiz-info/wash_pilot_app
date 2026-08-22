@@ -116,15 +116,24 @@ class InvoiceViewScreen extends StatelessWidget {
       return parts.join(' | ');
     } else if (cat == 'wheel_alignment') {
       final parts = <String>[];
-      final align = detail['alignment_done'] == true;
-      final bal = detail['balancing_done'] == true;
-      if (align && bal) parts.add('Tasks: Alignment & Balancing');
-      else if (align) parts.add('Tasks: Alignment');
-      else if (bal) parts.add('Tasks: Balancing');
       final odo = detail['odometer_at_service']?.toString();
       if (odo != null && odo.isNotEmpty && odo != '0') parts.add('Odometer: $odo km');
+      final nextKm = detail['next_alignment_km']?.toString();
+      if (nextKm != null && nextKm.isNotEmpty && nextKm != '0') parts.add('Next Alignment: $nextKm km');
       final notes = detail['alignment_notes']?.toString();
       if (notes != null && notes.isNotEmpty) parts.add('Notes: $notes');
+      return parts.join(' | ');
+    } else if (cat == 'car_detailing' || cat == 'detailing') {
+      final parts = <String>[];
+      final wVal = detail['warranty_value']?.toString();
+      final wUnit = detail['warranty_unit']?.toString() ?? 'month';
+      final wText = detail['warranty_text']?.toString();
+      if (wText != null && wText.isNotEmpty) {
+        parts.add('Warranty: $wText');
+      } else if (wVal != null && wVal.isNotEmpty && wVal != '0') {
+        final unitText = wUnit == 'year' ? (wVal == '1' ? 'Year' : 'Years') : (wVal == '1' ? 'Month' : 'Months');
+        parts.add('Warranty: $wVal $unitText');
+      }
       return parts.join(' | ');
     }
     return '';
@@ -198,14 +207,39 @@ class InvoiceViewScreen extends StatelessWidget {
       ),
     );
 
-    final services  = invoiceData['services']   as List<dynamic>? ?? [];
-    final taxes     = invoiceData['taxes']       as List<dynamic>? ?? [];
-    final subtotal  = invoiceData['subtotal']    ?? '0.00';
-    final discount  = invoiceData['discount']    ?? '0.00';
-    final taxAmount = invoiceData['tax_amount']  ?? '0.00';
-    final total     = invoiceData['total']       ?? '0.00';
+    final services     = invoiceData['services']      as List<dynamic>? ?? [];
+    final tradingItems = invoiceData['trading_items']  as List<dynamic>? ?? [];
+    final taxes        = invoiceData['taxes']          as List<dynamic>? ?? [];
+    final subtotal     = invoiceData['subtotal']       ?? '0.00';
+    final discount     = invoiceData['discount']       ?? '0.00';
+    final taxAmount    = invoiceData['tax_amount']     ?? '0.00';
+    final total        = invoiceData['total']          ?? '0.00';
 
-    final bool hasAnyDiscount = services.any(
+    final displayItems = <Map<String, dynamic>>[];
+    for (final s in services) {
+      displayItems.add({
+        'name': s['name'] ?? '',
+        'rate': (s['rate'] as num?)?.toDouble() ?? 0.0,
+        'discount': (s['discount'] as num?)?.toDouble() ?? 0.0,
+        'raw_service': s,
+        'is_operational': false,
+      });
+    }
+    for (final t in tradingItems) {
+      final isOp = t['is_operational'] == true;
+      if (isOp) continue;
+      final qty = (t['qty'] as num?)?.toDouble() ?? 1.0;
+      final qtyStr = qty > 1 ? ' (x${qty.toStringAsFixed(qty.truncateToDouble() == qty ? 0 : 1)})' : '';
+      final name = '${t['item_name'] ?? 'Stock Item'}$qtyStr';
+      displayItems.add({
+        'name': name,
+        'rate': (t['rate'] as num?)?.toDouble() ?? 0.0,
+        'discount': (t['discount'] as num?)?.toDouble() ?? 0.0,
+        'is_operational': false,
+      });
+    }
+
+    final bool hasAnyDiscount = displayItems.any(
       (s) => ((s['discount'] as num?)?.toDouble() ?? 0.0) > 0,
     );
 
@@ -392,7 +426,7 @@ class InvoiceViewScreen extends StatelessWidget {
                     ],
                   ),
                   // Data rows
-                  for (int i = 0; i < services.length; i++)
+                  for (int i = 0; i < displayItems.length; i++)
                     pw.TableRow(
                       decoration: pw.BoxDecoration(
                         color: i.isEven ? PdfColors.grey50 : PdfColors.white,
@@ -404,33 +438,33 @@ class InvoiceViewScreen extends StatelessWidget {
                           child: pw.Column(
                             crossAxisAlignment: pw.CrossAxisAlignment.start,
                             children: [
-                              pw.Text(services[i]['name'] ?? '', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
-                              if (_getServiceDetailText(services[i], currencySymbol).isNotEmpty)
+                              pw.Text(displayItems[i]['name'] ?? '', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                              if (displayItems[i]['raw_service'] != null && _getServiceDetailText(displayItems[i]['raw_service'], currencySymbol).isNotEmpty)
                                 pw.Padding(
                                   padding: const pw.EdgeInsets.only(top: 2),
                                   child: pw.Text(
-                                    _getServiceDetailText(services[i], currencySymbol),
+                                    _getServiceDetailText(displayItems[i]['raw_service'], currencySymbol),
                                     style: const pw.TextStyle(fontSize: 8, color: PdfColors.indigo900),
                                   ),
                                 ),
                             ],
                           ),
                         ),
-                        _pdfCell('$currencySymbol${_fmt(services[i]['rate'])}'),
+                        _pdfCell('$currencySymbol${_fmt(displayItems[i]['rate'])}'),
                         if (hasAnyDiscount)
                           _pdfCell(
-                            ((services[i]['discount'] as num?)?.toDouble() ?? 0.0) > 0
-                                ? '-$currencySymbol${_fmt(services[i]['discount'])}'
+                            ((displayItems[i]['discount'] as num?)?.toDouble() ?? 0.0) > 0
+                                ? '-$currencySymbol${_fmt(displayItems[i]['discount'])}'
                                 : '—',
-                            color: ((services[i]['discount'] as num?)?.toDouble() ?? 0) > 0
+                            color: ((displayItems[i]['discount'] as num?)?.toDouble() ?? 0) > 0
                                 ? PdfColors.green700
                                 : PdfColors.grey500,
                           ),
                         if (hasAnyDiscount)
                           _pdfCell(
                             '$currencySymbol${_fmt(
-                              (services[i]['rate'] as num).toDouble() -
-                                  ((services[i]['discount'] as num?)?.toDouble() ?? 0),
+                              (displayItems[i]['rate'] as num).toDouble() -
+                                  ((displayItems[i]['discount'] as num?)?.toDouble() ?? 0),
                             )}',
                             bold: true,
                           ),
@@ -558,11 +592,23 @@ class InvoiceViewScreen extends StatelessWidget {
       }
 
       final currencySymbol = context.read<AuthProvider>().currencySymbol;
-      final services = invoiceData['services'] as List<dynamic>? ?? [];
-      final total = invoiceData['total'] ?? '0.00';
-      final collected = invoiceData['amount_collected'] ?? '0.00';
+      final services     = invoiceData['services']      as List<dynamic>? ?? [];
+      final tradingItems = invoiceData['trading_items']  as List<dynamic>? ?? [];
+      final total        = invoiceData['total']         ?? '0.00';
+      final collected    = invoiceData['amount_collected'] ?? '0.00';
 
-      final servicesStr = services.map((s) => "- ${s['name']}: $currencySymbol${_fmt(s['rate'])}").join("\n");
+      final itemLines = <String>[];
+      for (final s in services) {
+        itemLines.add("- ${s['name']}: $currencySymbol${_fmt(s['rate'])}");
+      }
+      for (final t in tradingItems) {
+        if (t['is_operational'] != true) {
+          final qty = (t['qty'] as num?)?.toDouble() ?? 1.0;
+          final qtyStr = qty > 1 ? ' (x${qty.toStringAsFixed(qty.truncateToDouble() == qty ? 0 : 1)})' : '';
+          itemLines.add("- ${t['item_name']}$qtyStr: $currencySymbol${_fmt(t['net_taxable'] ?? t['rate'])}");
+        }
+      }
+      final servicesStr = itemLines.join("\n");
 
       final cleanInvoiceNo = invoiceNumber.replaceAll('/', '_');
       final pdfUrl = "http://68.183.94.11:78/media/invoices/invoice-$cleanInvoiceNo.pdf";
@@ -617,11 +663,23 @@ class InvoiceViewScreen extends StatelessWidget {
   Future<void> _sharePdfFile(BuildContext context) async {
     try {
       final currencySymbol = context.read<AuthProvider>().currencySymbol;
-      final services = invoiceData['services'] as List<dynamic>? ?? [];
-      final total = invoiceData['total'] ?? '0.00';
-      final collected = invoiceData['amount_collected'] ?? '0.00';
+      final services     = invoiceData['services']      as List<dynamic>? ?? [];
+      final tradingItems = invoiceData['trading_items']  as List<dynamic>? ?? [];
+      final total        = invoiceData['total']         ?? '0.00';
+      final collected    = invoiceData['amount_collected'] ?? '0.00';
 
-      final servicesStr = services.map((s) => "- ${s['name']}: $currencySymbol${_fmt(s['rate'])}").join("\n");
+      final itemLines = <String>[];
+      for (final s in services) {
+        itemLines.add("- ${s['name']}: $currencySymbol${_fmt(s['rate'])}");
+      }
+      for (final t in tradingItems) {
+        if (t['is_operational'] != true) {
+          final qty = (t['qty'] as num?)?.toDouble() ?? 1.0;
+          final qtyStr = qty > 1 ? ' (x${qty.toStringAsFixed(qty.truncateToDouble() == qty ? 0 : 1)})' : '';
+          itemLines.add("- ${t['item_name']}$qtyStr: $currencySymbol${_fmt(t['net_taxable'] ?? t['rate'])}");
+        }
+      }
+      final servicesStr = itemLines.join("\n");
       final cleanInvoiceNo = invoiceNumber.replaceAll('/', '_');
       final pdfUrl = "http://68.183.94.11:78/media/invoices/invoice-$cleanInvoiceNo.pdf";
 
@@ -734,12 +792,36 @@ class InvoiceViewScreen extends StatelessWidget {
   // ── Screen UI ─────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    final taxes          = invoiceData['taxes']    as List<dynamic>? ?? [];
-    final services       = invoiceData['services'] as List<dynamic>? ?? [];
+    final taxes          = invoiceData['taxes']          as List<dynamic>? ?? [];
+    final services       = invoiceData['services']       as List<dynamic>? ?? [];
+    final tradingItems   = invoiceData['trading_items']  as List<dynamic>? ?? [];
     final currencySymbol = context.watch<AuthProvider>().currencySymbol;
 
+    final allItems = <Map<String, dynamic>>[];
+    for (final s in services) {
+      allItems.add({
+        'name': s['name'] ?? '',
+        'rate': (s['rate'] as num?)?.toDouble() ?? 0.0,
+        'discount': (s['discount'] as num?)?.toDouble() ?? 0.0,
+        'raw_service': s,
+        'is_operational': false,
+      });
+    }
+    for (final t in tradingItems) {
+      final isOp = t['is_operational'] == true;
+      final qty = (t['qty'] as num?)?.toDouble() ?? 1.0;
+      final qtyStr = qty > 1 ? ' (x${qty.toStringAsFixed(qty.truncateToDouble() == qty ? 0 : 1)})' : '';
+      final name = isOp ? '${t['item_name'] ?? 'Stock Item'}$qtyStr' : '${t['item_name'] ?? 'Stock Item'}$qtyStr';
+      allItems.add({
+        'name': name,
+        'rate': isOp ? 0.0 : ((t['rate'] as num?)?.toDouble() ?? 0.0),
+        'discount': isOp ? 0.0 : ((t['discount'] as num?)?.toDouble() ?? 0.0),
+        'is_operational': isOp,
+      });
+    }
+
     final bool hasAnyDiscount =
-        services.any((s) => ((s['discount'] as num?)?.toDouble() ?? 0.0) > 0);
+        allItems.any((s) => ((s['discount'] as num?)?.toDouble() ?? 0.0) > 0);
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
@@ -906,8 +988,8 @@ class InvoiceViewScreen extends StatelessWidget {
                   ]),
                 ),
 
-              // Service rows
-              for (int i = 0; i < services.length; i++) ...[
+              // Items rows
+              for (int i = 0; i < allItems.length; i++) ...[
                 Container(
                   padding: const EdgeInsets.symmetric(
                       vertical: 10, horizontal: 8),
@@ -923,7 +1005,7 @@ class InvoiceViewScreen extends StatelessWidget {
                       hasAnyDiscount
                           ? Row(children: [
                               Expanded(
-                                child: Text(services[i]['name'] ?? '',
+                                child: Text(allItems[i]['name'] ?? '',
                                     style: GoogleFonts.inter(
                                         fontWeight: FontWeight.w600,
                                         fontSize: 14,
@@ -932,7 +1014,7 @@ class InvoiceViewScreen extends StatelessWidget {
                               SizedBox(
                                 width: 68,
                                 child: Text(
-                                  context.tr('$currencySymbol${_fmt(services[i]['rate'])}'),
+                                  context.tr('$currencySymbol${_fmt(allItems[i]['rate'])}'),
                                   textAlign: TextAlign.right,
                                   style: GoogleFonts.inter(
                                       fontSize: 13,
@@ -942,16 +1024,16 @@ class InvoiceViewScreen extends StatelessWidget {
                               SizedBox(
                                 width: 68,
                                 child: Text(
-                                  ((services[i]['discount'] as num?)
+                                  ((allItems[i]['discount'] as num?)
                                                   ?.toDouble() ??
                                               0) >
                                           0
-                                      ? '-$currencySymbol${_fmt(services[i]['discount'])}'
+                                      ? '-$currencySymbol${_fmt(allItems[i]['discount'])}'
                                       : '—',
                                   textAlign: TextAlign.right,
                                   style: GoogleFonts.inter(
                                     fontSize: 13,
-                                    color: ((services[i]['discount'] as num?)
+                                    color: ((allItems[i]['discount'] as num?)
                                                     ?.toDouble() ??
                                                 0) >
                                             0
@@ -965,8 +1047,8 @@ class InvoiceViewScreen extends StatelessWidget {
                                 width: 76,
                                 child: Text(
                                   context.tr('$currencySymbol${_fmt(
-                                    (services[i]['rate'] as num).toDouble() -
-                                        ((services[i]['discount'] as num?)
+                                    (allItems[i]['rate'] as num).toDouble() -
+                                        ((allItems[i]['discount'] as num?)
                                                 ?.toDouble() ??
                                             0),
                                   )}'),
@@ -981,24 +1063,39 @@ class InvoiceViewScreen extends StatelessWidget {
                           : Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(services[i]['name'] ?? '',
-                                    style: GoogleFonts.inter(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 14,
-                                        color: const Color(0xFF1e293b))),
-                                Text(
-                                  context.tr('$currencySymbol${_fmt(services[i]['rate'])}'),
-                                  style: GoogleFonts.inter(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 14,
-                                      color: const Color(0xFF000080)),
+                                Expanded(
+                                  child: Text(allItems[i]['name'] ?? '',
+                                      style: GoogleFonts.inter(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                          color: const Color(0xFF1e293b))),
                                 ),
+                                if (allItems[i]['is_operational'] == true)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.amber.shade100,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      context.tr('Operational'),
+                                      style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
+                                    ),
+                                  )
+                                else
+                                  Text(
+                                    context.tr('$currencySymbol${_fmt(allItems[i]['rate'])}'),
+                                    style: GoogleFonts.inter(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 14,
+                                        color: const Color(0xFF000080)),
+                                  ),
                               ],
                             ),
-                      if (_getServiceDetailText(services[i], currencySymbol).isNotEmpty) ...[
+                      if (allItems[i]['raw_service'] != null && _getServiceDetailText(allItems[i]['raw_service'], currencySymbol).isNotEmpty) ...[
                         const SizedBox(height: 4),
                         Text(
-                          _getServiceDetailText(services[i], currencySymbol),
+                          _getServiceDetailText(allItems[i]['raw_service'], currencySymbol),
                           style: GoogleFonts.inter(
                             fontSize: 11,
                             color: Colors.blue.shade900,

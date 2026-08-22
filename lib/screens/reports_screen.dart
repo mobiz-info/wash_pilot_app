@@ -100,36 +100,12 @@ class ReportsScreen extends StatelessWidget {
       'type': 'leave',
     },
     {
-      'title': 'Oil Change Report',
-      'subtitle': 'Oil consumption and schedule history',
-      'icon': Icons.oil_barrel,
-      'color': Color(0xFFD97706),
-      'bg': Color(0xFFFEF3C7),
-      'type': 'oil_change_report',
-    },
-    {
-      'title': 'Tyre Change Report',
-      'subtitle': 'Tyre changes & replacement metrics',
-      'icon': Icons.circle_outlined,
-      'color': Color(0xFFE11D48),
-      'bg': Color(0xFFFFF1F2),
-      'type': 'tyre_change_report',
-    },
-    {
-      'title': 'Alignment Report',
-      'subtitle': 'Wheel balancing and alignment details',
-      'icon': Icons.build_circle_outlined,
-      'color': Color(0xFF059669),
-      'bg': Color(0xFFECFDF5),
-      'type': 'alignment_report',
-    },
-    {
-      'title': 'Oil Stock Ledger',
-      'subtitle': 'Ledger transactions for oil stock',
+      'title': 'Stock Consumption Report',
+      'subtitle': 'Stock items consumed (Trading & Operational)',
       'icon': Icons.inventory_2_outlined,
-      'color': Color(0xFF2563EB),
+      'color': Color(0xFF000080),
       'bg': Color(0xFFEFF6FF),
-      'type': 'oil_stock_ledger',
+      'type': 'stock_consumption',
     },
   ];
 
@@ -464,32 +440,8 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               branchId: _selectedBranchId.value,
             );
             break;
-          case 'oil_change_report':
-            res = await ApiService.getOilChangeReport(
-              token,
-              _fromStr,
-              _toStr,
-              branchId: _selectedBranchId.value,
-            );
-            break;
-          case 'tyre_change_report':
-            res = await ApiService.getTyreChangeReport(
-              token,
-              _fromStr,
-              _toStr,
-              branchId: _selectedBranchId.value,
-            );
-            break;
-          case 'alignment_report':
-            res = await ApiService.getWheelAlignmentReport(
-              token,
-              _fromStr,
-              _toStr,
-              branchId: _selectedBranchId.value,
-            );
-            break;
-          case 'oil_stock_ledger':
-            res = await ApiService.getOilStockLedgerReport(
+          case 'stock_consumption':
+            res = await ApiService.getStockConsumptionReport(
               token,
               _fromStr,
               _toStr,
@@ -723,28 +675,12 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
           _pdfSummaryItem('Total Outstanding', 'Rs. ${_fmt(d['total_outstanding'])}'),
         ];
         break;
-      case 'oil_change_report':
+      case 'stock_consumption':
         items = [
-          _pdfSummaryItem('Total Jobs', '${d['total_jobs']}'),
-          _pdfSummaryItem('Total Litres Used', '${d['total_litres']} L'),
-        ];
-        break;
-      case 'tyre_change_report':
-        items = [
-          _pdfSummaryItem('Total Jobs', '${d['total_jobs']}'),
-          _pdfSummaryItem('Total Tyres Changed', '${d['total_tyres']}'),
-        ];
-        break;
-      case 'alignment_report':
-        items = [
-          _pdfSummaryItem('Total Jobs', '${d['total_jobs']}'),
-        ];
-        break;
-      case 'oil_stock_ledger':
-        items = [
-          _pdfSummaryItem('Total Trans.', '${d['total_transactions']}'),
-          _pdfSummaryItem('Stock-In', '${d['total_stock_in']} L'),
-          _pdfSummaryItem('Stock-Out', '${d['total_stock_out']} L'),
+          _pdfSummaryItem('Total Items', '${d['total_items_consumed']}'),
+          _pdfSummaryItem('Total Qty', '${d['total_qty_consumed']}'),
+          _pdfSummaryItem('Operational Qty', '${d['operational_qty']}'),
+          _pdfSummaryItem('Trading Qty', '${d['trading_qty']}'),
         ];
         break;
     }
@@ -959,63 +895,16 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
           ]);
         }
         break;
-      case 'oil_change_report':
-        headers = ['Date', 'Invoice No', 'Customer', 'Vehicle', 'Oil Product', 'Litres Used', 'Odometer', 'Next Change'];
+      case 'stock_consumption':
+        headers = ['Date', 'Invoice No', 'Stock Item', 'Type', 'Qty', 'Total'];
         for (var r in rows) {
           data.add([
             r['date'] ?? '',
             r['invoice_number'] ?? '',
-            r['customer'] ?? '',
-            r['vehicle'] ?? '',
-            r['oil_product'] ?? '',
-            '${r['oil_litres']} L',
-            '${r['odometer']} km',
-            '${r['next_oil_change_km']} km',
-          ]);
-        }
-        break;
-      case 'tyre_change_report':
-        headers = ['Date', 'Invoice No', 'Customer', 'Vehicle', 'Tyre Brand', 'Size', 'Qty', 'Odometer', 'Next Change'];
-        for (var r in rows) {
-          data.add([
-            r['date'] ?? '',
-            r['invoice_number'] ?? '',
-            r['customer'] ?? '',
-            r['vehicle'] ?? '',
-            r['tyre_brand'] ?? '',
-            r['tyre_size'] ?? '',
-            '${r['tyres_count']}',
-            '${r['odometer']} km',
-            '${r['next_tyre_change_km']} km',
-          ]);
-        }
-        break;
-      case 'alignment_report':
-        headers = ['Date', 'Invoice No', 'Customer', 'Vehicle', 'Alignment', 'Balancing', 'Odometer', 'Notes'];
-        for (var r in rows) {
-          data.add([
-            r['date'] ?? '',
-            r['invoice_number'] ?? '',
-            r['customer'] ?? '',
-            r['vehicle'] ?? '',
-            r['alignment_done'] ?? '',
-            r['balancing_done'] ?? '',
-            '${r['odometer']} km',
-            r['notes'] ?? '',
-          ]);
-        }
-        break;
-      case 'oil_stock_ledger':
-        headers = ['Date', 'Branch', 'Oil Product', 'Type', 'Litres', 'User', 'Remarks'];
-        for (var r in rows) {
-          data.add([
-            r['date'] ?? '',
-            r['branch'] ?? '',
-            r['oil_product'] ?? '',
-            r['transaction_type'] ?? '',
-            '${r['quantity_litres']} L',
-            r['creator'] ?? '',
-            r['notes'] ?? '',
+            '${r['stock_item_name'] ?? ''} (${r['category'] ?? ''})',
+            r['usage_type'] ?? '',
+            '${r['qty']} ${r['unit'] ?? ''}',
+            'Rs. ${_fmt(r['total_amount'])}',
           ]);
         }
         break;
@@ -1388,17 +1277,8 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                     if (widget.reportType == 'income') {
                       return _buildIncomeRow(row, i);
                     }
-                    if (widget.reportType == 'oil_change_report') {
-                      return _buildOilChangeRow(row);
-                    }
-                    if (widget.reportType == 'tyre_change_report') {
-                      return _buildTyreChangeRow(row);
-                    }
-                    if (widget.reportType == 'alignment_report') {
-                      return _buildWheelAlignmentRow(row);
-                    }
-                    if (widget.reportType == 'oil_stock_ledger') {
-                      return _buildOilStockLedgerRow(row);
+                    if (widget.reportType == 'stock_consumption') {
+                      return _buildStockConsumptionRow(row);
                     }
                     return _buildRow(
                       row,
@@ -1862,59 +1742,22 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
           },
         ];
         break;
-      case 'oil_change_report':
+      case 'stock_consumption':
         items = [
           {
-            'label': 'Total Jobs',
-            'value': '${d['total_jobs']}',
+            'label': 'Total Items',
+            'value': '${d['total_items_consumed']}',
             'color': const Color(0xFF1E293B),
           },
           {
-            'label': 'Litres Used',
-            'value': '${d['total_litres']} L',
+            'label': 'Operational Qty',
+            'value': '${d['operational_qty']}',
             'color': const Color(0xFFD97706),
           },
-        ];
-        break;
-      case 'tyre_change_report':
-        items = [
           {
-            'label': 'Total Jobs',
-            'value': '${d['total_jobs']}',
-            'color': const Color(0xFF1E293B),
-          },
-          {
-            'label': 'Tyres Changed',
-            'value': '${d['total_tyres']}',
-            'color': const Color(0xFFE11D48),
-          },
-        ];
-        break;
-      case 'alignment_report':
-        items = [
-          {
-            'label': 'Total Jobs',
-            'value': '${d['total_jobs']}',
+            'label': 'Trading Qty',
+            'value': '${d['trading_qty']}',
             'color': const Color(0xFF059669),
-          },
-        ];
-        break;
-      case 'oil_stock_ledger':
-        items = [
-          {
-            'label': 'Total Trans.',
-            'value': '${d['total_transactions']}',
-            'color': const Color(0xFF1E293B),
-          },
-          {
-            'label': 'Stock-In',
-            'value': '${d['total_stock_in']} L',
-            'color': const Color(0xFF059669),
-          },
-          {
-            'label': 'Stock-Out',
-            'value': '${d['total_stock_out']} L',
-            'color': const Color(0xFFDC2626),
           },
         ];
         break;
@@ -2651,123 +2494,10 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
     );
   }
 
-  Widget _buildOilChangeRow(Map<String, dynamic> row) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                row['invoice_number'] ?? '',
-                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14, color: const Color(0xFF000080)),
-              ),
-              Text(
-                row['date'] ?? '',
-                style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade500),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          _rowItemDetail('Customer', row['customer']),
-          _rowItemDetail('Vehicle', row['vehicle']),
-          _rowItemDetail('Oil Brand', row['oil_product']),
-          _rowItemDetail('Litres Used', '${row['oil_litres']} L'),
-          _rowItemDetail('Filter Changed', row['oil_filter_changed']),
-          _rowItemDetail('Odometer', '${row['odometer']} km'),
-          _rowItemDetail('Next Change', '${row['next_oil_change_km']} km'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTyreChangeRow(Map<String, dynamic> row) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                row['invoice_number'] ?? '',
-                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14, color: const Color(0xFF000080)),
-              ),
-              Text(
-                row['date'] ?? '',
-                style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade500),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          _rowItemDetail('Customer', row['customer']),
-          _rowItemDetail('Vehicle', row['vehicle']),
-          _rowItemDetail('Tyre Brand', row['tyre_brand']),
-          _rowItemDetail('Tyre Size', row['tyre_size']),
-          _rowItemDetail('Qty Changed', '${row['tyres_count']}'),
-          _rowItemDetail('Odometer', '${row['odometer']} km'),
-          _rowItemDetail('Next Change', '${row['next_tyre_change_km']} km'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWheelAlignmentRow(Map<String, dynamic> row) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                row['invoice_number'] ?? '',
-                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14, color: const Color(0xFF000080)),
-              ),
-              Text(
-                row['date'] ?? '',
-                style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade500),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          _rowItemDetail('Customer', row['customer']),
-          _rowItemDetail('Vehicle', row['vehicle']),
-          _rowItemDetail('Alignment Done', row['alignment_done']),
-          _rowItemDetail('Balancing Done', row['balancing_done']),
-          _rowItemDetail('Odometer', '${row['odometer']} km'),
-          if (row['notes'] != null && row['notes'].toString().isNotEmpty)
-            _rowItemDetail('Notes', row['notes']),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOilStockLedgerRow(Map<String, dynamic> row) {
-    final type = row['transaction_type'] ?? '';
-    final color = type == 'IN' ? Colors.green : Colors.red;
+  Widget _buildStockConsumptionRow(Map<String, dynamic> row) {
+    final isOperational = row['usage_type']?.toString().toUpperCase() == 'OPERATIONAL';
+    final usageColor = isOperational ? const Color(0xFFD97706) : const Color(0xFF059669);
+    final usageLabel = isOperational ? 'Operational' : 'Trading';
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -2783,38 +2513,29 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      type,
-                      style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 11, color: color),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    row['oil_product'] ?? '',
-                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, color: const Color(0xFF1E293B)),
-                  ),
-                ],
-              ),
               Text(
-                row['date'] ?? '',
-                style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade500),
+                row['stock_item_name'] ?? 'Item',
+                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15, color: const Color(0xFF1E293B)),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: usageColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  usageLabel,
+                  style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: usageColor),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          _rowItemDetail('Branch', row['branch']),
-          _rowItemDetail('Quantity', '${row['quantity_litres']} L'),
-          _rowItemDetail('Recorded By', row['creator']),
-          if (row['notes'] != null && row['notes'].toString().isNotEmpty)
-            _rowItemDetail('Remarks', row['notes']),
+          const SizedBox(height: 6),
+          _rowItemDetail('Category', row['category']),
+          _rowItemDetail('Invoice', row['invoice_number']),
+          _rowItemDetail('Date', row['date']),
+          _rowItemDetail('Quantity', '${row['qty']} ${row['unit'] ?? ''}'),
+          _rowItemDetail('Total Amount', 'Rs. ${_fmt(row['total_amount'])}'),
         ],
       ),
     );

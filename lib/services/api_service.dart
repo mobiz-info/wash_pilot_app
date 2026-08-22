@@ -194,12 +194,19 @@ class ApiService {
       body: jsonEncode(invoiceData),
     );
 
+    try {
+      final res = jsonDecode(response.body);
+      if (res is Map<String, dynamic>) {
+        return res;
+      }
+    } catch (_) {}
+
     if (response.statusCode == 200 ||
         response.statusCode == 400 ||
         response.statusCode == 401) {
       return jsonDecode(response.body);
     } else {
-      throw Exception('Failed to connect to the server.');
+      throw Exception('Failed to connect to the server (${response.statusCode}).');
     }
   }
 
@@ -338,6 +345,7 @@ class ApiService {
     required String recipientType,
     required String message,
     String var2 = '',
+    String templateName = '',
     List<String> customerIds = const [],
     int inactiveDays = 60,
   }) async {
@@ -345,6 +353,7 @@ class ApiService {
       'recipient_type': recipientType,
       'message': message,
       'var_2': var2,
+      'template_name': templateName,
       'customer_ids': customerIds,
       'inactive_days': inactiveDays,
     });
@@ -430,6 +439,7 @@ class ApiService {
     String url = '$baseUrl/booking/reminder/list/';
     final params = <String, String>{};
     if (date != null) params['date'] = date;
+    if (date == null || date == 'all') params['show_all'] = 'true';
     if (search != null && search.isNotEmpty) params['search'] = search;
     if (params.isNotEmpty) {
       url += '?' + params.entries.map((e) => '${e.key}=${e.value}').join('&');
@@ -452,22 +462,84 @@ class ApiService {
     String token,
     List<String> planIds, {
     String? action,
+    String? templateName,
+    Map<String, dynamic>? planDetails,
   }) async {
+    final Map<String, dynamic> bodyPayload = {
+      'plan_ids': planIds,
+      if (action != null) 'action': action,
+      'template_name': templateName ?? 'wheelalignment',
+      'wawy_template_name': templateName ?? 'wheelalignment',
+      'name': templateName ?? 'wheelalignment',
+    };
+
+    if (planDetails != null) {
+      final custName = (planDetails['customer_name'] ?? '').toString();
+      final vehicleNum = (planDetails['vehicle_number'] ?? '').toString();
+      final serviceName = (planDetails['service_name'] ?? '').toString();
+      final nextKm = (planDetails['next_alignment_km'] ??
+              planDetails['next_oil_change_km'] ??
+              planDetails['next_km'] ??
+              planDetails['due_km'] ??
+              '')
+          .toString();
+
+      bodyPayload['value1'] = custName;
+      bodyPayload['value2'] = vehicleNum;
+      bodyPayload['value3'] = serviceName;
+      bodyPayload['value4'] = nextKm;
+      bodyPayload['var1'] = custName;
+      bodyPayload['var2'] = vehicleNum;
+      bodyPayload['var3'] = serviceName;
+      bodyPayload['var4'] = nextKm;
+    }
+
     final response = await http.post(
       Uri.parse('$baseUrl/booking/reminder/send/'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },
-      body: jsonEncode({
-        'plan_ids': planIds,
-        if (action != null) 'action': action,
-      }),
+      body: jsonEncode(bodyPayload),
     );
     if (response.statusCode == 200 || response.statusCode == 401) {
       return jsonDecode(response.body);
     } else {
       throw Exception('Failed to connect to the server.');
+    }
+  }
+
+  static Future<bool> sendWawyReminderDirect({
+    required String toPhone,
+    String templateName = 'wheelalignment',
+    required String value1,
+    required String value2,
+    required String value3,
+    required String value4,
+  }) async {
+    try {
+      String cleanedPhone = toPhone.replaceAll(RegExp(r'\D'), '');
+      if (cleanedPhone.length == 10) {
+        cleanedPhone = '91$cleanedPhone';
+      }
+      if (cleanedPhone.isEmpty) return false;
+
+      final url = Uri.parse(
+        'http://wawy.org/pushwhatsapp.php?'
+        'sender=919496007007&'
+        'priority=21&'
+        'name=${Uri.encodeComponent(templateName)}&'
+        'to=${Uri.encodeComponent(cleanedPhone)}&'
+        'value1=${Uri.encodeComponent(value1)}&'
+        'value2=${Uri.encodeComponent(value2)}&'
+        'value3=${Uri.encodeComponent(value3)}&'
+        'value4=${Uri.encodeComponent(value4)}'
+      );
+
+      final response = await http.get(url);
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
     }
   }
 
@@ -748,9 +820,13 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> getDashboardStats(String token) async {
+  static Future<Map<String, dynamic>> getDashboardStats(String token, {String? branchId}) async {
+    String url = '$baseUrl/dashboard/stats/';
+    if (branchId != null && branchId.isNotEmpty) {
+      url += '?branch_id=${Uri.encodeComponent(branchId)}';
+    }
     final response = await http.get(
-      Uri.parse('$baseUrl/dashboard/stats/'),
+      Uri.parse(url),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -1167,52 +1243,13 @@ class ApiService {
     branchId: branchId,
   );
 
-  static Future<Map<String, dynamic>> getOilChangeReport(
+  static Future<Map<String, dynamic>> getStockConsumptionReport(
     String token,
     String fromDate,
     String toDate, {
     String? branchId,
   }) => _reportGet(
-    'reports/oil-change/',
-    token,
-    fromDate,
-    toDate,
-    branchId: branchId,
-  );
-
-  static Future<Map<String, dynamic>> getTyreChangeReport(
-    String token,
-    String fromDate,
-    String toDate, {
-    String? branchId,
-  }) => _reportGet(
-    'reports/tyre-change/',
-    token,
-    fromDate,
-    toDate,
-    branchId: branchId,
-  );
-
-  static Future<Map<String, dynamic>> getWheelAlignmentReport(
-    String token,
-    String fromDate,
-    String toDate, {
-    String? branchId,
-  }) => _reportGet(
-    'reports/wheel-alignment/',
-    token,
-    fromDate,
-    toDate,
-    branchId: branchId,
-  );
-
-  static Future<Map<String, dynamic>> getOilStockLedgerReport(
-    String token,
-    String fromDate,
-    String toDate, {
-    String? branchId,
-  }) => _reportGet(
-    'reports/oil-stock/',
+    'reports/stock-consumption/',
     token,
     fromDate,
     toDate,
@@ -1538,6 +1575,22 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> getStockGroups(String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/stock-groups/list/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load stock groups.');
+    }
+  }
+
+
   static Future<Map<String, dynamic>> getPurchaseRequests(String token) async {
     final response = await http.get(
       Uri.parse('$baseUrl/purchase-requests/list/'),
@@ -1593,26 +1646,40 @@ class ApiService {
 
   static Future<Map<String, dynamic>> createStock(
     String token,
-    String itemName,
-    String unit, {
-    String? expenseHeadId,
-  }) async {
+    Map<String, dynamic> data,
+  ) async {
     final response = await http.post(
       Uri.parse('$baseUrl/stock/create/'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },
-      body: jsonEncode({
-        'item_name': itemName,
-        'unit': unit,
-        if (expenseHeadId != null) 'expense_head_id': expenseHeadId,
-      }),
+      body: jsonEncode(data),
+    );
+    if (response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 400) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to create stock item.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> editStock(
+    String token,
+    String id,
+    Map<String, dynamic> data,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/stock/edit/$id/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(data),
     );
     if (response.statusCode == 200 || response.statusCode == 400) {
       return jsonDecode(response.body);
     } else {
-      throw Exception('Failed to create stock item.');
+      throw Exception('Failed to edit stock item.');
     }
   }
 
@@ -1651,32 +1718,6 @@ class ApiService {
       return jsonDecode(response.body);
     } else {
       throw Exception('Failed to delete expense head.');
-    }
-  }
-
-  static Future<Map<String, dynamic>> editStock(
-    String token,
-    String id,
-    String itemName,
-    String unit, {
-    String? expenseHeadId,
-  }) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/stock/edit/$id/'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode({
-        'item_name': itemName,
-        'unit': unit,
-        'expense_head_id': expenseHeadId,
-      }),
-    );
-    if (response.statusCode == 200 || response.statusCode == 400) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Failed to edit stock item.');
     }
   }
 
@@ -2454,6 +2495,80 @@ class ApiService {
       return jsonDecode(response.body);
     }
     throw Exception('Failed to update quotation (Status: ${response.statusCode}).');
+  }
+
+  // --- Senior ERP Purchase & Supplier Payables ---
+
+  static Future<Map<String, dynamic>> getSuppliers(String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/supplier/list/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to load suppliers.');
+  }
+
+  static Future<Map<String, dynamic>> getSupplierPayables(String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/erp/suppliers-payables/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to load supplier payables.');
+  }
+
+  static Future<Map<String, dynamic>> createSupplierPayment(Map<String, dynamic> data, String token) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/erp/supplier-payment/create/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(data),
+    );
+    if (response.statusCode == 200 || response.statusCode == 400) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to record supplier payment.');
+  }
+
+  static Future<Map<String, dynamic>> createPurchaseInvoice(Map<String, dynamic> data, String token) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/erp/purchase-invoice/create/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(data),
+    );
+    if (response.statusCode == 200 || response.statusCode == 400) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to create purchase invoice.');
+  }
+
+  static Future<Map<String, dynamic>> getPurchaseInvoices(String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/erp/purchase-invoices/list/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to load purchase invoices.');
   }
 }
 

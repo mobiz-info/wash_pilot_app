@@ -1223,6 +1223,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                         ),
                         const SizedBox(height: 14),
 
+                        /*
                         // Has Supplier Checkbox
                         ValueListenableBuilder<bool>(
                           valueListenable: _hasSupplierNotifier,
@@ -1311,6 +1312,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                             );
                           },
                         ),
+                        */
 
                         // Remark
                         _buildTextField(

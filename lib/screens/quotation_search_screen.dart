@@ -95,7 +95,7 @@ class QuotationSearchScreen extends StatelessWidget {
     String phoneCode = '+91';
     String countryIso = 'IN';
     for (final code in ['971', '966', '965', '968', '974', '973', '91']) {
-      if (rawPhone.startsWith(code)) {
+      if (rawPhone.startsWith(code) && rawPhone.length > 10) {
         phoneCode = '+$code';
         rawPhone = rawPhone.substring(code.length);
         countryIso = _isoFromDialCode(phoneCode);
