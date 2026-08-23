@@ -4163,20 +4163,31 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
             onChanged: (val) {
               _addTradingItems = val ?? false;
               if (_addTradingItems && _tradingRows.isEmpty) {
-                _tradingRows.add(_TradingItemRow());
+                _tradingRows.insert(0, _TradingItemRow());
               }
               _syncAmountCollected();
               _updateUi();
             },
           ),
-          Text(
-            context.tr('Add Stock Items'),
-            style: GoogleFonts.inter(
-              fontWeight: FontWeight.w800,
-              fontSize: 14,
-              color: const Color(0xFF000080),
+          Expanded(
+            child: Text(
+              context.tr('Add Stock Items'),
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.w800,
+                fontSize: 14,
+                color: const Color(0xFF000080),
+              ),
             ),
           ),
+          if (_addTradingItems)
+            IconButton(
+              icon: const Icon(Icons.add_circle, color: Color(0xFF000080), size: 26),
+              onPressed: () {
+                _tradingRows.insert(0, _TradingItemRow());
+                _updateUi();
+              },
+              tooltip: context.tr('+ Add Stock Item'),
+            ),
         ],
       ),
       child: !_addTradingItems
@@ -4184,13 +4195,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                for (int i = 0; i < _tradingRows.length; i++) ...[
-                  _tradingItemRowWidget(_tradingRows[i], i),
-                  const SizedBox(height: 12),
-                ],
                 ElevatedButton.icon(
                   onPressed: () {
-                    _tradingRows.add(_TradingItemRow());
+                    _tradingRows.insert(0, _TradingItemRow());
                     _updateUi();
                   },
                   icon: const Icon(Icons.add_shopping_cart, size: 16),
@@ -4201,6 +4208,11 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                 ),
+                const SizedBox(height: 12),
+                for (int i = 0; i < _tradingRows.length; i++) ...[
+                  _tradingItemRowWidget(_tradingRows[i], i),
+                  const SizedBox(height: 12),
+                ],
               ],
             ),
     );

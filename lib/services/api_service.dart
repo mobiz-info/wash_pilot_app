@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  static const String appName = "Car Wash";
+  static const String appName = "Mobiz AutoCare Pro";
   static const String appIconPath = "assets/icons/mobiz_logo_foreground.png";
   // Use 10.0.2.2 for Android Emulator, or your local IP if on a real device
   // static const String baseUrl = "http://10.54.237.238:8000/api";
