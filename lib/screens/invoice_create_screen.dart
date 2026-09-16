@@ -1340,14 +1340,48 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                       ),
                     ),
                   ),
-                Text(
-                  (widget.vehicle['vehicle_type'] != null && widget.vehicle['vehicle_type'].toString().isNotEmpty)
-                      ? "${widget.vehicle['no']} · ${widget.vehicle['vehicle_type']} - ${widget.vehicle['type']}"
-                      : "${widget.vehicle['no']} · ${widget.vehicle['type']}",
-                  style: GoogleFonts.inter(
-                    fontSize: 12.sp,
-                    color: Colors.grey.shade600,
-                  ),
+                Builder(
+                  builder: (context) {
+                    final emission = (widget.vehicle['emission_standard'] ?? widget.vehicle['emission_standard_name'] ?? '').toString().trim();
+                    final vehicleInfo = (widget.vehicle['vehicle_type'] != null && widget.vehicle['vehicle_type'].toString().isNotEmpty)
+                        ? "${widget.vehicle['no']} · ${widget.vehicle['vehicle_type']} - ${widget.vehicle['type']}"
+                        : "${widget.vehicle['no']} · ${widget.vehicle['type']}";
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          vehicleInfo,
+                          style: GoogleFonts.inter(
+                            fontSize: 12.sp,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                        if (emission.isNotEmpty) ...[
+                          const SizedBox(height: 3),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEFF6FF),
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: const Color(0xFFBFDBFE)),
+                                ),
+                                child: Text(
+                                  "${context.tr('Emission')}: $emission",
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11.sp,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF1D4ED8),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    );
+                  }
                 ),
               ],
             ),
@@ -2657,10 +2691,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                         context.tr('Smoke Test Renewal Validity'),
                         style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13.sp, color: Colors.purple.shade900),
                       ),
-                      Text(
-                        stdLabel,
-                        style: GoogleFonts.inter(fontSize: 11.sp, color: Colors.purple.shade700),
-                      ),
+                      
                     ],
                   ),
                 ),
