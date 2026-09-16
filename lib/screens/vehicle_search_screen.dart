@@ -147,15 +147,15 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
-            const Icon(Icons.notifications_active_outlined, color: Colors.green),
-            const SizedBox(width: 8),
+            Icon(Icons.notifications_active_outlined, color: Colors.green),
+            SizedBox(width: 8),
             Text(context.tr('Send Ready Alert'),
-                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16)),
+                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16.sp)),
           ],
         ),
         content: Text(
           context.tr('Send the automated WhatsApp ready alert notification to this customer?'),
-          style: GoogleFonts.inter(fontSize: 14, color: Colors.grey.shade700),
+          style: GoogleFonts.inter(fontSize: 14.sp, color: Colors.grey.shade700),
         ),
         actions: [
           TextButton(
@@ -202,7 +202,11 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
             SnackBar(content: Text(context.tr('✅ WhatsApp Ready Alert sent successfully!')), backgroundColor: Colors.green),
           );
         } else {
-          final message = "Hello $customerName, your vehicle ($vehicleNumber) is ready for pickup! Thank you for choosing our service.";
+          final branchName = context.read<AuthProvider>().branchName ?? '';
+          final branchStr = branchName.isNotEmpty ? branchName : 'Our';
+          final message = (res['message_text'] != null && res['message_text'].toString().isNotEmpty)
+              ? res['message_text'].toString()
+              : "Hi $customerName Great news! Your vehicle $vehicleNumber is ready for pickup. Please collect at your earliest convenience.\n$branchStr Support team.";
           final String cleanedPhone = CountryConfig.formatPhoneForWhatsapp(phone);
 
           if (cleanedPhone.isNotEmpty) {
@@ -233,10 +237,10 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
+      backgroundColor: Color(0xFFF1F5F9),
       appBar: AppBar(
         title: Text(context.tr('Vehicle Search'), style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
-        backgroundColor: const Color(0xFF000080),
+        backgroundColor: Color(0xFF000080),
         foregroundColor: Colors.white,
         elevation: 0,
       ),
@@ -255,11 +259,11 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
                     style: GoogleFonts.inter(fontWeight: FontWeight.w600, letterSpacing: 1.2),
                     decoration: InputDecoration(
                       hintText: context.tr('Enter Vehicle Number (e.g. KL01AB1234)'),
-                      hintStyle: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 13),
+                      hintStyle: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 13.sp),
                       filled: true,
                       fillColor: Colors.white,
-                      prefixIcon: const Icon(Icons.directions_car, color: Color(0xFF000080)),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                      prefixIcon: Icon(Icons.directions_car, color: Color(0xFF000080)),
+                      contentPadding: EdgeInsets.symmetric(vertical: 16),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                     ),
                     onSubmitted: (_) => _searchManual(),
@@ -275,7 +279,7 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.search, color: Color(0xFF000080), size: 26),
+                    child: Icon(Icons.search, color: Color(0xFF000080), size: 26),
                   ),
                 ),
               ],
@@ -320,7 +324,7 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
         return Card(
           color: Colors.white,
           elevation: 0,
-          margin: const EdgeInsets.only(bottom: 12),
+          margin: EdgeInsets.only(bottom: 12),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
             side: BorderSide(color: Colors.grey.shade200, width: 1),
@@ -336,12 +340,12 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF000080).withOpacity(0.08),
+                      color: Color(0xFF000080).withOpacity(0.08),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.directions_car,
                       color: Color(0xFF000080),
                       size: 24,
@@ -355,16 +359,16 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
                         Text(
                           suggestion['vehicle_number'] ?? '',
                           style: GoogleFonts.inter(
-                            fontSize: 16,
+                            fontSize: 16.sp,
                             fontWeight: FontWeight.bold,
-                            color: const Color(0xFF000080),
+                            color: Color(0xFF000080),
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           '${suggestion['vehicle_model']} · ${suggestion['customer_name']}',
                           style: GoogleFonts.inter(
-                            fontSize: 13,
+                            fontSize: 13.sp,
                             color: Colors.grey.shade600,
                           ),
                         ),
@@ -395,7 +399,7 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
           Text(
             context.tr('Search by vehicle number\nto view owner & visit details'),
             textAlign: TextAlign.center,
-            style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 15),
+            style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 15.sp),
           ),
         ],
       ),
@@ -408,10 +412,10 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.no_crash, size: 80, color: Colors.orange.shade200),
-          const SizedBox(height: 16),
-          Text(errorMessage, textAlign: TextAlign.center, style: GoogleFonts.inter(color: Colors.orange.shade700, fontSize: 16, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
-          Text(context.tr('Check the vehicle number and try again.'), style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 13)),
+          SizedBox(height: 16),
+          Text(errorMessage, textAlign: TextAlign.center, style: GoogleFonts.inter(color: Colors.orange.shade700, fontSize: 16.sp, fontWeight: FontWeight.w600)),
+          SizedBox(height: 8),
+          Text(context.tr('Check the vehicle number and try again.'), style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 13.sp)),
         ],
       ),
     );
@@ -444,21 +448,21 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(14),
+                  padding: EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF000080).withOpacity(0.08),
+                    color: Color(0xFF000080).withOpacity(0.08),
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: const Icon(Icons.directions_car, color: Color(0xFF000080), size: 32),
+                  child: Icon(Icons.directions_car, color: Color(0xFF000080), size: 32),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(vehicle['number'], style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 1.5, color: const Color(0xFF000080))),
-                      const SizedBox(height: 4),
-                      Text(context.tr('${vehicle['vehicle_type']} · ${vehicle['model']}'), style: GoogleFonts.inter(color: Colors.grey.shade600, fontSize: 13)),
+                      Text(vehicle['number'], style: GoogleFonts.inter(fontSize: 22.sp, fontWeight: FontWeight.w900, letterSpacing: 1.5, color: Color(0xFF000080))),
+                      SizedBox(height: 4),
+                      Text(context.tr('${vehicle['vehicle_type']} · ${vehicle['model']}'), style: GoogleFonts.inter(color: Colors.grey.shade600, fontSize: 13.sp)),
                     ],
                   ),
                 ),
@@ -510,9 +514,9 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
                   ],
                 ),
                 // if (schemeName != null) ...[
-                //   const SizedBox(height: 20),
-                //   Text(context.tr('Scheme: $schemeName'), style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: Colors.indigo.shade700, fontSize: 14)),
-                //   const SizedBox(height: 10),
+                //   SizedBox(height: 20),
+                //   Text(context.tr('Scheme: $schemeName'), style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: Colors.indigo.shade700, fontSize: 14.sp)),
+                //   SizedBox(height: 10),
                 //   // Progress Bar
                 //   ClipRRect(
                 //     borderRadius: BorderRadius.circular(8),
@@ -523,32 +527,32 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
                 //       valueColor: AlwaysStoppedAnimation<Color>(isEligible ? Colors.green : const Color(0xFF000080)),
                 //     ),
                 //   ),
-                //   const SizedBox(height: 8),
+                //   SizedBox(height: 8),
                 //   Row(
                 //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 //     children: [
-                //       Text(context.tr('$totalVisits / $paidVisits visits'), style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade600)),
+                //       Text(context.tr('$totalVisits / $paidVisits visits'), style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade600)),
                 //       if (isEligible)
                 //         Container(
-                //           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                //           padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 //           decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.green.shade300)),
                 //           child: Row(
                 //             children: [
-                //               const Icon(Icons.check_circle, color: Colors.green, size: 14),
-                //               const SizedBox(width: 4),
-                //               Text(context.tr('ELIGIBLE'), style: GoogleFonts.inter(color: Colors.green.shade700, fontWeight: FontWeight.bold, fontSize: 12)),
+                //               Icon(Icons.check_circle, color: Colors.green, size: 14),
+                //               SizedBox(width: 4),
+                //               Text(context.tr('ELIGIBLE'), style: GoogleFonts.inter(color: Colors.green.shade700, fontWeight: FontWeight.bold, fontSize: 12.sp)),
                 //             ],
                 //           ),
                 //         )
                 //       else
-                //         Text(context.tr('${paidVisits - totalVisits} more to go'), style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade500)),
+                //         Text(context.tr('${paidVisits - totalVisits} more to go'), style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade500)),
                 //     ],
                 //   ),
                 // ],
                 // if (schemeName == null)
                 //   Padding(
-                //     padding: const EdgeInsets.only(top: 8.0),
-                //     child: Text(context.tr('No active scheme for this vehicle.'), style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 13)),
+                //     padding: EdgeInsets.only(top: 8.0),
+                //     child: Text(context.tr('No active scheme for this vehicle.'), style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 13.sp)),
                 //   ),
               ],
             ),
@@ -571,15 +575,15 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
                 ),
               );
             },
-            icon: const Icon(Icons.add_shopping_cart, color: Colors.white),
+            icon: Icon(Icons.add_shopping_cart, color: Colors.white),
             label: Text(
               context.tr('New Job'),
-              style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold),
+              style: GoogleFonts.inter(fontSize: 16.sp, fontWeight: FontWeight.bold),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF000080),
+              backgroundColor: Color(0xFF000080),
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               elevation: 0,
             ),
@@ -617,11 +621,11 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
   Widget _buildCard({Widget? child, String? label, IconData? icon}) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 3))],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: Offset(0, 3))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -629,12 +633,12 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
           if (label != null && icon != null) ...[
             Row(
               children: [
-                Icon(icon, size: 18, color: const Color(0xFF000080)),
-                const SizedBox(width: 8),
-                Text(label, style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14, color: const Color(0xFF000080))),
+                Icon(icon, size: 18, color: Color(0xFF000080)),
+                SizedBox(width: 8),
+                Text(label, style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14.sp, color: Color(0xFF000080))),
               ],
             ),
-            const Divider(height: 20),
+            Divider(height: 20),
           ],
           if (child != null) child,
         ],
@@ -651,8 +655,8 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: GoogleFonts.inter(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
-              Text(value, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey.shade800)),
+              Text(label, style: GoogleFonts.inter(fontSize: 11.sp, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
+              Text(value, style: GoogleFonts.inter(fontSize: 14.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade800)),
             ],
           ),
         ),
@@ -663,9 +667,9 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
   Widget _statBox(String label, String value, Color color) {
     return Column(
       children: [
-        Text(value, style: GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.w900, color: color)),
-        const SizedBox(height: 4),
-        Text(label, textAlign: TextAlign.center, style: GoogleFonts.inter(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
+        Text(value, style: GoogleFonts.inter(fontSize: 28.sp, fontWeight: FontWeight.w900, color: color)),
+        SizedBox(height: 4),
+        Text(label, textAlign: TextAlign.center, style: GoogleFonts.inter(fontSize: 11.sp, color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
       ],
     );
   }
@@ -678,13 +682,13 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
         decoration: BoxDecoration(
           color: color,
           borderRadius: BorderRadius.circular(14),
-          boxShadow: [BoxShadow(color: color.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))],
+          boxShadow: [BoxShadow(color: color.withOpacity(0.3), blurRadius: 10, offset: Offset(0, 4))],
         ),
         child: Column(
           children: [
             Icon(icon, color: Colors.white, size: 26),
-            const SizedBox(height: 6),
-            Text(label, style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+            SizedBox(height: 6),
+            Text(label, style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14.sp)),
           ],
         ),
       ),
@@ -702,11 +706,11 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 3))],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: Offset(0, 3))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -716,9 +720,9 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.engineering_outlined, size: 18, color: Color(0xFF000080)),
-                  const SizedBox(width: 8),
-                  Text(context.tr('Service Status'), style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14, color: const Color(0xFF000080))),
+                  Icon(Icons.engineering_outlined, size: 18, color: Color(0xFF000080)),
+                  SizedBox(width: 8),
+                  Text(context.tr('Service Status'), style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14.sp, color: Color(0xFF000080))),
                 ],
               ),
               ElevatedButton.icon(
@@ -733,41 +737,23 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
                     ),
                   );
                 },
-                icon: const Icon(Icons.history, size: 14, color: Color(0xFF000080)),
-                label: Text(context.tr('History'), style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFF000080))),
+                icon: Icon(Icons.history, size: 14, color: Color(0xFF000080)),
+                label: Text(context.tr('History'), style: GoogleFonts.inter(fontSize: 11.sp, fontWeight: FontWeight.bold, color: Color(0xFF000080))),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF000080).withOpacity(0.08),
+                  backgroundColor: Color(0xFF000080).withOpacity(0.08),
                   elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
               ),
             ],
           ),
-          const Divider(height: 20),
+          Divider(height: 20),
           _serviceIndicatorRow(
             Icons.speed,
             'Current Odometer',
             odo > 0 ? '$odo km' : 'Not recorded',
             Colors.grey.shade700,
-          ),
-          const Divider(height: 20),
-          _serviceIndicatorRow(
-            Icons.oil_barrel,
-            'Oil Change',
-            nextOil != null ? 'Next at $nextOil km' : 'Not scheduled',
-            oilAlert ? Colors.red : Colors.green,
-            subtitle: lastOilDate != null ? 'Last: $lastOilDate' : null,
-            badge: oilAlert ? 'DUE / OVERDUE' : null,
-          ),
-          const Divider(height: 20),
-          _serviceIndicatorRow(
-            Icons.circle_outlined,
-            'Tyre Change',
-            nextTyre != null ? 'Next at $nextTyre km' : 'Not scheduled',
-            tyreAlert ? Colors.red : Colors.green,
-            subtitle: lastTyreDate != null ? 'Last: $lastTyreDate' : null,
-            badge: tyreAlert ? 'DUE / OVERDUE' : null,
           ),
         ],
       ),
@@ -791,15 +777,15 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(context.tr(label), style: GoogleFonts.inter(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 2),
+              Text(context.tr(label), style: GoogleFonts.inter(fontSize: 11.sp, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
+              SizedBox(height: 2),
               Row(
                 children: [
-                  Text(context.tr(value), style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.grey.shade800)),
+                  Text(context.tr(value), style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.w700, color: Colors.grey.shade800)),
                   if (badge != null) ...[
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
                         color: Colors.red.shade50,
                         border: Border.all(color: Colors.red.shade200),
@@ -807,15 +793,15 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
                       ),
                       child: Text(
                         context.tr(badge),
-                        style: GoogleFonts.inter(color: Colors.red.shade700, fontSize: 9, fontWeight: FontWeight.bold),
+                        style: GoogleFonts.inter(color: Colors.red.shade700, fontSize: 9.sp, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],
                 ],
               ),
               if (subtitle != null) ...[
-                const SizedBox(height: 2),
-                Text(context.tr(subtitle), style: GoogleFonts.inter(fontSize: 11, color: Colors.grey.shade400)),
+                SizedBox(height: 2),
+                Text(context.tr(subtitle), style: GoogleFonts.inter(fontSize: 11.sp, color: Colors.grey.shade400)),
               ],
             ],
           ),

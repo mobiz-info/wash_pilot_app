@@ -91,20 +91,29 @@ class QuotationSearchScreen extends StatelessWidget {
 
   void _selectCustomerFromSuggestion(BuildContext context, Map<String, dynamic> suggestion) {
     _customerSuggestionsNotifier.value = [];
-    String rawPhone = suggestion['phone'] ?? '';
-    String phoneCode = '+91';
-    String countryIso = 'IN';
-    for (final code in ['971', '966', '965', '968', '974', '973', '91']) {
-      if (rawPhone.startsWith(code) && rawPhone.length > 10) {
-        phoneCode = '+$code';
-        rawPhone = rawPhone.substring(code.length);
-        countryIso = _isoFromDialCode(phoneCode);
+    final rawPhone = suggestion['phone']?.toString() ?? '';
+    if (rawPhone.isEmpty) return;
+
+    String strippedPhone = rawPhone;
+    String phoneCode = _selectedCountryCodeNotifier.value;
+    String countryIso = _selectedCountryIsoNotifier.value;
+
+    // Match any known dial code — longest first to avoid prefix collisions
+    final allCountries = CountryConfig.all
+      ..sort((a, b) => b.phoneDialCode.length.compareTo(a.phoneDialCode.length));
+    for (final country in allCountries) {
+      final cleanCode = country.phoneDialCode.replaceAll('+', '');
+      if (rawPhone.startsWith(cleanCode) && rawPhone.length > cleanCode.length) {
+        phoneCode = country.phoneDialCode;
+        countryIso = country.phoneIsoCode;
+        strippedPhone = rawPhone.substring(cleanCode.length);
         break;
       }
     }
+
     _selectedCountryCodeNotifier.value = phoneCode;
     _selectedCountryIsoNotifier.value = countryIso;
-    _mobileController.text = rawPhone;
+    _mobileController.text = strippedPhone;
 
     _searchCustomer(context, unfocus: true);
   }
@@ -113,20 +122,6 @@ class QuotationSearchScreen extends StatelessWidget {
     _customerSuggestionsNotifier.value = [];
     _mobileController.text = suggestion['vehicle_number'] ?? '';
     _searchCustomer(context, unfocus: true);
-  }
-
-
-  String _isoFromDialCode(String dialCode) {
-    switch (dialCode) {
-      case '+971': return 'AE';
-      case '+966': return 'SA';
-      case '+965': return 'KW';
-      case '+968': return 'OM';
-      case '+974': return 'QA';
-      case '+973': return 'BH';
-      case '+91':  return 'IN';
-      default:     return 'IN';
-    }
   }
 
   void _searchCustomer(BuildContext context, {bool unfocus = true}) {
@@ -168,12 +163,12 @@ class QuotationSearchScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(context.tr('Quotation'), style: const TextStyle(fontWeight: FontWeight.w600)),
-        backgroundColor: const Color(0xFF000080),
+        title: Text(context.tr('Quotation'), style: TextStyle(fontWeight: FontWeight.w600)),
+        backgroundColor: Color(0xFF000080),
         foregroundColor: Colors.white,
       ),
       body: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -200,7 +195,7 @@ class QuotationSearchScreen extends StatelessWidget {
                             value: selectedBranchId,
                             decoration: InputDecoration(
                               labelText: context.tr('Select Branch'),
-                              labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, color: const Color(0xFF000080)),
+                              labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, color: Color(0xFF000080)),
                               filled: true,
                               fillColor: Colors.white,
                               border: OutlineInputBorder(
@@ -269,8 +264,8 @@ class QuotationSearchScreen extends StatelessWidget {
                         context.tr('Owner Number'),
                         style: GoogleFonts.inter(
                           fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                          color: searchType == 'number' ? const Color(0xFF000080) : Colors.grey.shade600,
+                          fontSize: 14.sp,
+                          color: searchType == 'number' ? Color(0xFF000080) : Colors.grey.shade600,
                         ),
                       ),
                     ),
@@ -299,8 +294,8 @@ class QuotationSearchScreen extends StatelessWidget {
                         context.tr('Vehicle Number'),
                         style: GoogleFonts.inter(
                           fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                          color: searchType == 'vehicle' ? const Color(0xFF000080) : Colors.grey.shade600,
+                          fontSize: 14.sp,
+                          color: searchType == 'vehicle' ? Color(0xFF000080) : Colors.grey.shade600,
                         ),
                       ),
                     ),
@@ -326,8 +321,8 @@ class QuotationSearchScreen extends StatelessWidget {
                                 hintText: context.tr('Enter Vehicle Number'),
                                 filled: true,
                                 fillColor: Colors.white,
-                                prefixIcon: const Icon(Icons.directions_car, color: Color(0xFF000080)),
-                                contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                                prefixIcon: Icon(Icons.directions_car, color: Color(0xFF000080)),
+                                contentPadding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                   borderSide: BorderSide.none,
@@ -346,7 +341,7 @@ class QuotationSearchScreen extends StatelessWidget {
                               controller: _mobileController,
                               keyboardType: TextInputType.phone,
                               initialCountryCode: CountryConfig.phoneIsoCode,
-                              dropdownTextStyle: GoogleFonts.inter(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 14),
+                              dropdownTextStyle: GoogleFonts.inter(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 14.sp),
                               style: GoogleFonts.inter(fontWeight: FontWeight.w500),
                               disableLengthCheck: true,
                               onCountryChanged: (country) {
@@ -357,7 +352,7 @@ class QuotationSearchScreen extends StatelessWidget {
                                 hintText: context.tr('Enter Mobile Number'),
                                 filled: true,
                                 fillColor: Colors.white,
-                                contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                                contentPadding: EdgeInsets.symmetric(vertical: 16),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                   borderSide: BorderSide.none,
@@ -384,10 +379,10 @@ class QuotationSearchScreen extends StatelessWidget {
                         height: 54,
                         width: 54,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF000080),
+                          color: Color(0xFF000080),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(Icons.search, color: Colors.white),
+                        child: Icon(Icons.search, color: Colors.white),
                       ),
                     )
                   ],
@@ -416,23 +411,23 @@ class QuotationSearchScreen extends StatelessWidget {
                             size: 72,
                             color: isNotFound ? Colors.orange.shade300 : Colors.red.shade300,
                           ),
-                          const SizedBox(height: 16),
+                          SizedBox(height: 16),
                           Text(
                             provider.errorMessage,
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: isNotFound ? Colors.orange.shade700 : Colors.red,
-                              fontSize: 16,
+                              fontSize: 16.sp,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                           if (isNotFound) ...[
-                            const SizedBox(height: 24),
+                            SizedBox(height: 24),
                             Text(
                               context.tr('No customer found with this number.'),
-                              style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                              style: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
                             ),
-                            const SizedBox(height: 16),
+                            SizedBox(height: 16),
                             ElevatedButton.icon(
                               onPressed: () async {
                                 final rawMobile = _mobileController.text.trim();
@@ -444,6 +439,7 @@ class QuotationSearchScreen extends StatelessWidget {
                                     builder: (context) => AddCustomerScreen(
                                       phoneNumber: formattedMobile,
                                       initialCountryIso: _selectedCountryIsoNotifier.value,
+                                      initialDialCode: _selectedCountryCodeNotifier.value,
                                       branchId: _selectedBranchIdNotifier.value,
                                     ),
                                   ),
@@ -462,9 +458,9 @@ class QuotationSearchScreen extends StatelessWidget {
                               icon: const Icon(Icons.person_add),
                               label: Text(context.tr('Add New Customer')),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF000080),
+                                backgroundColor: Color(0xFF000080),
                                 foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               ),
                             ),
@@ -484,7 +480,7 @@ class QuotationSearchScreen extends StatelessWidget {
                         children: [
                           // Customer Card
                           Container(
-                            padding: const EdgeInsets.all(16),
+                            padding: EdgeInsets.all(16),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(16),
@@ -494,18 +490,18 @@ class QuotationSearchScreen extends StatelessWidget {
                               children: [
                                 CircleAvatar(
                                   radius: 24,
-                                  backgroundColor: const Color(0xFF000080).withValues(alpha: 0.1),
-                                  child: const Icon(Icons.person, color: Color(0xFF000080)),
+                                  backgroundColor: Color(0xFF000080).withValues(alpha: 0.1),
+                                  child: Icon(Icons.person, color: Color(0xFF000080)),
                                 ),
-                                const SizedBox(width: 16),
+                                SizedBox(width: 16),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         data['name'],
-                                        style: const TextStyle(
-                                          fontSize: 18,
+                                        style: TextStyle(
+                                          fontSize: 18.sp,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
@@ -514,7 +510,7 @@ class QuotationSearchScreen extends StatelessWidget {
                                         context.tr('Type: ${data['type']}  •  ${data['phone']}'),
                                         style: TextStyle(
                                           color: Colors.grey.shade600,
-                                          fontSize: 14,
+                                          fontSize: 14.sp,
                                         ),
                                       ),
                                     ],
@@ -524,12 +520,12 @@ class QuotationSearchScreen extends StatelessWidget {
                             ),
                           ),
 
-                          const SizedBox(height: 24),
+                          SizedBox(height: 24),
                           Text(
                             context.tr('Select Vehicle for Quotation'),
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold),
                           ),
-                          const SizedBox(height: 12),
+                          SizedBox(height: 12),
 
                           // Vehicle List
                           ListView.separated(
@@ -553,19 +549,19 @@ class QuotationSearchScreen extends StatelessWidget {
                                 },
                                 borderRadius: BorderRadius.circular(16),
                                 child: Container(
-                                  padding: const EdgeInsets.all(18),
+                                  padding: EdgeInsets.all(18),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
                                     borderRadius: BorderRadius.circular(16),
                                     border: Border.all(
-                                      color: const Color(0xFF000080).withValues(alpha: 0.15),
+                                      color: Color(0xFF000080).withValues(alpha: 0.15),
                                       width: 1.5,
                                     ),
                                     boxShadow: [
                                       BoxShadow(
                                         color: Colors.black.withValues(alpha: 0.03),
                                         blurRadius: 10,
-                                        offset: const Offset(0, 4),
+                                        offset: Offset(0, 4),
                                       ),
                                     ],
                                   ),
@@ -578,9 +574,9 @@ class QuotationSearchScreen extends StatelessWidget {
                                           Text(
                                             v['no'],
                                             style: GoogleFonts.inter(
-                                              fontSize: 18,
+                                              fontSize: 18.sp,
                                               fontWeight: FontWeight.w700,
-                                              color: const Color(0xFF000080),
+                                              color: Color(0xFF000080),
                                             ),
                                           ),
                                           const SizedBox(height: 4),
@@ -590,7 +586,7 @@ class QuotationSearchScreen extends StatelessWidget {
                                                 : v['type'],
                                             style: GoogleFonts.inter(
                                               color: Colors.grey.shade600,
-                                              fontSize: 13,
+                                              fontSize: 13.sp,
                                             ),
                                           ),
                                         ],
@@ -601,11 +597,11 @@ class QuotationSearchScreen extends StatelessWidget {
                                             context.tr('Create Quotation'),
                                             style: GoogleFonts.inter(
                                               fontWeight: FontWeight.w600,
-                                              color: const Color(0xFF000080),
-                                              fontSize: 13,
+                                              color: Color(0xFF000080),
+                                              fontSize: 13.sp,
                                             ),
                                           ),
-                                          const SizedBox(width: 6),
+                                          SizedBox(width: 6),
                                           const Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFF000080)),
                                         ],
                                       ),
@@ -640,7 +636,7 @@ class QuotationSearchScreen extends StatelessWidget {
                                 : '${c['phone']} · ${c['customer_type']}';
 
                             return Card(
-                              margin: const EdgeInsets.only(bottom: 8),
+                              margin: EdgeInsets.only(bottom: 8),
                               elevation: 0,
                               color: Colors.white,
                               shape: RoundedRectangleBorder(
@@ -649,14 +645,14 @@ class QuotationSearchScreen extends StatelessWidget {
                               ),
                               child: ListTile(
                                 leading: CircleAvatar(
-                                  backgroundColor: const Color(0xFF000080).withValues(alpha: 0.1),
+                                  backgroundColor: Color(0xFF000080).withValues(alpha: 0.1),
                                   child: Icon(
                                     isVehicleSuggestion ? Icons.directions_car : Icons.person,
-                                    color: const Color(0xFF000080),
+                                    color: Color(0xFF000080),
                                   ),
                                 ),
                                 title: Text(name, style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-                                subtitle: Text(subtitle, style: GoogleFonts.inter(fontSize: 12)),
+                                subtitle: Text(subtitle, style: GoogleFonts.inter(fontSize: 12.sp)),
                                 onTap: () {
                                   if (isVehicleSuggestion) {
                                     _selectCustomerFromVehicleSuggestion(context, c);
@@ -675,11 +671,11 @@ class QuotationSearchScreen extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.request_quote_outlined, size: 80, color: Colors.grey.shade300),
-                            const SizedBox(height: 16),
+                            SizedBox(height: 16),
                             Text(
                               context.tr('Search customer or vehicle\nto create a quotation'),
                               textAlign: TextAlign.center,
-                              style: TextStyle(color: Colors.grey.shade500, fontSize: 16),
+                              style: TextStyle(color: Colors.grey.shade500, fontSize: 16.sp),
                             ),
                           ],
                         ),

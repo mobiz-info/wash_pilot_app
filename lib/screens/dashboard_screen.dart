@@ -5,6 +5,10 @@ import '../providers/dashboard_provider.dart';
 import '../providers/language_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'bills_screen.dart';
+import 'collection_screen.dart';
+import 'customers_screen.dart';
+import 'expense_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -43,12 +47,12 @@ class DashboardScreen extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18.sp),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.menu),
+          icon: Icon(Icons.menu),
           onPressed: () {},
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh),
             onPressed: () {
               final token = context.read<AuthProvider>().token;
               if (token != null) {
@@ -141,7 +145,7 @@ class DashboardScreen extends StatelessWidget {
                 loading ? '...' : p.todayRevenue,
                 Icons.trending_up,
                 const Color(0xFF3B82F6),
-                const Color(0xFFEFF6FF),
+                Color(0xFFEFF6FF),
               ),
             ),
             SizedBox(width: 8.w),
@@ -168,6 +172,12 @@ class DashboardScreen extends StatelessWidget {
                 Icons.trending_down,
                 const Color(0xFFEF4444),
                 const Color(0xFFFFF1F2),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => ExpenseScreen()),
+                  );
+                },
               ),
             ),
           ],
@@ -182,7 +192,7 @@ class DashboardScreen extends StatelessWidget {
                 loading ? '...' : p.todayNetProfit,
                 Icons.account_balance,
                 const Color(0xFF0F766E),
-                const Color(0xFFE6F4F1),
+                Color(0xFFE6F4F1),
               ),
             ),
             SizedBox(width: 10.w),
@@ -192,8 +202,14 @@ class DashboardScreen extends StatelessWidget {
                 'Jobs',
                 loading ? '...' : '${p.totalJobs}',
                 Icons.work_outline,
-                const Color(0xFF8B5CF6),
-                const Color(0xFFF5F3FF),
+                Color(0xFF8B5CF6),
+                Color(0xFFF5F3FF),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => BillsScreen()),
+                  );
+                },
               ),
             ),
           ],
@@ -214,9 +230,15 @@ class DashboardScreen extends StatelessWidget {
             'Outstanding',
             loading ? '...' : p.totalOutstanding,
             Icons.warning_amber_outlined,
-            const Color(0xFFEF4444),
-            const Color(0xFFFFF1F2),
+            Color(0xFFEF4444),
+            Color(0xFFFFF1F2),
             subtitle: loading ? '' : '${p.outstandingCount} ${context.tr('invoices')}',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const CollectionScreen()),
+              );
+            },
           ),
         ),
         SizedBox(width: 10.w),
@@ -228,6 +250,12 @@ class DashboardScreen extends StatelessWidget {
             Icons.people_outline,
             const Color(0xFFF59E0B),
             const Color(0xFFFFFBEB),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const CustomersScreen()),
+              );
+            },
           ),
         ),
       ],
@@ -268,12 +296,12 @@ class DashboardScreen extends StatelessWidget {
                   width: 40.w,
                   height: 40.h,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEFF6FF),
+                    color: Color(0xFFEFF6FF),
                     borderRadius: BorderRadius.circular(10.r),
                   ),
                   child: Icon(
                     Icons.receipt_outlined,
-                    color: const Color(0xFF3B82F6),
+                    color: Color(0xFF3B82F6),
                     size: 20.r,
                   ),
                 ),
@@ -282,14 +310,14 @@ class DashboardScreen extends StatelessWidget {
                   style: GoogleFonts.inter(
                     fontWeight: FontWeight.w700,
                     fontSize: 13.sp,
-                    color: const Color(0xFF1e293b),
+                    color: Color(0xFF1e293b),
                   ),
                 ),
                 subtitle: Text(
                   context.tr('${inv['invoice_number'] ?? ''} · ${inv['vehicle'] ?? ''}'),
                   style: GoogleFonts.inter(
                     fontSize: 11.sp,
-                    color: const Color(0xFF94A3B8),
+                    color: Color(0xFF94A3B8),
                   ),
                 ),
                 trailing: Column(
@@ -301,7 +329,7 @@ class DashboardScreen extends StatelessWidget {
                       style: GoogleFonts.inter(
                         fontWeight: FontWeight.w800,
                         fontSize: 13.sp,
-                        color: const Color(0xFF1e293b),
+                        color: Color(0xFF1e293b),
                       ),
                     ),
                     if (outstanding > 0)
@@ -341,70 +369,75 @@ class DashboardScreen extends StatelessWidget {
     Color color,
     Color bg, {
     String? subtitle,
+    VoidCallback? onTap,
   }) {
-    return Container(
-      padding: REdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8.r,
-            offset: Offset(0, 2.h),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: REdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: bg,
-              borderRadius: BorderRadius.circular(10.r),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16.r),
+      child: Container(
+        padding: REdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16.r),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8.r,
+              offset: Offset(0, 2.h),
             ),
-            child: Icon(icon, color: color, size: 18.r),
-          ),
-          SizedBox(height: 10.h),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              style: GoogleFonts.inter(
-                fontSize: 18.sp,
-                fontWeight: FontWeight.w900,
-                color: const Color(0xFF1e293b),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: REdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: BorderRadius.circular(10.r),
               ),
+              child: Icon(icon, color: color, size: 18.r),
             ),
-          ),
-          SizedBox(height: 2.h),
-          Text(
-            context.tr(label),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.inter(
-              fontSize: 11.sp,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF94A3B8),
-            ),
-          ),
-          if (subtitle != null && subtitle.isNotEmpty)
-            Padding(
-              padding: EdgeInsets.only(top: 2.h),
+            SizedBox(height: 10.h),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
               child: Text(
-                subtitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                value,
                 style: GoogleFonts.inter(
-                  fontSize: 10.sp,
-                  color: color,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF1e293b),
                 ),
               ),
             ),
-        ],
+            SizedBox(height: 2.h),
+            Text(
+              context.tr(label),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.inter(
+                fontSize: 11.sp,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF94A3B8),
+              ),
+            ),
+            if (subtitle != null && subtitle.isNotEmpty)
+              Padding(
+                padding: EdgeInsets.only(top: 2.h),
+                child: Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    fontSize: 10.sp,
+                    color: color,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -416,7 +449,7 @@ class DashboardScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.03),
@@ -429,17 +462,17 @@ class DashboardScreen extends StatelessWidget {
         child: DropdownButton<String?>(
           isExpanded: true,
           value: p.selectedBranchId,
-          icon: Icon(Icons.keyboard_arrow_down_rounded, color: const Color(0xFF000080), size: 22.r),
+          icon: Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF000080), size: 22.r),
           hint: Row(
             children: [
-              Icon(Icons.storefront_outlined, size: 18.r, color: const Color(0xFF000080)),
+              Icon(Icons.storefront_outlined, size: 18.r, color: Color(0xFF000080)),
               SizedBox(width: 10.w),
               Text(
                 context.tr('All Branches'),
                 style: GoogleFonts.inter(
                   fontSize: 14.sp,
                   fontWeight: FontWeight.w600,
-                  color: const Color(0xFF1E293B),
+                  color: Color(0xFF1E293B),
                 ),
               ),
             ],
@@ -449,14 +482,14 @@ class DashboardScreen extends StatelessWidget {
               value: null,
               child: Row(
                 children: [
-                  Icon(Icons.storefront_outlined, size: 18.r, color: const Color(0xFF000080)),
+                  Icon(Icons.storefront_outlined, size: 18.r, color: Color(0xFF000080)),
                   SizedBox(width: 10.w),
                   Text(
                     context.tr('All Branches'),
                     style: GoogleFonts.inter(
                       fontSize: 14.sp,
                       fontWeight: FontWeight.w600,
-                      color: const Color(0xFF1E293B),
+                      color: Color(0xFF1E293B),
                     ),
                   ),
                 ],
@@ -467,7 +500,7 @@ class DashboardScreen extends StatelessWidget {
                 value: b['id']?.toString(),
                 child: Row(
                   children: [
-                    Icon(Icons.location_on_outlined, size: 18.r, color: const Color(0xFF3B82F6)),
+                    Icon(Icons.location_on_outlined, size: 18.r, color: Color(0xFF3B82F6)),
                     SizedBox(width: 10.w),
                     Expanded(
                       child: Text(
@@ -476,7 +509,7 @@ class DashboardScreen extends StatelessWidget {
                         style: GoogleFonts.inter(
                           fontSize: 14.sp,
                           fontWeight: FontWeight.w600,
-                          color: const Color(0xFF1E293B),
+                          color: Color(0xFF1E293B),
                         ),
                       ),
                     ),
@@ -499,14 +532,14 @@ class DashboardScreen extends StatelessWidget {
 Widget buildSectionTitle(String title, IconData icon) {
     return Row(
       children: [
-        Icon(icon, size: 18.r, color: const Color(0xFF000080)),
+        Icon(icon, size: 18.r, color: Color(0xFF000080)),
         SizedBox(width: 8.w),
         Text(
           title,
           style: GoogleFonts.inter(
             fontSize: 15.sp,
             fontWeight: FontWeight.w800,
-            color: const Color(0xFF1e293b),
+            color: Color(0xFF1e293b),
           ),
         ),
       ],

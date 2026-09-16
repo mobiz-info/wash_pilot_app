@@ -243,7 +243,7 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
         ]),
         content: Text(
           ctx.tr('Send WhatsApp message to $count customer(s)?'),
-          style: GoogleFonts.inter(fontSize: 14),
+          style: GoogleFonts.inter(fontSize: 14.sp),
         ),
         actions: [
           TextButton(
@@ -253,7 +253,7 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF25D366),
+              backgroundColor: Color(0xFF25D366),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             child: Text(ctx.tr('Send Now'), style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -417,7 +417,7 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
         ]),
         content: Text(
           ctx.tr('Send selected ${selectedReminderIds.length} reminder(s)?'),
-          style: GoogleFonts.inter(fontSize: 14),
+          style: GoogleFonts.inter(fontSize: 14.sp),
         ),
         actions: [
           TextButton(
@@ -427,7 +427,7 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF000080),
+              backgroundColor: Color(0xFF000080),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             child: Text(ctx.tr('Send'), style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -474,7 +474,7 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(children: [
           Icon(sent > 0 ? Icons.check_circle : Icons.error, color: sent > 0 ? Colors.green : Colors.red),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Text(
             sent > 0 ? ctx.tr('Messages Sent!') : ctx.tr('Send Failed'),
             style: GoogleFonts.inter(fontWeight: FontWeight.bold),
@@ -487,17 +487,17 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
             Row(
               children: [
                 _statChip(ctx, '$sent', ctx.tr('Sent'), Colors.green),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 if (failed > 0) _statChip(ctx, '$failed', ctx.tr('Failed'), Colors.red),
               ],
             ),
             if (errors.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text(ctx.tr('Issues:'), style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13)),
-              const SizedBox(height: 6),
+              SizedBox(height: 12),
+              Text(ctx.tr('Issues:'), style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13.sp)),
+              SizedBox(height: 6),
               ...errors.take(5).map((e) => Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Text('• $e', style: GoogleFonts.inter(fontSize: 12, color: Colors.red.shade700)),
+                    padding: EdgeInsets.only(bottom: 4),
+                    child: Text('• $e', style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.red.shade700)),
                   )),
             ]
           ],
@@ -514,7 +514,7 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF000080),
+              backgroundColor: Color(0xFF000080),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             child: Text(ctx.tr('Done'), style: GoogleFonts.inter(color: Colors.white)),
@@ -526,7 +526,7 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
 
   Widget _statChip(BuildContext context, String value, String label, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(10),
@@ -534,8 +534,8 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
       ),
       child: Column(
         children: [
-          Text(value, style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.bold, color: color)),
-          Text(label, style: GoogleFonts.inter(fontSize: 12, color: color)),
+          Text(value, style: GoogleFonts.inter(fontSize: 22.sp, fontWeight: FontWeight.bold, color: color)),
+          Text(label, style: GoogleFonts.inter(fontSize: 12.sp, color: color)),
         ],
       ),
     );
@@ -552,20 +552,20 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF1F5F9),
+        backgroundColor: Color(0xFFF1F5F9),
         appBar: AppBar(
           title: Text(context.tr('Notifications'), style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-          backgroundColor: const Color(0xFF000080),
+          backgroundColor: Color(0xFF000080),
           foregroundColor: Colors.white,
           bottom: TabBar(
             indicatorColor: Colors.white,
             indicatorWeight: 3,
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white70,
-            labelStyle: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold),
+            labelStyle: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.bold),
             tabs: [
-              Tab(icon: const Icon(Icons.people, size: 20), text: context.tr('All')),
-              Tab(icon: const Icon(Icons.notifications_active, size: 20), text: context.tr('Reminders')),
+              Tab(icon: Icon(Icons.people, size: 20), text: context.tr('All')),
+              Tab(icon: Icon(Icons.notifications_active, size: 20), text: context.tr('Reminders')),
             ],
           ),
         ),
@@ -580,7 +580,7 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
               valueListenable: _errorMessageNotifier,
               builder: (context, errorMsg, child) {
                 if (errorMsg.isNotEmpty) {
-                  return Center(child: Text(errorMsg, style: const TextStyle(color: Colors.red)));
+                  return Center(child: Text(errorMsg, style: TextStyle(color: Colors.red)));
                 }
 
                 return TabBarView(
@@ -607,15 +607,15 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
         // Step 3: Inactive Days Filter & Search
         Container(
           color: Colors.white,
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+          padding: EdgeInsets.fromLTRB(16, 8, 16, 10),
           child: Column(
             children: [
               Row(
                 children: [
                   Icon(Icons.person_off_outlined, size: 16, color: Colors.orange.shade800),
-                  const SizedBox(width: 6),
-                  Text(context.tr('Inactive for:'), style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600)),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 6),
+                  Text(context.tr('Inactive for:'), style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.w600)),
+                  SizedBox(width: 8),
                   Expanded(
                     child: SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
@@ -639,13 +639,13 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               TextField(
                 controller: _searchController,
-                style: GoogleFonts.inter(fontSize: 13),
+                style: GoogleFonts.inter(fontSize: 13.sp),
                 decoration: InputDecoration(
                   hintText: context.tr('Search customer name or phone...'),
-                  prefixIcon: const Icon(Icons.search, size: 20),
+                  prefixIcon: Icon(Icons.search, size: 20),
                   suffixIcon: _searchController.text.isNotEmpty
                       ? IconButton(
                           icon: const Icon(Icons.clear, size: 18),
@@ -702,7 +702,7 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
 
         return Container(
           color: Colors.white,
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          padding: EdgeInsets.fromLTRB(16, 12, 16, 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -715,9 +715,9 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
                     children: [
                       Text(
                         context.tr('1. Select Template'),
-                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12, color: const Color(0xFF000080)),
+                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12.sp, color: Color(0xFF000080)),
                       ),
-                      const SizedBox(height: 5),
+                      SizedBox(height: 5),
                       DropdownButtonFormField<dynamic>(
                         value: selectedTemplate,
                         isExpanded: true,
@@ -725,14 +725,14 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                           filled: true,
-                          fillColor: const Color(0xFFF8FAFC),
+                          fillColor: Color(0xFFF8FAFC),
                         ),
-                        hint: Text(context.tr('-- Select a template --'), style: GoogleFonts.inter(fontSize: 13)),
+                        hint: Text(context.tr('-- Select a template --'), style: GoogleFonts.inter(fontSize: 13.sp)),
                         items: [
-                          DropdownMenuItem(value: null, child: Text(context.tr('-- Select a template --'), style: GoogleFonts.inter(fontSize: 13))),
+                          DropdownMenuItem(value: null, child: Text(context.tr('-- Select a template --'), style: GoogleFonts.inter(fontSize: 13.sp))),
                           ...templates.map((t) => DropdownMenuItem(
                                 value: t,
-                                child: Text(t['name'] ?? '', style: GoogleFonts.inter(fontSize: 13)),
+                                child: Text(t['name'] ?? '', style: GoogleFonts.inter(fontSize: 13.sp)),
                               )),
                         ],
                         onChanged: (val) {
@@ -746,12 +746,12 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
 
               // Step 2: Message Autofill (only shown when template selected)
               if (selectedTemplate != null) ...[
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 Text(
                   context.tr('2. Message Autofill'),
-                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12, color: const Color(0xFF000080)),
+                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12.sp, color: Color(0xFF000080)),
                 ),
-                const SizedBox(height: 5),
+                SizedBox(height: 5),
                 if (hasVar2) ...[
                   Container(
                     margin: const EdgeInsets.only(bottom: 8),
@@ -766,16 +766,16 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF000080),
+                            color: Color(0xFF000080),
                             borderRadius: BorderRadius.circular(20),
                           ),
-                          child: const Text('{{2}}', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                          child: Text('{{2}}', style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.bold)),
                         ),
-                        const SizedBox(width: 10),
+                        SizedBox(width: 10),
                         Expanded(
                           child: TextField(
                             controller: _var2Controller,
-                            style: GoogleFonts.inter(fontSize: 13),
+                            style: GoogleFonts.inter(fontSize: 13.sp),
                             decoration: InputDecoration(
                               hintText: context.tr('Free Service / Offer / Festival Name...'),
                               border: InputBorder.none,
@@ -790,7 +790,7 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
                 TextField(
                   controller: _messageController,
                   maxLines: 3,
-                  style: GoogleFonts.inter(fontSize: 13),
+                  style: GoogleFonts.inter(fontSize: 13.sp),
                   decoration: InputDecoration(
                     hintText: context.tr('Template content...'),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
@@ -798,10 +798,10 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
                     fillColor: const Color(0xFFF8FAFC),
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   '{{1}}=Name  {{2}}=Offer  {{3}}=Vehicle  {{4}}=Phone  {{5}}=Branch',
-                  style: GoogleFonts.inter(fontSize: 10, color: Colors.grey.shade400),
+                  style: GoogleFonts.inter(fontSize: 10.sp, color: Colors.grey.shade400),
                 ),
               ],
             ],
@@ -825,9 +825,9 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
         child: Text(
           label,
           style: GoogleFonts.inter(
-            fontSize: 11,
+            fontSize: 11.sp,
             fontWeight: FontWeight.bold,
-            color: isSelected ? Colors.white : const Color(0xFF475569),
+            color: isSelected ? Colors.white : Color(0xFF475569),
           ),
         ),
       ),
@@ -845,7 +845,7 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
         final isSendingThis = sendingIds.contains(custId);
 
         return Card(
-          margin: const EdgeInsets.only(bottom: 8),
+          margin: EdgeInsets.only(bottom: 8),
           elevation: 0,
           color: Colors.white,
           shape: RoundedRectangleBorder(
@@ -867,12 +867,12 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
                     children: [
                       Text(
                         name,
-                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, color: const Color(0xFF1E293B)),
+                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13.sp, color: Color(0xFF1E293B)),
                       ),
-                      const SizedBox(height: 2),
+                      SizedBox(height: 2),
                       Text(
                         phone,
-                        style: GoogleFonts.inter(fontSize: 11, color: Colors.grey.shade600),
+                        style: GoogleFonts.inter(fontSize: 11.sp, color: Colors.grey.shade600),
                       ),
                     ],
                   ),
@@ -880,14 +880,14 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
                 ElevatedButton.icon(
                   onPressed: isSendingThis ? null : () => _sendToCustomer(context, customer),
                   icon: isSendingThis
-                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.send, size: 14, color: Colors.white),
+                      ? SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : Icon(Icons.send, size: 14, color: Colors.white),
                   label: Text(
                     context.tr('Send'),
-                    style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                    style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF25D366),
+                    backgroundColor: Color(0xFF25D366),
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     elevation: 0,
@@ -904,7 +904,7 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
   Widget _buildSendBar(BuildContext context) {
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
           Expanded(
@@ -915,13 +915,13 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
                 return ElevatedButton.icon(
                   onPressed: isSending ? null : () => _sendBulkBroadcast(context),
                   icon: isSending
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.send, color: Colors.white),
+                      ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : Icon(Icons.send, color: Colors.white),
                   label: Text("${context.tr('Send All')} ($count)"),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF000080),
+                    backgroundColor: Color(0xFF000080),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    padding: EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                 );
@@ -961,10 +961,10 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
 
         return Column(
           children: [
-            // Filter Header with Today, Select Date & All Toggle
+            // ── 1. Date Filter Segment Controls ─────────────────────────
             Container(
               color: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
               child: ValueListenableBuilder<DateTime>(
                 valueListenable: _selectedReminderDateNotifier,
                 builder: (context, selectedReminderDate, child) {
@@ -975,36 +975,53 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
                       selectedReminderDate.day == now.day;
                   final isCustomDateSelected = !isShowAll && !isTodaySelected;
 
-                  final formattedCustomDate = "${selectedReminderDate.day.toString().padLeft(2, '0')}-${selectedReminderDate.month.toString().padLeft(2, '0')}-${selectedReminderDate.year}";
+                  final formattedCustomDate =
+                      "${selectedReminderDate.day.toString().padLeft(2, '0')}/${selectedReminderDate.month.toString().padLeft(2, '0')}/${selectedReminderDate.year}";
 
-                  return Row(
-                    children: [
-                      // Today Button
-                      Expanded(
-                        child: InkWell(
-                          onTap: () {
-                            final today = DateTime.now();
-                            _selectedReminderDateNotifier.value = today;
-                            context.read<BroadcastProvider>().setSelectedReminderDate(today);
-                            _fetchReminderPlans(context);
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 9),
-                            decoration: BoxDecoration(
-                              color: isTodaySelected ? const Color(0xFF000080) : const Color(0xFFF1F5F9),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Center(
+                  return Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        // Today Pill
+                        Expanded(
+                          child: InkWell(
+                            onTap: () {
+                              final today = DateTime.now();
+                              _selectedReminderDateNotifier.value = today;
+                              context.read<BroadcastProvider>().setSelectedReminderDate(today);
+                              _fetchReminderPlans(context);
+                            },
+                            borderRadius: BorderRadius.circular(9),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              padding: const EdgeInsets.symmetric(vertical: 9),
+                              decoration: BoxDecoration(
+                                color: isTodaySelected ? const Color(0xFF000080) : Colors.transparent,
+                                borderRadius: BorderRadius.circular(9),
+                                boxShadow: isTodaySelected
+                                    ? [
+                                        BoxShadow(
+                                          color: const Color(0xFF000080).withValues(alpha: 0.2),
+                                          blurRadius: 6,
+                                          offset: const Offset(0, 2),
+                                        )
+                                      ]
+                                    : [],
+                              ),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.today, size: 14, color: isTodaySelected ? Colors.white : const Color(0xFF64748B)),
-                                  const SizedBox(width: 4),
+                                  Icon(Icons.today, size: 14.r, color: isTodaySelected ? Colors.white : const Color(0xFF64748B)),
+                                  const SizedBox(width: 5),
                                   Text(
                                     context.tr('Today'),
                                     style: GoogleFonts.inter(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12.sp,
+                                      fontWeight: isTodaySelected ? FontWeight.w700 : FontWeight.w600,
                                       color: isTodaySelected ? Colors.white : const Color(0xFF64748B),
                                     ),
                                   ),
@@ -1013,135 +1030,222 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 6),
+                        const SizedBox(width: 4),
 
-                      // Select Date Button
-                      Expanded(
-                        child: InkWell(
-                          onTap: () async {
-                            final picked = await showDatePicker(
-                              context: context,
-                              initialDate: _selectedReminderDateNotifier.value,
-                              firstDate: DateTime(2020),
-                              lastDate: DateTime(2100),
-                            );
-                            if (picked != null) {
-                              _selectedReminderDateNotifier.value = picked;
-                              context.read<BroadcastProvider>().setSelectedReminderDate(picked);
-                              _fetchReminderPlans(context);
-                            }
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 4),
-                            decoration: BoxDecoration(
-                              color: isCustomDateSelected ? const Color(0xFF000080) : const Color(0xFFF1F5F9),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.calendar_month, size: 14, color: isCustomDateSelected ? Colors.white : const Color(0xFF64748B)),
-                                const SizedBox(width: 4),
-                                Flexible(
-                                  child: Text(
-                                    isCustomDateSelected ? formattedCustomDate : context.tr('Select Date'),
-                                    style: GoogleFonts.inter(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      color: isCustomDateSelected ? Colors.white : const Color(0xFF64748B),
+                        // Select Date Pill
+                        Expanded(
+                          child: InkWell(
+                            onTap: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: _selectedReminderDateNotifier.value,
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime(2100),
+                              );
+                              if (picked != null) {
+                                _selectedReminderDateNotifier.value = picked;
+                                context.read<BroadcastProvider>().setSelectedReminderDate(picked);
+                                _fetchReminderPlans(context);
+                              }
+                            },
+                            borderRadius: BorderRadius.circular(9),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 4),
+                              decoration: BoxDecoration(
+                                color: isCustomDateSelected ? const Color(0xFF000080) : Colors.transparent,
+                                borderRadius: BorderRadius.circular(9),
+                                boxShadow: isCustomDateSelected
+                                    ? [
+                                        BoxShadow(
+                                          color: const Color(0xFF000080).withValues(alpha: 0.2),
+                                          blurRadius: 6,
+                                          offset: const Offset(0, 2),
+                                        )
+                                      ]
+                                    : [],
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.calendar_month_outlined, size: 14.r, color: isCustomDateSelected ? Colors.white : const Color(0xFF64748B)),
+                                  const SizedBox(width: 5),
+                                  Flexible(
+                                    child: Text(
+                                      isCustomDateSelected ? formattedCustomDate : context.tr('Select Date'),
+                                      style: GoogleFonts.inter(
+                                        fontSize: 11.sp,
+                                        fontWeight: isCustomDateSelected ? FontWeight.w700 : FontWeight.w600,
+                                        color: isCustomDateSelected ? Colors.white : const Color(0xFF64748B),
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 6),
+                        const SizedBox(width: 4),
 
-                      // All Reminders Button
-                      Expanded(
-                        child: InkWell(
-                          onTap: () {
-                            context.read<BroadcastProvider>().setShowAllReminders(true);
-                            _fetchReminderPlans(context);
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 9),
-                            decoration: BoxDecoration(
-                              color: isShowAll ? const Color(0xFF000080) : const Color(0xFFF1F5F9),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Center(
-                              child: Text(
-                                context.tr('All'),
-                                style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: isShowAll ? Colors.white : const Color(0xFF64748B),
+                        // All Reminders Pill
+                        Expanded(
+                          child: InkWell(
+                            onTap: () {
+                              context.read<BroadcastProvider>().setShowAllReminders(true);
+                              _fetchReminderPlans(context);
+                            },
+                            borderRadius: BorderRadius.circular(9),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              padding: const EdgeInsets.symmetric(vertical: 9),
+                              decoration: BoxDecoration(
+                                color: isShowAll ? const Color(0xFF000080) : Colors.transparent,
+                                borderRadius: BorderRadius.circular(9),
+                                boxShadow: isShowAll
+                                    ? [
+                                        BoxShadow(
+                                          color: const Color(0xFF000080).withValues(alpha: 0.2),
+                                          blurRadius: 6,
+                                          offset: const Offset(0, 2),
+                                        )
+                                      ]
+                                    : [],
+                              ),
+                              child: Center(
+                                child: Text(
+                                  context.tr('All'),
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12.sp,
+                                    fontWeight: isShowAll ? FontWeight.w700 : FontWeight.w600,
+                                    color: isShowAll ? Colors.white : const Color(0xFF64748B),
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   );
                 },
               ),
             ),
 
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-              child: Container(
-                decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(10)),
-                child: TextField(
-                  controller: _reminderSearchController,
-                  style: GoogleFonts.inter(fontSize: 13),
-                  decoration: InputDecoration(
-                    hintText: context.tr('Search customer or vehicle...'),
-                    prefixIcon: const Icon(Icons.search, size: 20, color: Color(0xFF64748B)),
-                    suffixIcon: _reminderSearchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear, size: 18, color: Color(0xFF64748B)),
-                            onPressed: () {
-                              _reminderSearchController.clear();
-                            },
-                          )
-                        : null,
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                  ),
-                ),
-              ),
-            ),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // ── 2. Search & Select All Bar ──────────────────────────────
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+              child: Column(
                 children: [
-                  Text('${selectedReminderIds.length} ${context.tr('selected')}',
-                      style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade600)),
-                  Row(children: [
-                    Text(context.tr('Select All'), style: GoogleFonts.inter(fontSize: 12)),
-                    Checkbox(
-                        value: allSelected,
-                        onChanged: (val) {
-                          if (val == true) {
-                            context.read<BroadcastProvider>().selectAllReminders(filteredPlans);
-                          } else {
+                  Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: TextField(
+                      controller: _reminderSearchController,
+                      style: GoogleFonts.inter(fontSize: 13.sp),
+                      decoration: InputDecoration(
+                        hintText: context.tr('Search customer, phone or vehicle...'),
+                        hintStyle: GoogleFonts.inter(fontSize: 13.sp, color: const Color(0xFF94A3B8)),
+                        prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF64748B)),
+                        suffixIcon: _reminderSearchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 18, color: Color(0xFF64748B)),
+                                onPressed: () {
+                                  _reminderSearchController.clear();
+                                },
+                              )
+                            : null,
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEEF2FF),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '${filteredPlans.length} ${context.tr("reminders")}',
+                              style: GoogleFonts.inter(
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF3730A3),
+                              ),
+                            ),
+                          ),
+                          if (selectedReminderIds.isNotEmpty) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFECFDF5),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                '${selectedReminderIds.length} ${context.tr("selected")}',
+                                style: GoogleFonts.inter(
+                                  fontSize: 11.sp,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF065F46),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      InkWell(
+                        onTap: () {
+                          if (allSelected) {
                             context.read<BroadcastProvider>().clearReminderSelections();
+                          } else {
+                            context.read<BroadcastProvider>().selectAllReminders(filteredPlans);
                           }
                         },
-                        activeColor: const Color(0xFF000080)),
-                  ]),
+                        child: Row(
+                          children: [
+                            Text(
+                              context.tr('Select All'),
+                              style: GoogleFonts.inter(
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF000080),
+                              ),
+                            ),
+                            Checkbox(
+                              value: allSelected,
+                              onChanged: (val) {
+                                if (val == true) {
+                                  context.read<BroadcastProvider>().selectAllReminders(filteredPlans);
+                                } else {
+                                  context.read<BroadcastProvider>().clearReminderSelections();
+                                }
+                              },
+                              activeColor: const Color(0xFF000080),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
 
+            const SizedBox(height: 8),
+
+            // ── 3. Reminder List Cards ──────────────────────────────────
             Expanded(
               child: ValueListenableBuilder<bool>(
                 valueListenable: _isLoadingReminderPlansNotifier,
@@ -1155,169 +1259,394 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.mark_email_read_outlined, size: 64, color: Colors.grey.shade300),
+                          Icon(Icons.notifications_off_outlined, size: 56.r, color: Colors.grey.shade300),
                           const SizedBox(height: 12),
-                          Text(context.tr('No reminders found.'), style: GoogleFonts.inter(color: Colors.grey, fontWeight: FontWeight.w600)),
+                          Text(
+                            context.tr('No due reminders found'),
+                            style: GoogleFonts.inter(
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15.sp,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            context.tr('Select a different date or clear search filters.'),
+                            style: GoogleFonts.inter(
+                              color: Colors.grey.shade400,
+                              fontSize: 12.sp,
+                            ),
+                          ),
                         ],
                       ),
                     );
                   }
 
                   return ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
                     itemCount: filteredPlans.length,
                     itemBuilder: (context, index) {
                       final plan = filteredPlans[index];
-                      final planId = plan['id']?.toString() ?? '';
-                      final isSelected = selectedReminderIds.contains(planId);
-                      final reminderDate = plan['formatted_date'] ?? plan['scheduled_date'] ?? 'N/A';
-
-                      return ValueListenableBuilder<Set<String>>(
-                        valueListenable: _sendingSinglePlanIdsNotifier,
-                        builder: (context, sendingSinglePlanIds, child) {
-                          final isSendingSingle = sendingSinglePlanIds.contains(planId);
-
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: isSelected ? const Color(0xFF000080) : Colors.grey.shade200, width: isSelected ? 1.5 : 1),
-                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 6, offset: const Offset(0, 2))],
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Checkbox(
-                                    value: isSelected,
-                                    activeColor: const Color(0xFF000080),
-                                    onChanged: (val) {
-                                      context.read<BroadcastProvider>().toggleReminderSelection(planId);
-                                    },
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(plan['customer_name'] ?? '', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14, color: const Color(0xFF1E293B))),
-                                        const SizedBox(height: 2),
-                                        Text(plan['customer_phone'] ?? '', style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade500)),
-                                        const Divider(height: 14, color: Color(0xFFF1F5F9)),
-                                        Row(
-                                          children: [
-                                            const Icon(Icons.directions_car, size: 14, color: Color(0xFF64748B)),
-                                            const SizedBox(width: 6),
-                                            Text(plan['vehicle_number'] ?? '', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF475569))),
-                                            const SizedBox(width: 14),
-                                            const Icon(Icons.build, size: 14, color: Color(0xFF64748B)),
-                                            const SizedBox(width: 6),
-                                            Expanded(
-                                              child: Text(
-                                                plan['service_name'] ?? '',
-                                                style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF475569)),
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 6),
-                                        // Scheduled Reminder Date Badge
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFFEFF6FF),
-                                            borderRadius: BorderRadius.circular(6),
-                                            border: Border.all(color: const Color(0xFFBFDBFE)),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              const Icon(Icons.event, size: 13, color: Color(0xFF1D4ED8)),
-                                              const SizedBox(width: 5),
-                                              Text(
-                                                "${context.tr('Due Date:')} $reminderDate",
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 11,
-                                                  color: const Color(0xFF1E40AF),
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        if (plan['service_category'] == 'oil_change' || plan['next_oil_change_km'] != null) ...[
-                                           const SizedBox(height: 6),
-                                           Container(
-                                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                             decoration: BoxDecoration(
-                                               color: const Color(0xFFFFFBEB),
-                                               borderRadius: BorderRadius.circular(6),
-                                               border: Border.all(color: const Color(0xFFFCD34D)),
-                                             ),
-                                             child: Row(
-                                               mainAxisSize: MainAxisSize.min,
-                                               children: [
-                                                 const Icon(Icons.opacity, size: 14, color: Color(0xFFD97706)),
-                                                 const SizedBox(width: 6),
-                                                 Text(
-                                                   "${context.tr('Oil Reminder')} • ${context.tr('Next KM:')} ${plan['next_oil_change_km'] ?? 'N/A'}",
-                                                   style: GoogleFonts.inter(
-                                                     fontSize: 11,
-                                                     color: const Color(0xFFB45309),
-                                                     fontWeight: FontWeight.bold,
-                                                   ),
-                                                 ),
-                                               ],
-                                             ),
-                                           ),
-                                         ],
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Column(
-                                    children: [
-                                      IconButton(
-                                        onPressed: isSendingSingle ? null : () => _sendSingleReminder(context, plan),
-                                        icon: isSendingSingle
-                                            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF000080)))
-                                            : const Icon(Icons.send, color: Color(0xFF000080)),
-                                        tooltip: context.tr('Send via API'),
-                                      ),
-                                      IconButton(
-                                        onPressed: () => _launchDirectWhatsAppReminder(context, plan),
-                                        icon: const Icon(Icons.chat_bubble_outline, color: Color(0xFF25D366)),
-                                        tooltip: context.tr('Send via WhatsApp Chat'),
-                                      ),
-                                      IconButton(
-                                        onPressed: () async {
-                                          final token = context.read<AuthProvider>().token;
-                                          if (token != null) {
-                                            await broadcastProvider.sendReminders(token, [planId], action: 'mark_sent');
-                                            _reminderPlansNotifier.value = broadcastProvider.reminderPlans;
-                                          }
-                                        },
-                                        icon: const Icon(Icons.check_circle_outline, color: Colors.grey),
-                                        tooltip: context.tr('Mark as sent'),
-                                      )
-                                    ],
-                                  )
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      );
+                      return _reminderCardTile(context, plan);
                     },
                   );
                 },
               ),
             ),
+
+            // ── 4. Floating Footer Action Bar ───────────────────────────
             _buildRemindersSendBar(context),
           ],
+        );
+      },
+    );
+  }
+
+  Widget _reminderCardTile(BuildContext context, dynamic plan) {
+    final broadcastProvider = context.watch<BroadcastProvider>();
+    final selectedReminderIds = broadcastProvider.selectedReminderIds;
+    final planId = (plan['id'] ?? '').toString();
+    final isSelected = selectedReminderIds.contains(planId);
+    final isSent = plan['is_sent'] == true;
+    final reminderDate = plan['formatted_date'] ?? plan['scheduled_date'] ?? 'N/A';
+    final custName = plan['customer_name'] ?? 'Customer';
+    final custPhone = plan['customer_phone'] ?? 'No Phone';
+    final vehicleNum = plan['vehicle_number'] ?? 'N/A';
+    final serviceName = plan['service_name'] ?? 'Service';
+    final serviceCategory = (plan['service_category'] ?? '').toString().toLowerCase();
+
+    // Determine category accent color & icon
+    IconData categoryIcon = Icons.build_circle_outlined;
+    Color categoryBg = const Color(0xFFEFF6FF);
+    Color categoryText = const Color(0xFF1D4ED8);
+
+    if (serviceCategory.contains('oil') || plan['next_oil_change_km'] != null) {
+      categoryIcon = Icons.water_drop_outlined;
+      categoryBg = const Color(0xFFFFFBEB);
+      categoryText = const Color(0xFFB45309);
+    } else if (serviceCategory.contains('wheel') || serviceCategory.contains('align')) {
+      categoryIcon = Icons.tire_repair_outlined;
+      categoryBg = const Color(0xFFECFDF5);
+      categoryText = const Color(0xFF047857);
+    } else if (serviceCategory.contains('wash') || serviceCategory.contains('detail')) {
+      categoryIcon = Icons.local_car_wash_outlined;
+      categoryBg = const Color(0xFFF0FDF4);
+      categoryText = const Color(0xFF15803D);
+    }
+
+    return ValueListenableBuilder<Set<String>>(
+      valueListenable: _sendingSinglePlanIdsNotifier,
+      builder: (context, sendingSinglePlanIds, child) {
+        final isSendingSingle = sendingSinglePlanIds.contains(planId);
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14.r),
+            border: Border.all(
+              color: isSelected ? const Color(0xFF000080) : const Color(0xFFE2E8F0),
+              width: isSelected ? 1.8 : 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 8.r,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Opacity(
+            opacity: isSent ? 0.75 : 1.0,
+            child: Column(
+            children: [
+              // Top Row: Checkbox + Customer Info + Date Badge
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 10, 12, 8),
+                child: Row(
+                  children: [
+                    Checkbox(
+                      value: isSelected,
+                      activeColor: const Color(0xFF000080),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                      onChanged: (val) {
+                        context.read<BroadcastProvider>().toggleReminderSelection(planId);
+                      },
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            custName,
+                            style: GoogleFonts.inter(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14.sp,
+                              color: const Color(0xFF0F172A),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              Icon(Icons.phone_outlined, size: 12.r, color: const Color(0xFF64748B)),
+                              const SizedBox(width: 4),
+                              Text(
+                                custPhone,
+                                style: GoogleFonts.inter(
+                                  fontSize: 11.sp,
+                                  color: const Color(0xFF64748B),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Sent Badge or Due Date Badge
+                    isSent
+                    ? Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFDCFCE7),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.check_circle, size: 12.r, color: const Color(0xFF16A34A)),
+                            const SizedBox(width: 4),
+                            Text(
+                              context.tr('Sent'),
+                              style: GoogleFonts.inter(
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF16A34A),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.event, size: 12.r, color: const Color(0xFF475569)),
+                            const SizedBox(width: 4),
+                            Text(
+                              reminderDate,
+                              style: GoogleFonts.inter(
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF334155),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+
+              const Divider(height: 1, thickness: 1, color: Color(0xFFF1F5F9)),
+
+              // Middle Row: Vehicle Chip + Service Badge
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                child: Row(
+                  children: [
+                    // Vehicle Number Chip
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: const Color(0xFFCBD5E1)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.directions_car, size: 13.r, color: const Color(0xFF334155)),
+                          const SizedBox(width: 4),
+                          Text(
+                            vehicleNum,
+                            style: GoogleFonts.inter(
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF1E293B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+
+                    // Service Category Badge
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: categoryBg,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(categoryIcon, size: 13.r, color: categoryText),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                serviceName,
+                                style: GoogleFonts.inter(
+                                  fontSize: 11.sp,
+                                  fontWeight: FontWeight.w700,
+                                  color: categoryText,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Optional Oil KM Badge if applicable
+              if (plan['next_oil_change_km'] != null) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+                  child: Row(
+                    children: [
+                      Icon(Icons.speed, size: 12.r, color: const Color(0xFFD97706)),
+                      const SizedBox(width: 4),
+                      Text(
+                        "${context.tr('Next Oil Change Due:')} ${plan['next_oil_change_km']} KM",
+                        style: GoogleFonts.inter(
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFFD97706),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
+              const Divider(height: 1, thickness: 1, color: Color(0xFFF1F5F9)),
+
+              // Bottom Row: Action Buttons (WhatsApp Chat, API Send, Mark Sent)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                child: Row(
+                  children: [
+                    // WhatsApp Chat Button
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => _launchDirectWhatsAppReminder(context, plan),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFDCFCE7),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFF86EFAC)),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.chat_bubble_outline, size: 14.r, color: const Color(0xFF16A34A)),
+                              const SizedBox(width: 4),
+                              Text(
+                                context.tr('WhatsApp Chat'),
+                                style: GoogleFonts.inter(
+                                  fontSize: 11.sp,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF15803D),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+
+                    // Send API Button
+                    Expanded(
+                      child: InkWell(
+                        onTap: isSendingSingle ? null : () => _sendSingleReminder(context, plan),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF000080),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Center(
+                            child: isSendingSingle
+                                ? SizedBox(
+                                    width: 14.r,
+                                    height: 14.r,
+                                    child: const CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  )
+                                : Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.send_outlined, size: 14.r, color: Colors.white),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        context.tr('Send'),
+                                        style: GoogleFonts.inter(
+                                          fontSize: 11.sp,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+
+                    // Mark Sent Action Button
+                    // InkWell(
+                    //   onTap: () async {
+                    //     final token = context.read<AuthProvider>().token;
+                    //     if (token != null) {
+                    //       await broadcastProvider.sendReminders(token, [planId], action: 'mark_sent');
+                    //       _reminderPlansNotifier.value = broadcastProvider.reminderPlans;
+                    //     }
+                    //   },
+                    //   borderRadius: BorderRadius.circular(8),
+                    //   child: Container(
+                    //     padding: const EdgeInsets.all(8),
+                    //     decoration: BoxDecoration(
+                    //       color: const Color(0xFFF1F5F9),
+                    //       borderRadius: BorderRadius.circular(8),
+                    //       border: Border.all(color: const Color(0xFFCBD5E1)),
+                    //     ),
+                    //     child: Icon(
+                    //       Icons.check_circle_outline,
+                    //       size: 16.r,
+                    //       color: const Color(0xFF64748B),
+                    //     ),
+                    //   ),
+                    // ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
         );
       },
     );
@@ -1328,31 +1657,49 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
     final selectedReminderIds = broadcastProvider.selectedReminderIds;
 
     return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          Expanded(
-            child: ValueListenableBuilder<bool>(
-              valueListenable: _isSendingBulkRemindersNotifier,
-              builder: (context, isSendingBulkReminders, child) {
-                return ElevatedButton.icon(
-                  onPressed: selectedReminderIds.isEmpty || isSendingBulkReminders ? null : () => _sendBulkReminders(context),
-                  icon: isSendingBulkReminders
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.send_and_archive, color: Colors.white),
-                  label: Text("${context.tr('Send Selected')} (${selectedReminderIds.length})"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF000080),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                );
-              },
-            ),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 10,
+            offset: const Offset(0, -4),
           ),
         ],
+      ),
+      child: SafeArea(
+        child: ValueListenableBuilder<bool>(
+          valueListenable: _isSendingBulkRemindersNotifier,
+          builder: (context, isSendingBulkReminders, child) {
+            final hasSelection = selectedReminderIds.isNotEmpty;
+
+            return ElevatedButton.icon(
+              onPressed: hasSelection && !isSendingBulkReminders ? () => _sendBulkReminders(context) : null,
+              icon: isSendingBulkReminders
+                  ? SizedBox(width: 18.r, height: 18.r, child: const CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : Icon(Icons.send_and_archive, color: Colors.white, size: 18.r),
+              label: Text(
+                hasSelection
+                    ? "${context.tr('Send Selected')} (${selectedReminderIds.length})"
+                    : context.tr('Select Reminders to Send'),
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14.sp,
+                  color: Colors.white,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF000080),
+                disabledBackgroundColor: Colors.grey.shade400,
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(48),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+              ),
+            );
+          },
+        ),
       ),
     );
   }

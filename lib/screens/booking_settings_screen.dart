@@ -323,7 +323,7 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
                   return CheckboxListTile(
                     title: Text(
                       context.tr('Repeat Yearly'),
-                      style: GoogleFonts.inter(fontSize: 14),
+                      style: GoogleFonts.inter(fontSize: 14.sp),
                     ),
                     value: repeatYearly,
                     onChanged: (val) {
@@ -347,7 +347,7 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
                 return ElevatedButton(
                   onPressed: selectedDate == null ? null : () => Navigator.pop(ctx, true),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF000080),
+                    backgroundColor: Color(0xFF000080),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
@@ -452,8 +452,8 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(context.tr('From Date *'), style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey.shade600)),
-                const SizedBox(height: 4),
+                Text(context.tr('From Date *'), style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.bold, color: Colors.grey.shade600)),
+                SizedBox(height: 4),
                 ValueListenableBuilder<DateTime?>(
                   valueListenable: fromDateNotifier,
                   builder: (context, fromDate, _) {
@@ -490,9 +490,9 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
                     );
                   },
                 ),
-                const SizedBox(height: 14),
-                Text(context.tr('To Date *'), style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey.shade600)),
-                const SizedBox(height: 4),
+                SizedBox(height: 14),
+                Text(context.tr('To Date *'), style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.bold, color: Colors.grey.shade600)),
+                SizedBox(height: 4),
                 ValueListenableBuilder<DateTime?>(
                   valueListenable: toDateNotifier,
                   builder: (context, toDate, _) {
@@ -526,9 +526,9 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
                     );
                   },
                 ),
-                const SizedBox(height: 14),
-                Text(context.tr('Reason (Optional)'), style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey.shade600)),
-                const SizedBox(height: 4),
+                SizedBox(height: 14),
+                Text(context.tr('Reason (Optional)'), style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.bold, color: Colors.grey.shade600)),
+                SizedBox(height: 4),
                 TextField(
                   controller: reasonCtrl,
                   decoration: InputDecoration(
@@ -555,7 +555,7 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
                         ? null
                         : () => Navigator.pop(ctx, true),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF000080),
+                      backgroundColor: Color(0xFF000080),
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
@@ -658,7 +658,7 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
           context.tr('Booking Settings'),
           style: GoogleFonts.inter(fontWeight: FontWeight.w700),
         ),
-        backgroundColor: const Color(0xFF000080),
+        backgroundColor: Color(0xFF000080),
         foregroundColor: Colors.white,
         elevation: 0,
         bottom: TabBar(
@@ -721,15 +721,15 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
     return Container(
       width: double.infinity,
       color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             context.tr('Select Branch to Manage Settings'),
-            style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.bold),
+            style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade500, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
@@ -768,11 +768,11 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(err, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
-            const SizedBox(height: 16),
+            Text(err, style: TextStyle(color: Colors.red), textAlign: TextAlign.center),
+            SizedBox(height: 16),
             ElevatedButton(
               onPressed: _fetchAllData,
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000080), foregroundColor: Colors.white),
+              style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF000080), foregroundColor: Colors.white),
               child: Text(context.tr('Retry')),
             ),
           ],
@@ -786,11 +786,11 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Container(
-        padding: const EdgeInsets.all(18),
+        padding: EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: Offset(0, 2))],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -800,11 +800,11 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
               builder: (context, enabled, _) => SwitchListTile(
                 title: Text(
                   context.tr('Enable Booking Service'),
-                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16.sp),
                 ),
                 subtitle: Text(
                   context.tr(''),
-                  style: GoogleFonts.inter(color: Colors.grey, fontSize: 12),
+                  style: GoogleFonts.inter(color: Colors.grey, fontSize: 12.sp),
                 ),
                 value: enabled,
                 onChanged: (val) => _isBookingEnabled.value = val,
@@ -812,12 +812,12 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
                 contentPadding: EdgeInsets.zero,
               ),
             ),
-            const Divider(height: 32),
+            Divider(height: 32),
             Text(
               context.tr('Max Bookings Per Day'),
-              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.grey.shade700),
+              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14.sp, color: Colors.grey.shade700),
             ),
-            const SizedBox(height: 6),
+            SizedBox(height: 6),
             TextField(
               controller: _maxBookingController,
               keyboardType: TextInputType.number,
@@ -827,12 +827,12 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             Text(
               context.tr('Booking Closing Time'),
-              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.grey.shade700),
+              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14.sp, color: Colors.grey.shade700),
             ),
-            const SizedBox(height: 6),
+            SizedBox(height: 6),
             ValueListenableBuilder<TimeOfDay?>(
               valueListenable: _closingTime,
               builder: (context, closingT, _) => GestureDetector(
@@ -860,27 +860,27 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
                         closingT != null
                             ? closingT.format(context)
                             : context.tr('No Closing Time (No Limit)'),
-                        style: GoogleFonts.inter(fontSize: 15, color: closingT != null ? Colors.black87 : Colors.grey),
+                        style: GoogleFonts.inter(fontSize: 15.sp, color: closingT != null ? Colors.black87 : Colors.grey),
                       ),
-                      const Spacer(),
+                      Spacer(),
                       if (closingT != null)
                         IconButton(
-                          icon: const Icon(Icons.clear, size: 18, color: Colors.red),
+                          icon: Icon(Icons.clear, size: 18, color: Colors.red),
                           onPressed: () => _closingTime.value = null,
                           padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
+                          constraints: BoxConstraints(),
                         ),
                     ],
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             Text(
               context.tr('WhatsApp Welcome Message'),
-              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.grey.shade700),
+              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14.sp, color: Colors.grey.shade700),
             ),
-            const SizedBox(height: 6),
+            SizedBox(height: 6),
             TextField(
               controller: _welcomeMessageController,
               maxLines: 4,
@@ -896,14 +896,14 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
             ElevatedButton(
               onPressed: _saveGeneralSettings,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF000080),
+                backgroundColor: Color(0xFF000080),
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
+                padding: EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
               child: Text(
                 context.tr('Save Settings'),
-                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
+                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16.sp),
               ),
             ),
           ],
@@ -928,10 +928,10 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
             child: CheckboxListTile(
               title: Text(
                 context.tr(day[0].toUpperCase() + day.substring(1)),
-                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15),
+                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15.sp),
               ),
               value: isOff,
-              activeColor: const Color(0xFF000080),
+              activeColor: Color(0xFF000080),
               onChanged: (val) {
                 _toggleWeeklyOff(day, val ?? false);
               },
@@ -953,9 +953,9 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
             icon: const Icon(Icons.add),
             label: Text(context.tr('Add Custom Holiday')),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF000080),
+              backgroundColor: Color(0xFF000080),
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
           ),
@@ -996,7 +996,7 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
                       title: Text(displayDate, style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
                       subtitle: Text(repeat ? context.tr('Repeats Yearly') : context.tr('One-time Holiday')),
                       trailing: IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.red),
+                        icon: Icon(Icons.delete_outline, color: Colors.red),
                         onPressed: () => _deleteHoliday(h['id'].toString()),
                       ),
                     ),
@@ -1021,9 +1021,9 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
             icon: const Icon(Icons.add),
             label: Text(context.tr('Pause Booking Schedule')),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF000080),
+              backgroundColor: Color(0xFF000080),
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
           ),
@@ -1059,18 +1059,18 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> with Sing
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     margin: const EdgeInsets.only(bottom: 10),
                     child: ListTile(
-                      leading: const CircleAvatar(
+                      leading: CircleAvatar(
                         backgroundColor: Color(0xFFFFEBEE),
                         child: Icon(Icons.pause_circle_outline, color: Colors.red, size: 20),
                       ),
-                      title: Text('$displayFrom ${context.tr('to')} $displayTo', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14)),
+                      title: Text('$displayFrom ${context.tr('to')} $displayTo', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14.sp)),
                       subtitle: Text(
                         reason.isNotEmpty ? reason : context.tr('No reason provided'),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                       trailing: IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.red),
+                        icon: Icon(Icons.delete_outline, color: Colors.red),
                         onPressed: () => _deleteBookingPause(p['id'].toString()),
                       ),
                     ),

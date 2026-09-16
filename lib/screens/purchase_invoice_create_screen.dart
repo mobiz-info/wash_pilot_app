@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -190,7 +192,7 @@ class _PurchaseInvoiceCreateScreenState
       lastDate: DateTime.now().add(const Duration(days: 365)),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: const ColorScheme.light(
+          colorScheme: ColorScheme.light(
             primary: Color(0xFF000080),
             onPrimary: Colors.white,
             onSurface: Colors.black,
@@ -231,9 +233,9 @@ class _PurchaseInvoiceCreateScreenState
                     Text(
                       context.tr('Select Supplier'),
                       style: GoogleFonts.inter(
-                        fontSize: 18,
+                        fontSize: 18.sp,
                         fontWeight: FontWeight.bold,
-                        color: const Color(0xFF000080),
+                        color: Color(0xFF000080),
                       ),
                     ),
                     IconButton(
@@ -297,11 +299,11 @@ class _PurchaseInvoiceCreateScreenState
                                 ? Text(
                                     'Payables: ${s['payables']}',
                                     style: GoogleFonts.inter(
-                                        fontSize: 12,
+                                        fontSize: 12.sp,
                                         color: Colors.red.shade600),
                                   )
                                 : null,
-                            trailing: const Icon(Icons.chevron_right, size: 18),
+                            trailing: Icon(Icons.chevron_right, size: 18),
                             onTap: () {
                               _selectedSupplierNotifier.value = s;
                               Navigator.pop(ctx);
@@ -425,15 +427,15 @@ class _PurchaseInvoiceCreateScreenState
     final auth = context.watch<AuthProvider>();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6F9),
+      backgroundColor: Color(0xFFF4F6F9),
       appBar: AppBar(
         title: Text(
           context.tr('New Purchase Entry'),
           style:
               GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white),
         ),
-        backgroundColor: const Color(0xFF000080),
-        iconTheme: const IconThemeData(color: Colors.white),
+        backgroundColor: Color(0xFF000080),
+        iconTheme: IconThemeData(color: Colors.white),
         elevation: 0,
       ),
       body: ValueListenableBuilder<bool>(
@@ -455,11 +457,11 @@ class _PurchaseInvoiceCreateScreenState
                       Text(errorMsg,
                           style:
                               GoogleFonts.inter(color: Colors.red)),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       ElevatedButton(
                         onPressed: _fetchInitialData,
                         style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF000080),
+                            backgroundColor: Color(0xFF000080),
                             foregroundColor: Colors.white),
                         child: Text(context.tr('Retry')),
                       ),
@@ -506,7 +508,7 @@ class _PurchaseInvoiceCreateScreenState
                                           ? supplier['name'] ?? ''
                                           : context.tr('Select Supplier'),
                                       style: GoogleFonts.inter(
-                                        fontSize: 15,
+                                        fontSize: 15.sp,
                                         color: supplier != null
                                             ? Colors.black87
                                             : Colors.grey.shade500,
@@ -568,7 +570,7 @@ class _PurchaseInvoiceCreateScreenState
                                   label: Text(
                                     context.tr('Add Another Item'),
                                     style: GoogleFonts.inter(
-                                      color: const Color(0xFF000080),
+                                      color: Color(0xFF000080),
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -601,7 +603,7 @@ class _PurchaseInvoiceCreateScreenState
                         final balance = _balanceToPay;
 
                         return Container(
-                          padding: const EdgeInsets.all(18),
+                          padding: EdgeInsets.all(18),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(16),
@@ -609,7 +611,7 @@ class _PurchaseInvoiceCreateScreenState
                               BoxShadow(
                                 color: Colors.black.withValues(alpha: 0.04),
                                 blurRadius: 8,
-                                offset: const Offset(0, 2),
+                                offset: Offset(0, 2),
                               )
                             ],
                           ),
@@ -621,7 +623,7 @@ class _PurchaseInvoiceCreateScreenState
                               _buildTotalRow(
                                   context.tr('Tax Total'), tax, auth,
                                   accent: Colors.orange.shade700),
-                              const Divider(height: 24),
+                              Divider(height: 24),
                               Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
@@ -629,17 +631,17 @@ class _PurchaseInvoiceCreateScreenState
                                   Text(
                                     context.tr('Grand Total'),
                                     style: GoogleFonts.inter(
-                                      fontSize: 16,
+                                      fontSize: 16.sp,
                                       fontWeight: FontWeight.bold,
-                                      color: const Color(0xFF0F172A),
+                                      color: Color(0xFF0F172A),
                                     ),
                                   ),
                                   Text(
                                     '${auth.currencySymbol}${grand.toStringAsFixed(2)}',
                                     style: GoogleFonts.inter(
-                                      fontSize: 20,
+                                      fontSize: 20.sp,
                                       fontWeight: FontWeight.w800,
-                                      color: const Color(0xFF000080),
+                                      color: Color(0xFF000080),
                                     ),
                                   ),
                                 ],
@@ -653,9 +655,9 @@ class _PurchaseInvoiceCreateScreenState
                               TextFormField(
                                 controller: _amountPaidController,
                                 keyboardType:
-                                    const TextInputType.numberWithOptions(
+                                    TextInputType.numberWithOptions(
                                         decimal: true),
-                                style: GoogleFonts.inter(fontSize: 15),
+                                style: GoogleFonts.inter(fontSize: 15.sp),
                                 onChanged: (_) {
                                   // Rebuild to refresh balance
                                   _refreshTotals();
@@ -718,7 +720,7 @@ class _PurchaseInvoiceCreateScreenState
                                     Text(
                                       '${auth.currencySymbol}${balance.toStringAsFixed(2)}',
                                       style: GoogleFonts.inter(
-                                        fontSize: 16,
+                                        fontSize: 16.sp,
                                         fontWeight: FontWeight.bold,
                                         color: balance > 0
                                             ? Colors.red.shade700
@@ -759,9 +761,9 @@ class _PurchaseInvoiceCreateScreenState
                       builder: (_, isSaving, __) => ElevatedButton(
                         onPressed: isSaving ? null : _submitInvoice,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF000080),
+                          backgroundColor: Color(0xFF000080),
                           foregroundColor: Colors.white,
-                          minimumSize: const Size.fromHeight(52),
+                          minimumSize: Size.fromHeight(52),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12)),
                           disabledBackgroundColor: Colors.grey.shade400,
@@ -776,7 +778,7 @@ class _PurchaseInvoiceCreateScreenState
                             : Text(
                                 context.tr('Save Purchase Entry'),
                                 style: GoogleFonts.inter(
-                                  fontSize: 16,
+                                  fontSize: 16.sp,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -796,15 +798,15 @@ class _PurchaseInvoiceCreateScreenState
   // ── Item Row Widget ────────────────────────────────────────────────────────
   Widget _buildItemRow(int index, Map<String, dynamic> row) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
+      margin: EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF000080).withValues(alpha: 0.05),
+            color: Color(0xFF000080).withValues(alpha: 0.05),
             blurRadius: 10,
-            offset: const Offset(0, 3),
+            offset: Offset(0, 3),
           ),
         ],
         border: Border.all(color: Colors.grey.shade200),
@@ -829,27 +831,27 @@ class _PurchaseInvoiceCreateScreenState
                         horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color:
-                          const Color(0xFF000080).withValues(alpha: 0.08),
+                          Color(0xFF000080).withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
                       'Item ${index + 1}',
                       style: GoogleFonts.inter(
-                        fontSize: 12,
+                        fontSize: 12.sp,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFF000080),
+                        color: Color(0xFF000080),
                       ),
                     ),
                   ),
-                  const Spacer(),
+                  Spacer(),
                   Material(
                     color: Colors.red.shade50,
-                    shape: const CircleBorder(),
+                    shape: CircleBorder(),
                     child: InkWell(
                       onTap: () => _removeRow(index),
                       customBorder: const CircleBorder(),
                       child: Padding(
-                        padding: const EdgeInsets.all(6),
+                        padding: EdgeInsets.all(6),
                         child: Icon(Icons.delete_outline,
                             color: Colors.red.shade600, size: 18),
                       ),
@@ -877,10 +879,10 @@ class _PurchaseInvoiceCreateScreenState
                           color: Colors.grey.shade600),
                       hintText: context.tr('Select Stock Group'),
                       hintStyle: GoogleFonts.inter(
-                          color: Colors.grey.shade500, fontSize: 14),
+                          color: Colors.grey.shade500, fontSize: 14.sp),
                       filled: true,
-                      fillColor: const Color(0xFFFAFAFA),
-                      contentPadding: const EdgeInsets.symmetric(
+                      fillColor: Color(0xFFFAFAFA),
+                      contentPadding: EdgeInsets.symmetric(
                           horizontal: 14, vertical: 14),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
@@ -905,7 +907,7 @@ class _PurchaseInvoiceCreateScreenState
                         value: grp['id']?.toString(),
                         child: Text(
                           grp['name'] ?? '',
-                          style: GoogleFonts.inter(fontSize: 14),
+                          style: GoogleFonts.inter(fontSize: 14.sp),
                         ),
                       );
                     }).toList(),
@@ -978,10 +980,10 @@ class _PurchaseInvoiceCreateScreenState
               Align(
                 alignment: Alignment.centerRight,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
+                  padding: EdgeInsets.symmetric(
                       horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF000080).withValues(alpha: 0.08),
+                    color: Color(0xFF000080).withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
@@ -989,14 +991,14 @@ class _PurchaseInvoiceCreateScreenState
                     children: [
                       Icon(Icons.calculate_outlined,
                           size: 14,
-                          color: const Color(0xFF000080)),
-                      const SizedBox(width: 6),
+                          color: Color(0xFF000080)),
+                      SizedBox(width: 6),
                       Text(
                         '${context.read<AuthProvider>().currencySymbol}${_calcRowTotal(row).toStringAsFixed(2)}',
                         style: GoogleFonts.inter(
                           fontWeight: FontWeight.bold,
-                          color: const Color(0xFF000080),
-                          fontSize: 14,
+                          color: Color(0xFF000080),
+                          fontSize: 14.sp,
                         ),
                       ),
                     ],
@@ -1036,7 +1038,7 @@ class _PurchaseInvoiceCreateScreenState
             Text(
               context.tr('Loading stock items...'),
               style: GoogleFonts.inter(
-                  fontSize: 14, color: Colors.grey.shade600),
+                  fontSize: 14.sp, color: Colors.grey.shade600),
             ),
           ],
         ),
@@ -1055,7 +1057,7 @@ class _PurchaseInvoiceCreateScreenState
         child: Text(
           context.tr('Select a Stock Group first'),
           style: GoogleFonts.inter(
-              fontSize: 14, color: Colors.grey.shade400),
+              fontSize: 14.sp, color: Colors.grey.shade400),
         ),
       );
     }
@@ -1087,7 +1089,7 @@ class _PurchaseInvoiceCreateScreenState
                         ? context.tr('No items in this group')
                         : context.tr('Select Stock Item'),
                 style: GoogleFonts.inter(
-                  fontSize: 14,
+                  fontSize: 14.sp,
                   color: selectedStock != null
                       ? Colors.black87
                       : Colors.grey.shade500,
@@ -1127,9 +1129,9 @@ class _PurchaseInvoiceCreateScreenState
                 Text(
                   context.tr('Select Stock Item'),
                   style: GoogleFonts.inter(
-                    fontSize: 18,
+                    fontSize: 18.sp,
                     fontWeight: FontWeight.bold,
-                    color: const Color(0xFF000080),
+                    color: Color(0xFF000080),
                   ),
                 ),
                 IconButton(
@@ -1195,7 +1197,7 @@ class _PurchaseInvoiceCreateScreenState
                             ? Text(
                                 'HSN: ${s['hsn_code']}',
                                 style: GoogleFonts.inter(
-                                    fontSize: 12,
+                                    fontSize: 12.sp,
                                     color: Colors.grey.shade600),
                               )
                             : null,
@@ -1244,7 +1246,7 @@ class _PurchaseInvoiceCreateScreenState
     required List<Widget> children,
   }) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -1252,7 +1254,7 @@ class _PurchaseInvoiceCreateScreenState
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 8,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 2),
           )
         ],
       ),
@@ -1267,8 +1269,8 @@ class _PurchaseInvoiceCreateScreenState
                 title,
                 style: GoogleFonts.inter(
                   fontWeight: FontWeight.w700,
-                  fontSize: 15,
-                  color: const Color(0xFF000080),
+                  fontSize: 15.sp,
+                  color: Color(0xFF000080),
                 ),
               ),
             ],
@@ -1284,7 +1286,7 @@ class _PurchaseInvoiceCreateScreenState
     return Text(
       text,
       style: GoogleFonts.inter(
-        fontSize: 13,
+        fontSize: 13.sp,
         fontWeight: FontWeight.w600,
         color: Colors.grey.shade700,
       ),
@@ -1322,7 +1324,7 @@ class _PurchaseInvoiceCreateScreenState
                   child: Text(
                     value,
                     style:
-                        GoogleFonts.inter(fontSize: 15, color: Colors.black87),
+                        GoogleFonts.inter(fontSize: 15.sp, color: Colors.black87),
                   ),
                 ),
                 Icon(Icons.arrow_drop_down, color: Colors.grey.shade600),
@@ -1351,7 +1353,7 @@ class _PurchaseInvoiceCreateScreenState
           controller: controller,
           keyboardType: keyboardType,
           maxLines: maxLines,
-          style: GoogleFonts.inter(fontSize: 15),
+          style: GoogleFonts.inter(fontSize: 15.sp),
           decoration: InputDecoration(
             prefixIcon: Icon(icon, color: Colors.grey.shade600),
             filled: true,
@@ -1389,7 +1391,7 @@ class _PurchaseInvoiceCreateScreenState
         Text(
           label,
           style: GoogleFonts.inter(
-            fontSize: 11,
+            fontSize: 11.sp,
             fontWeight: FontWeight.w600,
             color: Colors.grey.shade600,
           ),
@@ -1398,9 +1400,9 @@ class _PurchaseInvoiceCreateScreenState
         TextFormField(
           controller: controller,
           keyboardType:
-              const TextInputType.numberWithOptions(decimal: true),
+              TextInputType.numberWithOptions(decimal: true),
           onChanged: onChanged,
-          style: GoogleFonts.inter(fontSize: 14),
+          style: GoogleFonts.inter(fontSize: 14.sp),
           decoration: InputDecoration(
             prefixIcon: Icon(icon, size: 16, color: Colors.grey.shade500),
             filled: true,
@@ -1436,14 +1438,14 @@ class _PurchaseInvoiceCreateScreenState
         Text(
           label,
           style: GoogleFonts.inter(
-            fontSize: 14,
+            fontSize: 14.sp,
             color: Colors.grey.shade700,
           ),
         ),
         Text(
           '${auth.currencySymbol}${amount.toStringAsFixed(2)}',
           style: GoogleFonts.inter(
-            fontSize: 14,
+            fontSize: 14.sp,
             fontWeight: FontWeight.w600,
             color: accent ?? Colors.grey.shade800,
           ),

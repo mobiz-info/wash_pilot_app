@@ -59,7 +59,7 @@ void main() async {
   // 4. Copy build/app/outputs/flutter-apk/app-release.apk to the custom name
   final srcFile = File('build/app/outputs/flutter-apk/app-release.apk');
   if (srcFile.existsSync()) {
-    final newName = 'Car wash $country V $version.apk';
+    final newName = 'Mobiz Auto Care Pro $country V $version.apk';
     final destFile = File('build/app/outputs/flutter-apk/$newName');
 
     // Copy to destination

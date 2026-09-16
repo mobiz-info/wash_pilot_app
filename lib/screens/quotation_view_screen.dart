@@ -254,8 +254,9 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
                 pw.Table(
                   columnWidths: const {
                     0: pw.FlexColumnWidth(4),
-                    1: pw.FixedColumnWidth(80),
-                    2: pw.FixedColumnWidth(80),
+                    1: pw.FixedColumnWidth(40),
+                    2: pw.FixedColumnWidth(55),
+                    3: pw.FixedColumnWidth(70),
                   },
                   border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
                   children: [
@@ -265,6 +266,10 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
                         pw.Padding(
                           padding: const pw.EdgeInsets.all(6),
                           child: pw.Text('Service / Item', style: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 10)),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(6),
+                          child: pw.Text('Qty', textAlign: pw.TextAlign.center, style: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 10)),
                         ),
                         pw.Padding(
                           padding: const pw.EdgeInsets.all(6),
@@ -295,6 +300,10 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
                           ),
                           pw.Padding(
                             padding: const pw.EdgeInsets.all(6),
+                            child: pw.Text(_parseDouble(items[i]['quantity'] ?? items[i]['stock_qty'] ?? 1).toStringAsFixed(_parseDouble(items[i]['quantity'] ?? items[i]['stock_qty'] ?? 1) % 1 == 0 ? 0 : 2), textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 9)),
+                          ),
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.all(6),
                             child: pw.Text('${items[i]['warranty_years']} yrs', textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 9)),
                           ),
                           pw.Padding(
@@ -315,7 +324,8 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
                 pw.Table(
                   columnWidths: const {
                     0: pw.FlexColumnWidth(4),
-                    1: pw.FixedColumnWidth(80),
+                    1: pw.FixedColumnWidth(40),
+                    2: pw.FixedColumnWidth(70),
                   },
                   border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
                   children: [
@@ -323,14 +333,32 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
                       decoration: const pw.BoxDecoration(color: PdfColors.grey200),
                       children: [
                         pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('Item Name', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9))),
+                        pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('Qty', textAlign: pw.TextAlign.center, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9))),
                         pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('Price', textAlign: pw.TextAlign.right, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9))),
                       ],
                     ),
                     for (final ex in extras)
                       pw.TableRow(
                         children: [
-                          pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text(ex['name'] ?? '', style: const pw.TextStyle(fontSize: 9))),
-                          pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('$currencySymbol${_parseDouble(ex['price']).toStringAsFixed(2)}', textAlign: pw.TextAlign.right, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.all(6),
+                            child: pw.Column(
+                              crossAxisAlignment: pw.CrossAxisAlignment.start,
+                              children: [
+                                pw.Text(ex['name'] ?? '', style: const pw.TextStyle(fontSize: 9)),
+                                if (ex['remarks'] != null && ex['remarks'].toString().trim().isNotEmpty)
+                                  pw.Text('Note: ${ex['remarks']}', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+                              ],
+                            ),
+                          ),
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.all(6),
+                            child: pw.Text(_parseDouble(ex['quantity'] ?? ex['qty'] ?? 1).toStringAsFixed(_parseDouble(ex['quantity'] ?? ex['qty'] ?? 1) % 1 == 0 ? 0 : 2), textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 9)),
+                          ),
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.all(6),
+                            child: pw.Text('$currencySymbol${_parseDouble(ex['price']).toStringAsFixed(2)}', textAlign: pw.TextAlign.right, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                          ),
                         ],
                       ),
                   ],
@@ -444,7 +472,17 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
       final name = item['service_name'] ?? '';
       final rate = _parseDouble(item['rate']);
       final warranty = item['warranty_years'];
-      String line = "- $name: $currencySymbol${rate.toStringAsFixed(2)}";
+      final stockItem = item['stock_item_name'];
+      final itemQty = _parseDouble(item['quantity'] ?? item['stock_qty'] ?? 1);
+      final qtyStr = itemQty % 1 == 0 ? itemQty.toInt().toString() : itemQty.toStringAsFixed(2);
+
+      String line = "- $name";
+      if (stockItem != null && stockItem.toString().isNotEmpty) {
+        line += " (Stock: $stockItem x$qtyStr)";
+      } else if (itemQty > 1) {
+        line += " (x$qtyStr)";
+      }
+      line += ": $currencySymbol${rate.toStringAsFixed(2)}";
       if (warranty != null && warranty.toString().isNotEmpty && warranty.toString() != '0') {
         line += " ($warranty yrs warranty)";
       }
@@ -453,7 +491,19 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
     for (final ex in extras) {
       final name = ex['name'] ?? '';
       final price = _parseDouble(ex['price']);
-      itemLines.add("- $name (Extra): $currencySymbol${price.toStringAsFixed(2)}");
+      final exQty = _parseDouble(ex['quantity'] ?? ex['qty'] ?? 1);
+      final qtyStr = exQty % 1 == 0 ? exQty.toInt().toString() : exQty.toStringAsFixed(2);
+      final remarks = (ex['remarks'] ?? '').toString().trim();
+
+      String line = "- $name";
+      if (exQty > 1) {
+        line += " (x$qtyStr)";
+      }
+      if (remarks.isNotEmpty) {
+        line += " [$remarks]";
+      }
+      line += " (Extra): $currencySymbol${price.toStringAsFixed(2)}";
+      itemLines.add(line);
     }
     final servicesStr = itemLines.join("\n");
 
@@ -525,9 +575,9 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
         builder: (ctx) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Row(children: [
-            const Icon(Icons.picture_as_pdf, color: Color(0xFF000080)),
-            const SizedBox(width: 8),
-            Text('Share Quotation', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16)),
+            Icon(Icons.picture_as_pdf, color: Color(0xFF000080)),
+            SizedBox(width: 8),
+            Text('Share Quotation', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16.sp)),
           ]),
           content: SizedBox(
             width: double.maxFinite,
@@ -535,21 +585,21 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Quotation details to send with PDF:', style: GoogleFonts.inter(fontSize: 12, color: Colors.grey[600])),
-                const SizedBox(height: 8),
+                Text('Quotation details to send with PDF:', style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey[600])),
+                SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: Colors.grey[100],
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.grey[300]!),
                   ),
-                  constraints: const BoxConstraints(maxHeight: 200),
+                  constraints: BoxConstraints(maxHeight: 200),
                   child: SingleChildScrollView(
-                    child: Text(messageText, style: GoogleFonts.inter(fontSize: 12)),
+                    child: Text(messageText, style: GoogleFonts.inter(fontSize: 12.sp)),
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 TextButton.icon(
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: messageText));
@@ -557,8 +607,8 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
                       const SnackBar(content: Text('Text copied to clipboard!'), backgroundColor: Colors.green),
                     );
                   },
-                  icon: const Icon(Icons.copy, size: 16),
-                  label: Text('Copy Text', style: GoogleFonts.inter(fontSize: 13)),
+                  icon: Icon(Icons.copy, size: 16),
+                  label: Text('Copy Text', style: GoogleFonts.inter(fontSize: 13.sp)),
                 ),
               ],
             ),
@@ -580,7 +630,7 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
               icon: const Icon(Icons.share, size: 16),
               label: Text('Share PDF', style: GoogleFonts.inter()),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF000080),
+                backgroundColor: Color(0xFF000080),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
@@ -638,14 +688,14 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
                     style: GoogleFonts.inter(
                       fontWeight: FontWeight.bold,
                       fontSize: 18.sp,
-                      color: const Color(0xFF000080),
+                      color: Color(0xFF000080),
                     ),
                   ),
                 ),
                 ListTile(
                   leading: CircleAvatar(
                     backgroundColor: Colors.red.shade50,
-                    child: const Icon(Icons.picture_as_pdf_outlined, color: Colors.red),
+                    child: Icon(Icons.picture_as_pdf_outlined, color: Colors.red),
                   ),
                   title: Text(
                     context.tr('Share Quotation PDF Document'),
@@ -694,29 +744,29 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Color(0xFFF8FAFC),
       appBar: AppBar(
         title: Text(context.tr('Quotation Preview'), style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
-        backgroundColor: const Color(0xFF000080),
+        backgroundColor: Color(0xFF000080),
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.picture_as_pdf, color: Colors.white),
+            icon: Icon(Icons.picture_as_pdf, color: Colors.white),
             tooltip: context.tr('Share PDF'),
             onPressed: _quotation != null ? () => _shareQuotationPdf(context) : null,
           ),
           IconButton(
-            icon: const Icon(Icons.share, color: Colors.white),
+            icon: Icon(Icons.share, color: Colors.white),
             tooltip: context.tr('Share Options'),
             onPressed: _quotation != null ? () => _showShareOptions(context) : null,
           ),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator())
           : _errorMessage.isNotEmpty
-              ? Center(child: Text(_errorMessage, style: const TextStyle(color: Colors.red)))
+              ? Center(child: Text(_errorMessage, style: TextStyle(color: Colors.red)))
               : _quotation == null
                   ? Center(child: Text(context.tr('Quotation not found')))
                   : SingleChildScrollView(
@@ -734,12 +784,12 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
                               Expanded(
                                 child: ElevatedButton.icon(
                                   onPressed: () => _shareQuotationPdf(context),
-                                  icon: const Icon(Icons.share, color: Colors.white),
+                                  icon: Icon(Icons.share, color: Colors.white),
                                   label: Text(context.tr('Share Quotation'), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF10B981),
+                                    backgroundColor: Color(0xFF10B981),
                                     foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    padding: EdgeInsets.symmetric(vertical: 16),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                   ),
                                 ),
@@ -748,10 +798,10 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
                               Expanded(
                                 child: OutlinedButton.icon(
                                   onPressed: _backToDashboard,
-                                  icon: const Icon(Icons.home_outlined, color: Color(0xFF000080)),
+                                  icon: Icon(Icons.home_outlined, color: Color(0xFF000080)),
                                   label: Text(context.tr('Back to Dashboard'), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
                                   style: OutlinedButton.styleFrom(
-                                    foregroundColor: const Color(0xFF000080),
+                                    foregroundColor: Color(0xFF000080),
                                     side: const BorderSide(color: Color(0xFF000080), width: 1.5),
                                     padding: const EdgeInsets.symmetric(vertical: 16),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -773,12 +823,12 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
     final extras = (q['extras'] as List<dynamic>? ?? []);
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 15, offset: const Offset(0, 5)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 15, offset: Offset(0, 5)),
         ],
         border: Border.all(color: Colors.grey.shade200),
       ),
@@ -795,7 +845,7 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
                 children: [
                   Text(
                     ApiService.appName,
-                    style: GoogleFonts.inter(fontSize: 20.sp, fontWeight: FontWeight.w800, color: const Color(0xFF000080)),
+                    style: GoogleFonts.inter(fontSize: 20.sp, fontWeight: FontWeight.w800, color: Color(0xFF000080)),
                   ),
                   if (q['branch_name'] != null && q['branch_name'].toString().isNotEmpty)
                     Text(
@@ -805,21 +855,21 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF000080).withValues(alpha: 0.1),
+                  color: Color(0xFF000080).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   q['quotation_number'] ?? '',
-                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: const Color(0xFF000080), fontSize: 14.sp),
+                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Color(0xFF000080), fontSize: 14.sp),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Text('${context.tr("Date")}: ${_formatDateWithTime(q['date'] ?? '')}', style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade500)),
-          const Divider(height: 28),
+          Divider(height: 28),
 
           // Customer & Vehicle Box
           Container(
@@ -833,9 +883,9 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
               children: [
                 Text(
                   context.tr('Customer & Vehicle Information'),
-                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13.sp, color: const Color(0xFF000080)),
+                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13.sp, color: Color(0xFF000080)),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -843,10 +893,10 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
                     Text(q['customer_phone'] ?? '', style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.grey.shade700)),
                   ],
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   '${q['vehicle_number'] ?? ''} ${(q['vehicle_type'] != null && q['vehicle_type'].toString().isNotEmpty) ? "· ${q['vehicle_type']}" : ""} ${(q['vehicle_model'] != null && q['vehicle_model'].toString().isNotEmpty) ? "· ${q['vehicle_model']}" : ""}',
-                  style: GoogleFonts.inter(fontSize: 13.sp, color: const Color(0xFF334155), fontWeight: FontWeight.w600),
+                  style: GoogleFonts.inter(fontSize: 13.sp, color: Color(0xFF334155), fontWeight: FontWeight.w600),
                 ),
               ],
             ),
@@ -857,25 +907,29 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
           if (items.isNotEmpty) ...[
             Text(
               context.tr('Services & Stock Items'),
-              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14.sp, color: const Color(0xFF1E293B)),
+              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14.sp, color: Color(0xFF1E293B)),
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             Table(
               columnWidths: const {
                 0: FlexColumnWidth(3),
-                1: FlexColumnWidth(1.5),
-                2: FlexColumnWidth(1.5),
+                1: FlexColumnWidth(1),
+                2: FlexColumnWidth(1.2),
+                3: FlexColumnWidth(1.5),
               },
               children: [
                 TableRow(
                   decoration: BoxDecoration(color: Colors.grey.shade100),
                   children: [
-                    Padding(padding: const EdgeInsets.all(8), child: Text(context.tr('Service / Stock'), style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12.sp))),
-                    Padding(padding: const EdgeInsets.all(8), child: Text(context.tr('Warranty'), style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12.sp))),
-                    Padding(padding: const EdgeInsets.all(8), child: Text(context.tr('Rate'), textAlign: TextAlign.right, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12.sp))),
+                    Padding(padding: EdgeInsets.all(8), child: Text(context.tr('Service / Stock'), style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12.sp))),
+                    Padding(padding: EdgeInsets.all(8), child: Text(context.tr('Qty'), textAlign: TextAlign.center, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12.sp))),
+                    Padding(padding: EdgeInsets.all(8), child: Text(context.tr('Warranty'), textAlign: TextAlign.center, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12.sp))),
+                    Padding(padding: EdgeInsets.all(8), child: Text(context.tr('Rate'), textAlign: TextAlign.right, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12.sp))),
                   ],
                 ),
                 ...items.map((it) {
+                  final itemQty = _parseDouble(it['quantity'] ?? it['stock_qty'] ?? 1);
+                  final qtyStr = itemQty % 1 == 0 ? itemQty.toInt().toString() : itemQty.toStringAsFixed(2);
                   return TableRow(
                     children: [
                       Padding(
@@ -886,16 +940,21 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
                             Text(it['service_name'] ?? '', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13.sp)),
                             if (it['stock_item_name'] != null && it['stock_item_name'].toString().isNotEmpty)
                               Text('Stock: ${it['stock_item_name']}', style: GoogleFonts.inter(fontSize: 11.sp, color: Colors.grey.shade600)),
-                            Text('Topup: ${it['free_topup']}', style: GoogleFonts.inter(fontSize: 11.sp, color: Colors.grey.shade500)),
+                            if (it['free_topup'] != null && it['free_topup'].toString().isNotEmpty)
+                              Text('Topup: ${it['free_topup']}', style: GoogleFonts.inter(fontSize: 11.sp, color: Colors.grey.shade500)),
                           ],
                         ),
                       ),
                       Padding(
-                        padding: const EdgeInsets.all(8),
-                        child: Text('${it['warranty_years']} yrs', style: GoogleFonts.inter(fontSize: 12.sp)),
+                        padding: EdgeInsets.all(8),
+                        child: Text(qtyStr, textAlign: TextAlign.center, style: GoogleFonts.inter(fontSize: 12.sp)),
                       ),
                       Padding(
-                        padding: const EdgeInsets.all(8),
+                        padding: EdgeInsets.all(8),
+                        child: Text('${it['warranty_years']} yrs', textAlign: TextAlign.center, style: GoogleFonts.inter(fontSize: 12.sp)),
+                      ),
+                      Padding(
+                        padding: EdgeInsets.all(8),
                         child: Text('$currencySymbol${_parseDouble(it['rate']).toStringAsFixed(2)}', textAlign: TextAlign.right, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13.sp)),
                       ),
                     ],
@@ -910,21 +969,60 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
           if (extras.isNotEmpty) ...[
             Text(
               context.tr('Extras'),
-              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14.sp, color: const Color(0xFF1E293B)),
+              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14.sp, color: Color(0xFF1E293B)),
             ),
-            const SizedBox(height: 8),
-            ...extras.map((ex) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(ex['name'] ?? '', style: GoogleFonts.inter(fontSize: 13.sp)),
-                    Text('$currencySymbol${_parseDouble(ex['price']).toStringAsFixed(2)}', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13.sp)),
-                  ],
-                ),
-              );
-            }),
+            SizedBox(height: 8),
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade200),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Table(
+                columnWidths: const {
+                  0: FlexColumnWidth(3),
+                  1: FlexColumnWidth(1),
+                  2: FlexColumnWidth(1.5),
+                },
+                children: [
+                  TableRow(
+                    decoration: BoxDecoration(color: Colors.grey.shade100),
+                    children: [
+                      Padding(padding: EdgeInsets.all(8), child: Text(context.tr('Item Name'), style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12.sp))),
+                      Padding(padding: EdgeInsets.all(8), child: Text(context.tr('Qty'), textAlign: TextAlign.center, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12.sp))),
+                      Padding(padding: EdgeInsets.all(8), child: Text(context.tr('Price'), textAlign: TextAlign.right, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12.sp))),
+                    ],
+                  ),
+                  ...extras.map((ex) {
+                    final exQty = _parseDouble(ex['quantity'] ?? ex['qty'] ?? 1);
+                    final qtyStr = exQty % 1 == 0 ? exQty.toInt().toString() : exQty.toStringAsFixed(2);
+                    final remarks = (ex['remarks'] ?? '').toString().trim();
+                    return TableRow(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(ex['name'] ?? '', style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.w500)),
+                              if (remarks.isNotEmpty)
+                                Text('Note: $remarks', style: GoogleFonts.inter(fontSize: 11.sp, color: Colors.grey.shade600)),
+                            ],
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: Text(qtyStr, textAlign: TextAlign.center, style: GoogleFonts.inter(fontSize: 12.sp)),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: Text('$currencySymbol${_parseDouble(ex['price']).toStringAsFixed(2)}', textAlign: TextAlign.right, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13.sp)),
+                        ),
+                      ],
+                    );
+                  }),
+                ],
+              ),
+            ),
             const SizedBox(height: 24),
           ],
 
@@ -934,18 +1032,18 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
               context.tr('Additional Service Notes'),
               style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13.sp, color: Colors.grey.shade700),
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             Text(q['additional_services'], style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.grey.shade800)),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
           ],
           if (q['additional_days_needed'] != null && _parseDouble(q['additional_days_needed']) > 0) ...[
             Row(
               children: [
                 Text('${context.tr("Days Needed")}: ', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13.sp)),
-                Text('${q['additional_days_needed']} days', style: GoogleFonts.inter(fontSize: 13.sp, color: const Color(0xFF000080), fontWeight: FontWeight.bold)),
+                Text('${q['additional_days_needed']} days', style: GoogleFonts.inter(fontSize: 13.sp, color: Color(0xFF000080), fontWeight: FontWeight.bold)),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
           ],
 
           if ((q['is_grand_total'] as bool?) ?? true) ...[
@@ -961,12 +1059,12 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
               const SizedBox(height: 6),
               _summaryRow('${context.tr("Tax")} (${q["tax_percentage"]}%)', '$currencySymbol${_parseDouble(q["tax_amount"]).toStringAsFixed(2)}'),
             ],
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(context.tr('Grand Total'), style: GoogleFonts.inter(fontSize: 16.sp, fontWeight: FontWeight.w800, color: const Color(0xFF000080))),
-                Text('$currencySymbol${_parseDouble(q["grand_total"]).toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 20.sp, fontWeight: FontWeight.w900, color: const Color(0xFF000080))),
+                Text(context.tr('Grand Total'), style: GoogleFonts.inter(fontSize: 16.sp, fontWeight: FontWeight.w800, color: Color(0xFF000080))),
+                Text('$currencySymbol${_parseDouble(q["grand_total"]).toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 20.sp, fontWeight: FontWeight.w900, color: Color(0xFF000080))),
               ],
             ),
           ],

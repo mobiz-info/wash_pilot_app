@@ -90,7 +90,7 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
       lastDate: DateTime(2030),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: const ColorScheme.light(
+          colorScheme: ColorScheme.light(
             primary: Color(0xFF000080),
             onPrimary: Colors.white,
           ),
@@ -154,6 +154,63 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
       _branches.value = res['branches'] ?? [];
     } catch (_) {
       // Branch filter is optional; receipts can still load all branches.
+    }
+  }
+
+  Future<void> _deleteReceipt(BuildContext context, Map<String, dynamic> receipt) async {
+    final receiptNumber = _value(receipt['receipt_number']);
+    final amount = _formatAmount(receipt['amount']);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        title: Text(context.tr('Delete Receipt'), style: GoogleFonts.inter(fontWeight: FontWeight.w800)),
+        content: Text(
+          context.tr('Delete receipt $receiptNumber?\n\nAmount $amount will be restored to the outstanding balance.\n\nThis action cannot be undone.'),
+          style: GoogleFonts.inter(fontSize: 13.sp),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(context.tr('Cancel'), style: GoogleFonts.inter(color: Colors.grey.shade600)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade600, foregroundColor: Colors.white),
+            child: Text(context.tr('Delete'), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
+
+    try {
+      final res = await ApiService.deleteReceipt(receipt['id'], token);
+      if (!mounted) return;
+      if (res['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.tr('Receipt deleted. Amount restored to outstanding.')),
+            backgroundColor: Colors.green.shade700,
+          ),
+        );
+        _fetchReceipts();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.tr(res['message'] ?? 'Failed to delete receipt')),
+            backgroundColor: Colors.red.shade600,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('Error: $e')), backgroundColor: Colors.red.shade600),
+      );
     }
   }
 
@@ -407,18 +464,18 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
                 final filtered = _filteredReceipts;
 
                 return Scaffold(
-                  backgroundColor: const Color(0xFFF8FAFC),
+                  backgroundColor: Color(0xFFF8FAFC),
                   appBar: AppBar(
-                    backgroundColor: const Color(0xFF000080),
+                    backgroundColor: Color(0xFF000080),
                     foregroundColor: Colors.white,
                     title: Text(
                       context.tr('Receipts'),
-                      style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 18),
+                      style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 18.sp),
                     ),
                     actions: [
                       IconButton(
                         onPressed: _fetchReceipts,
-                        icon: const Icon(Icons.refresh),
+                        icon: Icon(Icons.refresh),
                       ),
                     ],
                   ),
@@ -462,7 +519,7 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
                                       color: Colors.white,
                                       borderRadius: BorderRadius.circular(10),
                                     ),
-                                    child: const Icon(
+                                    child: Icon(
                                       Icons.search,
                                       color: Color(0xFF000080),
                                     ),
@@ -471,7 +528,7 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
                               ],
                             ),
                             if (context.watch<AuthProvider>().isCompanyAdmin) ...[
-                              const SizedBox(height: 12),
+                              SizedBox(height: 12),
                               ValueListenableBuilder<String?>(
                                 valueListenable: _selectedBranchId,
                                 builder: (context, branchId, _) => _branchDropdown(branchId),
@@ -487,16 +544,16 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
                       ),
                       Container(
                         color: Colors.white,
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                        padding: EdgeInsets.fromLTRB(16, 12, 16, 12),
                         child: TextField(
                           onChanged: (value) => _search.value = value,
                           decoration: InputDecoration(
                             hintText: context.tr('Search receipt, customer, invoice or vehicle'),
                             hintStyle: GoogleFonts.inter(
-                              fontSize: 13,
-                              color: const Color(0xFF94A3B8),
+                              fontSize: 13.sp,
+                              color: Color(0xFF94A3B8),
                             ),
-                            prefixIcon: const Icon(
+                            prefixIcon: Icon(
                               Icons.search,
                               size: 20,
                               color: Color(0xFF94A3B8),
@@ -523,18 +580,18 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.error_outline,
                                   size: 48,
                                   color: Colors.red,
                                 ),
-                                const SizedBox(height: 12),
+                                SizedBox(height: 12),
                                 Text(
                                   errorMsg,
                                   textAlign: TextAlign.center,
-                                  style: const TextStyle(color: Colors.red),
+                                  style: TextStyle(color: Colors.red),
                                 ),
-                                const SizedBox(height: 16),
+                                SizedBox(height: 16),
                                 ElevatedButton(
                                   onPressed: _fetchReceipts,
                                   child: Text(context.tr('Retry')),
@@ -560,9 +617,9 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
                                       ? 'No results for "$searchVal"'
                                       : 'No receipts found',
                                   style: GoogleFonts.inter(
-                                    fontSize: 16,
+                                    fontSize: 16.sp,
                                     fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF64748B),
+                                    color: Color(0xFF64748B),
                                   ),
                                 ),
                               ],
@@ -588,7 +645,7 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
                       if (!loading && errorMsg.isEmpty && filtered.isNotEmpty)
                         Container(
                           color: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -596,8 +653,8 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
                                 context.tr('Total Collected'),
                                 style: GoogleFonts.inter(
                                   fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF64748B),
-                                  fontSize: 14,
+                                  color: Color(0xFF64748B),
+                                  fontSize: 14.sp,
                                 ),
                               ),
                               Text(
@@ -605,7 +662,7 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
                                 style: GoogleFonts.inter(
                                   fontWeight: FontWeight.w900,
                                   color: Colors.green.shade700,
-                                  fontSize: 18,
+                                  fontSize: 18.sp,
                                 ),
                               ),
                             ],
@@ -632,7 +689,7 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
         decoration: InputDecoration(
           filled: true,
           fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(
+          contentPadding: EdgeInsets.symmetric(
             horizontal: 12,
             vertical: 12,
           ),
@@ -668,7 +725,7 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
       decoration: InputDecoration(
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(
+        contentPadding: EdgeInsets.symmetric(
           horizontal: 12,
           vertical: 12,
         ),
@@ -699,7 +756,7 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
     return GestureDetector(
       onTap: () => _pickDate(isFrom: isFrom),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(10),
@@ -719,7 +776,7 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
                   Text(
                     label,
                     style: GoogleFonts.inter(
-                      fontSize: 10,
+                      fontSize: 10.sp,
                       color: Colors.grey.shade500,
                       fontWeight: FontWeight.w600,
                     ),
@@ -727,9 +784,9 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
                   Text(
                     date != null ? _displayDate(date) : 'Select',
                     style: GoogleFonts.inter(
-                      fontSize: 13,
+                      fontSize: 13.sp,
                       fontWeight: FontWeight.w700,
-                      color: const Color(0xFF1E293B),
+                      color: Color(0xFF1E293B),
                     ),
                   ),
                 ],
@@ -751,7 +808,7 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
     final branchName = _value(receipt['branch']);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
@@ -759,7 +816,7 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 6,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -779,8 +836,8 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
                         receiptNo,
                         style: GoogleFonts.inter(
                           fontWeight: FontWeight.w800,
-                          fontSize: 15,
-                          color: const Color(0xFF1E293B),
+                          fontSize: 15.sp,
+                          color: Color(0xFF1E293B),
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -789,8 +846,8 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.inter(
-                          fontSize: 12,
-                          color: const Color(0xFF94A3B8),
+                          fontSize: 12.sp,
+                          color: Color(0xFF94A3B8),
                         ),
                       ),
                     ],
@@ -810,7 +867,7 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
                     context.tr('${CountryConfig.currencySymbol}${_formatAmount(receipt['amount'])}'),
                     style: GoogleFonts.inter(
                       fontWeight: FontWeight.w900,
-                      fontSize: 15,
+                      fontSize: 15.sp,
                       color: Colors.green.shade700,
                     ),
                   ),
@@ -834,25 +891,47 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => _shareReceipt(receipt),
-                icon: const Icon(Icons.share, size: 18),
-                label: Text(
-                  context.tr('Share Receipt'),
-                  style: GoogleFonts.inter(fontWeight: FontWeight.bold),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF000080),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _shareReceipt(receipt),
+                    icon: const Icon(Icons.share, size: 18),
+                    label: Text(
+                      context.tr('Share'),
+                      style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFF000080),
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      elevation: 0,
+                    ),
                   ),
-                  elevation: 0,
                 ),
-              ),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  onPressed: () => _deleteReceipt(context, receipt),
+                  icon: const Icon(Icons.delete_outline, size: 18),
+                  label: Text(
+                    context.tr('Delete'),
+                    style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red.shade50,
+                    foregroundColor: Colors.red.shade700,
+                    side: BorderSide(color: Colors.red.shade300),
+                    padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -876,8 +955,8 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
           Text(
             label,
             style: GoogleFonts.inter(
-              fontSize: 12,
-              color: const Color(0xFF64748B),
+              fontSize: 12.sp,
+              color: Color(0xFF64748B),
             ),
           ),
         ],

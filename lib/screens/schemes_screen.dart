@@ -91,7 +91,7 @@ class _SchemesScreenState extends State<SchemesScreen> {
             child: Text(
               label,
               style: GoogleFonts.inter(
-                fontSize: 12,
+                fontSize: 12.sp,
                 color: color,
                 fontWeight: FontWeight.w500,
               ),
@@ -134,7 +134,7 @@ class _SchemesScreenState extends State<SchemesScreen> {
     }
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
@@ -142,7 +142,7 @@ class _SchemesScreenState extends State<SchemesScreen> {
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 6,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -163,8 +163,8 @@ class _SchemesScreenState extends State<SchemesScreen> {
                         name,
                         style: GoogleFonts.inter(
                           fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                          color: const Color(0xFF1E293B),
+                          fontSize: 16.sp,
+                          color: Color(0xFF1E293B),
                         ),
                       ),
                       if (desc.isNotEmpty) ...[
@@ -172,8 +172,8 @@ class _SchemesScreenState extends State<SchemesScreen> {
                         Text(
                           desc,
                           style: GoogleFonts.inter(
-                            fontSize: 13,
-                            color: const Color(0xFF64748B),
+                            fontSize: 13.sp,
+                            color: Color(0xFF64748B),
                           ),
                         ),
                       ],
@@ -198,7 +198,7 @@ class _SchemesScreenState extends State<SchemesScreen> {
                         highlightText,
                         style: GoogleFonts.inter(
                           fontWeight: FontWeight.w900,
-                          fontSize: 13,
+                          fontSize: 13.sp,
                           color: highlightColor,
                         ),
                       ),
@@ -232,16 +232,16 @@ class _SchemesScreenState extends State<SchemesScreen> {
     final isCompany = context.watch<AuthProvider>().isCompanyAdmin;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Color(0xFFF8FAFC),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF000080),
+        backgroundColor: Color(0xFF000080),
         foregroundColor: Colors.white,
         title: Text(
           isCompany ? 'Schemes' : 'Available Schemes',
-          style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 18),
+          style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 18.sp),
         ),
         actions: [
-          IconButton(onPressed: _fetchSchemes, icon: const Icon(Icons.refresh)),
+          IconButton(onPressed: _fetchSchemes, icon: Icon(Icons.refresh)),
           if (isCompany)
             IconButton(
               onPressed: () async {
@@ -276,10 +276,10 @@ class _SchemesScreenState extends State<SchemesScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                const SizedBox(height: 12),
-                Text(error, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
-                const SizedBox(height: 16),
+                Icon(Icons.error_outline, size: 48, color: Colors.red),
+                SizedBox(height: 12),
+                Text(error, textAlign: TextAlign.center, style: TextStyle(color: Colors.red)),
+                SizedBox(height: 16),
                 ElevatedButton(onPressed: _fetchSchemes, child: Text(context.tr('Retry'))),
               ],
             ),
@@ -290,10 +290,10 @@ class _SchemesScreenState extends State<SchemesScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.local_offer_outlined, size: 72, color: Colors.grey.shade300),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 Text(
                   context.tr('No schemes available'),
-                  style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF64748B)),
+                  style: GoogleFonts.inter(fontSize: 16.sp, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
                 ),
               ],
             ),

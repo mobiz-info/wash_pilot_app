@@ -73,7 +73,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               title: Text(
                 context.tr('Resolve Complaint'),
-                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
+                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16.sp),
               ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -81,9 +81,9 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                 children: [
                   Text(
                     context.tr('Enter resolution remarks/notes:'),
-                    style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade600),
+                    style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade600),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   TextField(
                     controller: remarksController,
                     maxLines: 3,
@@ -148,7 +148,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                   child: isSaving
-                      ? const SizedBox(
+                      ? SizedBox(
                           height: 16,
                           width: 16,
                           child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
@@ -179,7 +179,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
             return Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(20),
@@ -202,9 +202,9 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                       Text(
                         context.tr('Create Complaint'),
                         style: GoogleFonts.inter(
-                          fontSize: 18,
+                          fontSize: 18.sp,
                           fontWeight: FontWeight.bold,
-                          color: const Color(0xFF000080),
+                          color: Color(0xFF000080),
                         ),
                       ),
                       IconButton(
@@ -220,7 +220,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                   Text(
                     context.tr('Complaint Type'),
                     style: GoogleFonts.inter(
-                      fontSize: 13,
+                      fontSize: 13.sp,
                       fontWeight: FontWeight.w600,
                       color: Colors.grey.shade700,
                     ),
@@ -276,7 +276,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                   Text(
                     context.tr('Priority Level'),
                     style: GoogleFonts.inter(
-                      fontSize: 13,
+                      fontSize: 13.sp,
                       fontWeight: FontWeight.w600,
                       color: Colors.grey.shade700,
                     ),
@@ -292,13 +292,13 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                               : Colors.red;
                       return Expanded(
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          padding: EdgeInsets.symmetric(horizontal: 4),
                           child: InkWell(
                             onTap: () {
                               setModalState(() => localSelectedPriority = prio);
                             },
                             child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              padding: EdgeInsets.symmetric(vertical: 10),
                               decoration: BoxDecoration(
                                 color: isSelected ? color.withOpacity(0.12) : Colors.white,
                                 border: Border.all(
@@ -311,7 +311,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                               child: Text(
                                 prio.toUpperCase(),
                                 style: GoogleFonts.inter(
-                                  fontSize: 12,
+                                  fontSize: 12.sp,
                                   fontWeight: FontWeight.bold,
                                   color: isSelected ? color : Colors.grey.shade600,
                                 ),
@@ -328,7 +328,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                   Text(
                     context.tr('Complaint Details'),
                     style: GoogleFonts.inter(
-                      fontSize: 13,
+                      fontSize: 13.sp,
                       fontWeight: FontWeight.w600,
                       color: Colors.grey.shade700,
                     ),
@@ -392,22 +392,22 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                             }
                           },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF000080),
+                      backgroundColor: Color(0xFF000080),
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
                     child: isSaving
-                        ? const SizedBox(
+                        ? SizedBox(
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                           )
                         : Text(
                             context.tr('Submit Complaint'),
-                            style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14),
+                            style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14.sp),
                           ),
                   ),
                 ],
@@ -442,9 +442,9 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                 children: [
                   Text(
                     context.tr('Complaint Type Name'),
-                    style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade600),
+                    style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade600),
                   ),
-                  const SizedBox(height: 6),
+                  SizedBox(height: 6),
                   TextField(
                     controller: typeNameController,
                     decoration: InputDecoration(
@@ -490,12 +490,12 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                           }
                         },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF000080),
+                    backgroundColor: Color(0xFF000080),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                   child: isSaving
-                      ? const SizedBox(
+                      ? SizedBox(
                           height: 16,
                           width: 16,
                           child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
@@ -538,8 +538,8 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
     final remarks = c['resolve_remarks']?.toString() ?? '';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
@@ -547,7 +547,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
           BoxShadow(
             color: Colors.black.withOpacity(0.03),
             blurRadius: 8,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -558,7 +558,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: priorityColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(6),
@@ -567,7 +567,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                 child: Text(
                   c['priority'].toString().toUpperCase(),
                   style: GoogleFonts.inter(
-                    fontSize: 10,
+                    fontSize: 10.sp,
                     fontWeight: FontWeight.bold,
                     color: priorityColor,
                   ),
@@ -576,7 +576,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
               Text(
                 c['date_added'] ?? '',
                 style: GoogleFonts.inter(
-                  fontSize: 11,
+                  fontSize: 11.sp,
                   color: Colors.grey.shade500,
                 ),
               ),
@@ -587,9 +587,9 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
           Text(
             c['complaint_type'] ?? 'Complaint',
             style: GoogleFonts.inter(
-              fontSize: 15,
+              fontSize: 15.sp,
               fontWeight: FontWeight.bold,
-              color: const Color(0xFF0F172A),
+              color: Color(0xFF0F172A),
             ),
           ),
           const SizedBox(height: 4),
@@ -601,7 +601,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
               Text(
                 c['branch'] ?? '',
                 style: GoogleFonts.inter(
-                  fontSize: 12,
+                  fontSize: 12.sp,
                   color: Colors.grey.shade600,
                   fontWeight: FontWeight.w600,
                 ),
@@ -613,7 +613,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
           Text(
             c['complaint'] ?? '',
             style: GoogleFonts.inter(
-              fontSize: 13,
+              fontSize: 13.sp,
               color: Colors.grey.shade700,
               height: 1.4,
             ),
@@ -636,7 +636,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                   Expanded(
                     child: RichText(
                       text: TextSpan(
-                        style: GoogleFonts.inter(fontSize: 12, color: Colors.blueGrey.shade800),
+                        style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.blueGrey.shade800),
                         children: [
                           TextSpan(
                             text: 'Resolution Remarks: ',
@@ -652,13 +652,13 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
             ),
           ],
 
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
 
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: statusBgColor,
                   borderRadius: BorderRadius.circular(20),
@@ -666,7 +666,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                 child: Text(
                   status.toUpperCase(),
                   style: GoogleFonts.inter(
-                    fontSize: 11,
+                    fontSize: 11.sp,
                     fontWeight: FontWeight.w700,
                     color: statusColor,
                   ),
@@ -678,7 +678,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green.shade600,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -686,7 +686,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                   child: Text(
                     context.tr('Resolve'),
                     style: GoogleFonts.inter(
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -719,7 +719,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
           final sortedComplaints = [...activeComplaints, ...resolvedComplaints];
 
           return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
+      backgroundColor: Color(0xFFF1F5F9),
       appBar: AppBar(
         title: Text(
           context.tr('Complaints'),
@@ -733,15 +733,15 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
         children: [
           if (auth.isCompanyAdmin && _branches.length > 1) ...[
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(12),
               color: Colors.white,
               child: Row(
                 children: [
                   Text(
                     context.tr('Filter by Branch: '),
-                    style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
+                    style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13.sp),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -757,7 +757,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                           items: _branches.map((b) {
                             return DropdownMenuItem<String>(
                               value: b,
-                              child: Text(b, style: GoogleFonts.inter(fontSize: 13)),
+                              child: Text(b, style: GoogleFonts.inter(fontSize: 13.sp)),
                             );
                           }).toList(),
                           onChanged: (val) {
@@ -783,7 +783,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                     color: const Color(0xFF000080),
                     child: sortedComplaints.isEmpty
                         ? ListView(
-                            physics: const AlwaysScrollableScrollPhysics(),
+                            physics: AlwaysScrollableScrollPhysics(),
                             children: [
                               SizedBox(height: MediaQuery.of(context).size.height * 0.25),
                               Center(
@@ -799,7 +799,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                                     Text(
                                       context.tr('No Complaints found'),
                                       style: GoogleFonts.inter(
-                                        fontSize: 16,
+                                        fontSize: 16.sp,
                                         fontWeight: FontWeight.bold,
                                         color: Colors.grey.shade600,
                                       ),
@@ -808,7 +808,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                                     Text(
                                       context.tr('Swipe down to check for updates.'),
                                       style: GoogleFonts.inter(
-                                        fontSize: 12,
+                                        fontSize: 12.sp,
                                         color: Colors.grey.shade400,
                                       ),
                                     ),
@@ -832,8 +832,8 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
       floatingActionButton: isBranch
           ? FloatingActionButton.extended(
               onPressed: _showCreateComplaintDialog,
-              backgroundColor: const Color(0xFF000080),
-              icon: const Icon(Icons.add, color: Colors.white),
+              backgroundColor: Color(0xFF000080),
+              icon: Icon(Icons.add, color: Colors.white),
               label: Text(
                 context.tr('Add Complaint'),
                 style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white),

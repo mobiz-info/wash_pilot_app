@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -98,7 +100,7 @@ class _SupplierPayablesScreenState extends State<SupplierPayablesScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (modalCtx) {
@@ -121,20 +123,20 @@ class _SupplierPayablesScreenState extends State<SupplierPayablesScreen> {
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(8),
+                          padding: EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF000080).withValues(alpha: 0.1),
+                            color: Color(0xFF000080).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: const Icon(Icons.payments_outlined, color: Color(0xFF000080)),
+                          child: Icon(Icons.payments_outlined, color: Color(0xFF000080)),
                         ),
                         const SizedBox(width: 12),
                         Text(
                           context.tr('Record Payment'),
                           style: GoogleFonts.inter(
-                            fontSize: 18,
+                            fontSize: 18.sp,
                             fontWeight: FontWeight.bold,
-                            color: const Color(0xFF0F172A),
+                            color: Color(0xFF0F172A),
                           ),
                         ),
                       ],
@@ -158,12 +160,12 @@ class _SupplierPayablesScreenState extends State<SupplierPayablesScreen> {
                   ),
                   child: Row(
                     children: [
-                      const CircleAvatar(
+                      CircleAvatar(
                         backgroundColor: Color(0xFF000080),
                         radius: 20,
                         child: Icon(Icons.business, color: Colors.white, size: 20),
                       ),
-                      const SizedBox(width: 12),
+                      SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -171,15 +173,15 @@ class _SupplierPayablesScreenState extends State<SupplierPayablesScreen> {
                             Text(
                               supplier['name'] ?? '',
                               style: GoogleFonts.inter(
-                                fontSize: 15,
+                                fontSize: 15.sp,
                                 fontWeight: FontWeight.bold,
-                                color: const Color(0xFF0F172A),
+                                color: Color(0xFF0F172A),
                               ),
                             ),
                             if ((supplier['phone_no'] ?? '').isNotEmpty)
                               Text(
                                 'Ph: ${supplier['phone_no']}',
-                                style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade700),
+                                style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade700),
                               ),
                           ],
                         ),
@@ -189,12 +191,12 @@ class _SupplierPayablesScreenState extends State<SupplierPayablesScreen> {
                         children: [
                           Text(
                             context.tr('Payable'),
-                            style: GoogleFonts.inter(fontSize: 11, color: Colors.red.shade700, fontWeight: FontWeight.w600),
+                            style: GoogleFonts.inter(fontSize: 11.sp, color: Colors.red.shade700, fontWeight: FontWeight.w600),
                           ),
                           Text(
                             '${context.read<AuthProvider>().currencySymbol}${outstandingPayable.toStringAsFixed(2)}',
                             style: GoogleFonts.inter(
-                              fontSize: 16,
+                              fontSize: 16.sp,
                               fontWeight: FontWeight.w800,
                               color: Colors.red.shade700,
                             ),
@@ -354,7 +356,7 @@ class _SupplierPayablesScreenState extends State<SupplierPayablesScreen> {
                       height: 50,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF000080),
+                          backgroundColor: Color(0xFF000080),
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
@@ -416,14 +418,14 @@ class _SupplierPayablesScreenState extends State<SupplierPayablesScreen> {
                                 }
                               },
                         child: isSaving
-                            ? const SizedBox(
+                            ? SizedBox(
                                 height: 20,
                                 width: 20,
                                 child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                               )
                             : Text(
                                 context.tr('Save Payment'),
-                                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
+                                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16.sp),
                               ),
                       ),
                     );
@@ -463,11 +465,11 @@ class _SupplierPayablesScreenState extends State<SupplierPayablesScreen> {
           child: Column(
             children: [
               Icon(icon, size: 20, color: isSelected ? Colors.white : Colors.grey.shade700),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Text(
                 label,
                 style: GoogleFonts.inter(
-                  fontSize: 12,
+                  fontSize: 12.sp,
                   fontWeight: FontWeight.w600,
                   color: isSelected ? Colors.white : Colors.grey.shade700,
                 ),
@@ -484,18 +486,18 @@ class _SupplierPayablesScreenState extends State<SupplierPayablesScreen> {
     final currencySymbol = context.watch<AuthProvider>().currencySymbol;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Color(0xFFF8FAFC),
       appBar: AppBar(
         title: Text(
           context.tr('Supplier Payables'),
           style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white),
         ),
-        backgroundColor: const Color(0xFF000080),
-        iconTheme: const IconThemeData(color: Colors.white),
+        backgroundColor: Color(0xFF000080),
+        iconTheme: IconThemeData(color: Colors.white),
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh),
             onPressed: _loadPayables,
             tooltip: context.tr('Refresh'),
           ),
@@ -518,14 +520,14 @@ class _SupplierPayablesScreenState extends State<SupplierPayablesScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                      const SizedBox(height: 12),
+                      Icon(Icons.error_outline, size: 48, color: Colors.red),
+                      SizedBox(height: 12),
                       Text(errorMsg, style: GoogleFonts.inter(color: Colors.red)),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: _loadPayables,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF000080),
+                          backgroundColor: Color(0xFF000080),
                           foregroundColor: Colors.white,
                         ),
                         child: Text(context.tr('Retry')),
@@ -552,7 +554,7 @@ class _SupplierPayablesScreenState extends State<SupplierPayablesScreen> {
                             color: const Color(0xFF000080),
                             padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                               decoration: BoxDecoration(
                                 color: Colors.white.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(14),
@@ -567,16 +569,16 @@ class _SupplierPayablesScreenState extends State<SupplierPayablesScreen> {
                                       Text(
                                         context.tr('Total Supplier Payables'),
                                         style: GoogleFonts.inter(
-                                          fontSize: 12,
+                                          fontSize: 12.sp,
                                           fontWeight: FontWeight.w600,
                                           color: Colors.white.withValues(alpha: 0.8),
                                         ),
                                       ),
-                                      const SizedBox(height: 4),
+                                      SizedBox(height: 4),
                                       Text(
                                         '$currencySymbol${totalPayablesAmount.toStringAsFixed(2)}',
                                         style: GoogleFonts.inter(
-                                          fontSize: 22,
+                                          fontSize: 22.sp,
                                           fontWeight: FontWeight.w800,
                                           color: Colors.white,
                                         ),
@@ -584,7 +586,7 @@ class _SupplierPayablesScreenState extends State<SupplierPayablesScreen> {
                                     ],
                                   ),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                     decoration: BoxDecoration(
                                       color: Colors.white,
                                       borderRadius: BorderRadius.circular(20),
@@ -592,9 +594,9 @@ class _SupplierPayablesScreenState extends State<SupplierPayablesScreen> {
                                     child: Text(
                                       '${suppliersList.length} ${context.tr("Suppliers")}',
                                       style: GoogleFonts.inter(
-                                        fontSize: 12,
+                                        fontSize: 12.sp,
                                         fontWeight: FontWeight.bold,
-                                        color: const Color(0xFF000080),
+                                        color: Color(0xFF000080),
                                       ),
                                     ),
                                   ),
@@ -606,15 +608,15 @@ class _SupplierPayablesScreenState extends State<SupplierPayablesScreen> {
                           // Search Bar
                           Container(
                             color: Colors.white,
-                            padding: const EdgeInsets.all(12),
+                            padding: EdgeInsets.all(12),
                             child: TextField(
                               onChanged: (v) => _searchNotifier.value = v,
                               decoration: InputDecoration(
                                 hintText: context.tr('Search supplier by name, phone or GST...'),
-                                hintStyle: GoogleFonts.inter(fontSize: 13, color: Colors.grey.shade400),
-                                prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                                hintStyle: GoogleFonts.inter(fontSize: 13.sp, color: Colors.grey.shade400),
+                                prefixIcon: Icon(Icons.search, color: Colors.grey),
                                 filled: true,
-                                fillColor: const Color(0xFFF1F5F9),
+                                fillColor: Color(0xFFF1F5F9),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(10),
                                   borderSide: BorderSide.none,
@@ -642,7 +644,7 @@ class _SupplierPayablesScreenState extends State<SupplierPayablesScreen> {
                                               ? context.tr('No matching suppliers found')
                                               : context.tr('No supplier payables!'),
                                           style: GoogleFonts.inter(
-                                            fontSize: 15,
+                                            fontSize: 15.sp,
                                             fontWeight: FontWeight.w600,
                                             color: Colors.grey.shade500,
                                           ),
@@ -663,15 +665,15 @@ class _SupplierPayablesScreenState extends State<SupplierPayablesScreen> {
                                         final gst = s['gst_no']?.toString() ?? '';
 
                                         return Container(
-                                          margin: const EdgeInsets.only(bottom: 12),
+                                          margin: EdgeInsets.only(bottom: 12),
                                           decoration: BoxDecoration(
                                             color: Colors.white,
                                             borderRadius: BorderRadius.circular(16),
                                             boxShadow: [
                                               BoxShadow(
-                                                color: const Color(0xFF000080).withValues(alpha: 0.04),
+                                                color: Color(0xFF000080).withValues(alpha: 0.04),
                                                 blurRadius: 10,
-                                                offset: const Offset(0, 3),
+                                                offset: Offset(0, 3),
                                               ),
                                             ],
                                             border: Border.all(color: Colors.grey.shade200),
@@ -686,10 +688,10 @@ class _SupplierPayablesScreenState extends State<SupplierPayablesScreen> {
                                                   children: [
                                                     CircleAvatar(
                                                       radius: 20,
-                                                      backgroundColor: const Color(0xFF000080).withValues(alpha: 0.08),
-                                                      child: const Icon(Icons.business_rounded, color: Color(0xFF000080), size: 20),
+                                                      backgroundColor: Color(0xFF000080).withValues(alpha: 0.08),
+                                                      child: Icon(Icons.business_rounded, color: Color(0xFF000080), size: 20),
                                                     ),
-                                                    const SizedBox(width: 12),
+                                                    SizedBox(width: 12),
                                                     Expanded(
                                                       child: Column(
                                                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -697,9 +699,9 @@ class _SupplierPayablesScreenState extends State<SupplierPayablesScreen> {
                                                           Text(
                                                             s['name'] ?? '',
                                                             style: GoogleFonts.inter(
-                                                              fontSize: 16,
+                                                              fontSize: 16.sp,
                                                               fontWeight: FontWeight.bold,
-                                                              color: const Color(0xFF0F172A),
+                                                              color: Color(0xFF0F172A),
                                                             ),
                                                           ),
                                                           const SizedBox(height: 2),
@@ -711,7 +713,7 @@ class _SupplierPayablesScreenState extends State<SupplierPayablesScreen> {
                                                                 Text(
                                                                   phone,
                                                                   style: GoogleFonts.inter(
-                                                                    fontSize: 13,
+                                                                    fontSize: 13.sp,
                                                                     color: Colors.grey.shade600,
                                                                   ),
                                                                 ),
@@ -723,7 +725,7 @@ class _SupplierPayablesScreenState extends State<SupplierPayablesScreen> {
                                                               child: Text(
                                                                 'GST: $gst',
                                                                 style: GoogleFonts.inter(
-                                                                  fontSize: 11,
+                                                                  fontSize: 11.sp,
                                                                   color: Colors.grey.shade500,
                                                                 ),
                                                               ),
@@ -733,16 +735,16 @@ class _SupplierPayablesScreenState extends State<SupplierPayablesScreen> {
                                                     ),
                                                     ElevatedButton.icon(
                                                       onPressed: () => _showPayModal(s),
-                                                      icon: const Icon(Icons.handshake_outlined, size: 16),
+                                                      icon: Icon(Icons.handshake_outlined, size: 16),
                                                       label: Text(
                                                         context.tr('Pay Now'),
                                                         style: GoogleFonts.inter(
-                                                          fontSize: 13,
+                                                          fontSize: 13.sp,
                                                           fontWeight: FontWeight.bold,
                                                         ),
                                                       ),
                                                       style: ElevatedButton.styleFrom(
-                                                        backgroundColor: const Color(0xFF000080),
+                                                        backgroundColor: Color(0xFF000080),
                                                         foregroundColor: Colors.white,
                                                         shape: RoundedRectangleBorder(
                                                           borderRadius: BorderRadius.circular(8),
@@ -752,20 +754,20 @@ class _SupplierPayablesScreenState extends State<SupplierPayablesScreen> {
                                                     ),
                                                   ],
                                                 ),
-                                                const Divider(height: 20),
+                                                Divider(height: 20),
                                                 Row(
                                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                                   children: [
                                                     Text(
                                                       context.tr('Outstanding Payables'),
                                                       style: GoogleFonts.inter(
-                                                        fontSize: 13,
+                                                        fontSize: 13.sp,
                                                         fontWeight: FontWeight.w600,
                                                         color: Colors.grey.shade700,
                                                       ),
                                                     ),
                                                     Container(
-                                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                                      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                                       decoration: BoxDecoration(
                                                         color: payables > 0 ? Colors.red.shade50 : Colors.green.shade50,
                                                         borderRadius: BorderRadius.circular(20),
@@ -776,7 +778,7 @@ class _SupplierPayablesScreenState extends State<SupplierPayablesScreen> {
                                                       child: Text(
                                                         '$currencySymbol${payables.toStringAsFixed(2)}',
                                                         style: GoogleFonts.inter(
-                                                          fontSize: 15,
+                                                          fontSize: 15.sp,
                                                           fontWeight: FontWeight.w800,
                                                           color: payables > 0 ? Colors.red.shade700 : Colors.green.shade700,
                                                         ),
@@ -809,7 +811,7 @@ class _SupplierPayablesScreenState extends State<SupplierPayablesScreen> {
     return Text(
       text,
       style: GoogleFonts.inter(
-        fontSize: 13,
+        fontSize: 13.sp,
         fontWeight: FontWeight.w600,
         color: Colors.grey.shade700,
       ),
@@ -845,7 +847,7 @@ class _SupplierPayablesScreenState extends State<SupplierPayablesScreen> {
                 Expanded(
                   child: Text(
                     value,
-                    style: GoogleFonts.inter(fontSize: 13, color: Colors.black87),
+                    style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.black87),
                   ),
                 ),
                 Icon(Icons.arrow_drop_down, color: Colors.grey.shade600),
@@ -874,7 +876,7 @@ class _SupplierPayablesScreenState extends State<SupplierPayablesScreen> {
           controller: controller,
           keyboardType: keyboardType,
           maxLines: maxLines,
-          style: GoogleFonts.inter(fontSize: 14),
+          style: GoogleFonts.inter(fontSize: 14.sp),
           decoration: InputDecoration(
             prefixIcon: Icon(icon, size: 18, color: Colors.grey.shade600),
             filled: true,

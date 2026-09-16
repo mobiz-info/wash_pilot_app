@@ -52,7 +52,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final auth = context.watch<AuthProvider>();
 
     return Scaffold(
-      backgroundColor: const Color(0xFF000080),
+      backgroundColor: Color(0xFF000080),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -99,7 +99,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: TextStyle(
                           fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
-                          color: const Color(0xFF000080),
+                          color: Color(0xFF000080),
                         ),
                       ),
                       SizedBox(height: 24.h),
@@ -107,7 +107,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         controller: _usernameController,
                         decoration: InputDecoration(
                           hintText: context.tr('Username'),
-                          prefixIcon: const Icon(Icons.person_outline),
+                          prefixIcon: Icon(Icons.person_outline),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12.r),
                             borderSide: BorderSide(color: Colors.grey.shade300),
@@ -124,7 +124,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         obscureText: true,
                         decoration: InputDecoration(
                           hintText: context.tr('Password'),
-                          prefixIcon: const Icon(Icons.lock_outline),
+                          prefixIcon: Icon(Icons.lock_outline),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12.r),
                             borderSide: BorderSide(color: Colors.grey.shade300),
@@ -142,7 +142,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: ElevatedButton(
                           onPressed: auth.isLoading ? null : _handleLogin,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF000080),
+                            backgroundColor: Color(0xFF000080),
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12.r),
@@ -152,7 +152,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ? SizedBox(
                                   height: 24.r,
                                   width: 24.r,
-                                  child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                                 )
                               : Text(context.tr('Login'), style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold)),
                         ),

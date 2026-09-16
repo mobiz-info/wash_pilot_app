@@ -40,6 +40,9 @@ enum CountryCode {
   thailand,
   russia,
   china,
+  ghana,
+  benin,
+  ivoryCoast,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -234,6 +237,39 @@ const Map<CountryCode, CountrySettings> _countryMap = {
     flag: '🇨🇳',
     localeTag: 'zh_CN',
   ),
+  CountryCode.ghana: CountrySettings(
+    code: CountryCode.ghana,
+    displayName: 'Ghana',
+    phoneIsoCode: 'GH',
+    phoneDialCode: '+233',
+    currencySymbol: 'GH₵',
+    currencyName: 'Ghanaian Cedi',
+    currencyCode: 'GHS',
+    flag: '🇬🇭',
+    localeTag: 'en_GH',
+  ),
+  CountryCode.benin: CountrySettings(
+    code: CountryCode.benin,
+    displayName: 'Benin',
+    phoneIsoCode: 'BJ',
+    phoneDialCode: '+229',
+    currencySymbol: 'CFA',
+    currencyName: 'West African CFA franc',
+    currencyCode: 'XOF',
+    flag: '🇧🇯',
+    localeTag: 'fr_BJ',
+  ),
+  CountryCode.ivoryCoast: CountrySettings(
+    code: CountryCode.ivoryCoast,
+    displayName: 'Ivory Coast',
+    phoneIsoCode: 'CI',
+    phoneDialCode: '+225',
+    currencySymbol: 'CFA',
+    currencyName: 'West African CFA franc',
+    currencyCode: 'XOF',
+    flag: '🇨🇮',
+    localeTag: 'fr_CI',
+  ),
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -317,6 +353,16 @@ class CountryConfig {
   /// e.g. 'India', 'Saudi Arabia'
   static String get displayName => _current.displayName;
 
+  /// Returns the dial code (e.g. '+84') for a given ISO code (e.g. 'VN').
+  /// Falls back to the current country's dial code if not found.
+  static String dialCodeForIso(String isoCode) {
+    final match = _countryMap.values.firstWhere(
+      (c) => c.phoneIsoCode == isoCode.toUpperCase(),
+      orElse: () => _current,
+    );
+    return match.phoneDialCode;
+  }
+
   /// Formats phone number for wa.me / WhatsApp links correctly without double-prefixing.
   static String formatPhoneForWhatsapp(String phone) {
     return formatPhoneWithCountryCode(phone, phoneDialCode);
@@ -327,11 +373,19 @@ class CountryConfig {
     String cleaned = input.replaceAll(RegExp(r'\D'), '');
     if (cleaned.isEmpty) return '';
 
+    // Strip single leading zero if present in local dialing format (e.g. 0501234567 -> 501234567)
+    if (cleaned.startsWith('0') && cleaned.length > 6) {
+      cleaned = cleaned.substring(1);
+    }
+
     final cleanCode = selectedDialCode.replaceAll('+', '').trim();
 
-    // If cleaned already starts with cleanCode AND has extra digits (total length > 10)
-    if (cleaned.startsWith(cleanCode) && cleaned.length > 10) {
-      return cleaned;
+    // If cleaned already starts with cleanCode and the remaining local part is a valid length (5 to 11 digits)
+    if (cleaned.startsWith(cleanCode)) {
+      final remainder = cleaned.substring(cleanCode.length);
+      if (remainder.length >= 5 && remainder.length <= 11) {
+        return cleaned;
+      }
     }
 
     // If input had an explicit leading '+' sign
@@ -342,4 +396,3 @@ class CountryConfig {
     return '$cleanCode$cleaned';
   }
 }
-

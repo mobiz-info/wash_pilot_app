@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
@@ -124,7 +126,7 @@ class _StockItemBodyViewState extends State<StockItemBodyView> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text(context.tr('Delete'), style: const TextStyle(color: Colors.red)),
+            child: Text(context.tr('Delete'), style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -164,13 +166,13 @@ class _StockItemBodyViewState extends State<StockItemBodyView> {
                 context.tr('Stock Items'),
                 style: GoogleFonts.inter(fontWeight: FontWeight.w700),
               ),
-              backgroundColor: const Color(0xFF000080),
+              backgroundColor: Color(0xFF000080),
               foregroundColor: Colors.white,
               elevation: 0,
               actions: [
                 IconButton(
                   onPressed: _fetchStocks,
-                  icon: const Icon(Icons.refresh),
+                  icon: Icon(Icons.refresh),
                 )
               ],
             )
@@ -184,7 +186,7 @@ class _StockItemBodyViewState extends State<StockItemBodyView> {
               controller: _searchController,
               decoration: InputDecoration(
                 hintText: context.tr('Search stock items...'),
-                prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                prefixIcon: Icon(Icons.search, color: Colors.grey),
                 filled: true,
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
@@ -211,11 +213,11 @@ class _StockItemBodyViewState extends State<StockItemBodyView> {
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Text(errMsg, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
-                                    const SizedBox(height: 16),
+                                    Text(errMsg, style: TextStyle(color: Colors.red), textAlign: TextAlign.center),
+                                    SizedBox(height: 16),
                                     ElevatedButton(
                                       onPressed: _fetchStocks,
-                                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000080), foregroundColor: Colors.white),
+                                      style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF000080), foregroundColor: Colors.white),
                                       child: Text(context.tr('Retry')),
                                     ),
                                   ],
@@ -223,31 +225,31 @@ class _StockItemBodyViewState extends State<StockItemBodyView> {
                               ),
                             )
                           : filtered.isEmpty
-                              ? Center(child: Text(context.tr('No stock items found'), style: GoogleFonts.inter(color: Colors.grey, fontSize: 15)))
+                              ? Center(child: Text(context.tr('No stock items found'), style: GoogleFonts.inter(color: Colors.grey, fontSize: 15.sp)))
                               : ListView.builder(
-                                  padding: const EdgeInsets.all(16),
+                                  padding: EdgeInsets.all(16),
                                   itemCount: filtered.length,
                                   itemBuilder: (ctx, i) {
                                     final item = Map<String, dynamic>.from(filtered[i] as Map);
                                     final name = item['item_name'] ?? '';
                                     final unitDisplay = item['unit_display'] ?? '';
                                     return Container(
-                                      margin: const EdgeInsets.only(bottom: 10),
+                                      margin: EdgeInsets.only(bottom: 10),
                                       decoration: BoxDecoration(
                                         color: Colors.white,
                                         borderRadius: BorderRadius.circular(12),
-                                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 6, offset: const Offset(0, 3))],
+                                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 6, offset: Offset(0, 3))],
                                       ),
                                       child: ListTile(
-                                        leading: const CircleAvatar(backgroundColor: Color(0xFFE0F2FE), foregroundColor: Color(0xFF0284C7), child: Icon(Icons.inventory_2_outlined)),
-                                        title: Text(name, style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black87)),
+                                        leading: CircleAvatar(backgroundColor: Color(0xFFE0F2FE), foregroundColor: Color(0xFF0284C7), child: Icon(Icons.inventory_2_outlined)),
+                                        title: Text(name, style: GoogleFonts.inter(fontSize: 15.sp, fontWeight: FontWeight.w600, color: Colors.black87)),
                                         subtitle: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            Text('${context.tr("Unit")}: $unitDisplay', style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade600)),
+                                            Text('${context.tr("Unit")}: $unitDisplay', style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade600)),
                                             if (item['expense_head_name'] != null) ...[
-                                              const SizedBox(height: 2),
-                                              Text('${context.tr("Expense Head")}: ${item['expense_head_name']}', style: GoogleFonts.inter(fontSize: 12, color: Colors.blue.shade700, fontWeight: FontWeight.w500)),
+                                              SizedBox(height: 2),
+                                              Text('${context.tr("Expense Head")}: ${item['expense_head_name']}', style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.blue.shade700, fontWeight: FontWeight.w500)),
                                             ],
                                           ],
                                         ),
@@ -258,8 +260,8 @@ class _StockItemBodyViewState extends State<StockItemBodyView> {
                                             else if (value == 'delete') _deleteStockItem(item);
                                           },
                                           itemBuilder: (context) => [
-                                            PopupMenuItem(value: 'edit', child: Row(children: [const Icon(Icons.edit, size: 18, color: Colors.blue), const SizedBox(width: 8), Text(context.tr('Edit'), style: GoogleFonts.inter())])),
-                                            PopupMenuItem(value: 'delete', child: Row(children: [const Icon(Icons.delete, size: 18, color: Colors.red), const SizedBox(width: 8), Text(context.tr('Delete'), style: GoogleFonts.inter(color: Colors.red))])),
+                                            PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit, size: 18, color: Colors.blue), SizedBox(width: 8), Text(context.tr('Edit'), style: GoogleFonts.inter())])),
+                                            PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete, size: 18, color: Colors.red), SizedBox(width: 8), Text(context.tr('Delete'), style: GoogleFonts.inter(color: Colors.red))])),
                                           ],
                                         ),
                                       ),
@@ -274,9 +276,9 @@ class _StockItemBodyViewState extends State<StockItemBodyView> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _addNewStockItem,
-        backgroundColor: const Color(0xFF000080),
+        backgroundColor: Color(0xFF000080),
         foregroundColor: Colors.white,
-        child: const Icon(Icons.add),
+        child: Icon(Icons.add),
       ),
     );
   }

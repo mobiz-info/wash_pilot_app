@@ -13,12 +13,14 @@ import '../services/api_service.dart';
 class AddCustomerScreen extends StatefulWidget {
   final String? phoneNumber;
   final String? initialCountryIso; // e.g. 'IN', 'AE', 'SA' — null means use CountryConfig
+  final String? initialDialCode;   // e.g. '+1', '+44' — pass directly to avoid ISO lookup fallback
   final String? branchId;
 
   const AddCustomerScreen({
     super.key,
     this.phoneNumber,
     this.initialCountryIso,
+    this.initialDialCode,
     this.branchId,
   });
 
@@ -39,6 +41,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   List<dynamic> _makes = [];             // all manufacturers/makes
   List<dynamic> _brandModels = [];       // all brand models
   List<dynamic> _colors = [];
+  List<dynamic> _emissionStandards = [];
 
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -55,7 +58,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   late final ValueNotifier<String> _phoneIso;
   late final ValueNotifier<String> _whatsappIso;
 
-  // Each entry: {controller, vehicle_type, vehicle_type_model, make, brand_model, color}
+  // Each entry: {controller, vehicle_type, vehicle_type_model, make, brand_model, color, emission_standard}
   final List<Map<String, dynamic>> _vehicleRows = [];
   final _vehicleRowsNotifier = ValueNotifier<int>(0);
 
@@ -63,26 +66,22 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   void initState() {
     super.initState();
     final effectiveIso = widget.initialCountryIso ?? CountryConfig.phoneIsoCode;
-    String initialPhoneCode = CountryConfig.phoneDialCode;
-    String initialWhatsappCode = CountryConfig.phoneDialCode;
+
+    // Prefer the explicitly passed dial code (e.g. '+1' for Canada) over
+    // dialCodeForIso(), which falls back to the app's country for any ISO
+    // not in CountryConfig's supported list (e.g. 'CA', 'AU', 'FR').
+    String initialPhoneCode = widget.initialDialCode?.isNotEmpty == true
+        ? widget.initialDialCode!
+        : CountryConfig.dialCodeForIso(effectiveIso);
+    String initialWhatsappCode = initialPhoneCode;
 
     if (widget.phoneNumber != null && widget.phoneNumber!.isNotEmpty) {
       String rawPhone = widget.phoneNumber!.replaceAll(RegExp(r'\D'), '');
-      String targetDialCode = initialPhoneCode.replaceAll('+', '').trim();
+      final cleanCode = initialPhoneCode.replaceAll('+', '').trim();
 
-      // Strip dial code ONLY if rawPhone starts with targetDialCode AND length > 10 (e.g. 12 digits for India)
-      if (rawPhone.startsWith(targetDialCode) && rawPhone.length > 10) {
-        rawPhone = rawPhone.substring(targetDialCode.length);
-      } else {
-        // Fallback: check other known dial codes ONLY if length exceeds 10 digits
-        for (final code in ['971', '966', '965', '968', '974', '973', '91']) {
-          if (rawPhone.startsWith(code) && rawPhone.length > 10) {
-            initialPhoneCode = '+$code';
-            initialWhatsappCode = '+$code';
-            rawPhone = rawPhone.substring(code.length);
-            break;
-          }
-        }
+      // Strip the dial code prefix if it was already prepended
+      if (rawPhone.startsWith(cleanCode) && rawPhone.length > cleanCode.length) {
+        rawPhone = rawPhone.substring(cleanCode.length);
       }
 
       _phoneController.text = rawPhone;
@@ -134,6 +133,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
         final makes = res['makes'] as List<dynamic>? ?? [];
         final brandModels = res['brand_models'] as List<dynamic>? ?? [];
         final colors = res['colors'] as List<dynamic>? ?? [];
+        final emissionStandards = res['emission_standards'] as List<dynamic>? ?? [];
         final branches = res['branches'] as List<dynamic>? ?? [];
 
         final validVehicleTypeIds = vehicleTypeModels.map((m) => m['vehicle_type_id']?.toString()).where((id) => id != null && id.isNotEmpty).toSet();
@@ -145,6 +145,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
         _makes = makes;
         _brandModels = brandModels;
         _colors = colors;
+        _emissionStandards = emissionStandards;
         _branches = branches;
         if (types.isNotEmpty) _selectedCustomerType.value = types.first;
         if (branches.isNotEmpty) {
@@ -185,6 +186,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       'make': null,
       'brand_model': null,
       'color': null,
+      'emission_standard': null,
       'wheel_type': 'normal_wheel',
     });
     _vehicleRowsNotifier.value++;
@@ -239,7 +241,6 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       whatsappVal = CountryConfig.formatPhoneWithCountryCode(localWhatsapp, _selectedWhatsappCode.value);
     }
 
-
     // Collect valid vehicles
     final vehicles = <Map<String, dynamic>>[];
     for (final row in _vehicleRows) {
@@ -260,6 +261,9 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
 
       final color = row['color'] as Map<String, dynamic>?;
       if (color != null) vehicleData['color_id'] = color['id'];
+
+      final emissionStandard = row['emission_standard'] as Map<String, dynamic>?;
+      if (emissionStandard != null) vehicleData['emission_standard_id'] = emissionStandard['id'];
 
       vehicles.add(vehicleData);
     }
@@ -315,19 +319,19 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
           valueListenable: _isSaving,
           builder: (context, saving, _) {
             return Scaffold(
-              backgroundColor: const Color(0xFFF1F5F9),
+              backgroundColor: Color(0xFFF1F5F9),
               appBar: AppBar(
                 title: Text(context.tr('Add New Customer'), style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
-                backgroundColor: const Color(0xFF000080),
+                backgroundColor: Color(0xFF000080),
                 foregroundColor: Colors.white,
                 elevation: 0,
               ),
               body: loadingForm
-                  ? const Center(child: CircularProgressIndicator())
+                  ? Center(child: CircularProgressIndicator())
                   : errorMsg.isNotEmpty
-                      ? Center(child: Text(errorMsg, style: const TextStyle(color: Colors.red)))
+                      ? Center(child: Text(errorMsg, style: TextStyle(color: Colors.red)))
                       : SingleChildScrollView(
-                          padding: const EdgeInsets.all(20),
+                          padding: EdgeInsets.all(20),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
@@ -379,7 +383,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                                     ),
                                   ),
                                   if (context.watch<AuthProvider>().isCompanyAdmin && _branches.isNotEmpty) ...[
-                                    const SizedBox(height: 14),
+                                    SizedBox(height: 14),
                                     ValueListenableBuilder<Map<String, dynamic>?>(
                                       valueListenable: _selectedBranch,
                                       builder: (context, selectedBranchVal, _) => _buildDropdown<Map<String, dynamic>>(
@@ -392,13 +396,13 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                                       ),
                                     ),
                                   ],
-                                  const SizedBox(height: 14),
+                                  SizedBox(height: 14),
                                   _buildTextField(_emailController, 'Email (Optional)', Icons.email_outlined, keyboardType: TextInputType.emailAddress),
-                                  const SizedBox(height: 14),
+                                  SizedBox(height: 14),
                                   _buildTextField(_addressController, 'Address (Optional)', Icons.home_outlined, maxLines: 2),
                                 ],
                               ),
-                              const SizedBox(height: 16),
+                              SizedBox(height: 16),
                               _buildCard(
                                 title: 'Vehicles',
                                 icon: Icons.directions_car,
@@ -411,10 +415,10 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                                           _buildVehicleRowWidget(i),
                                         OutlinedButton.icon(
                                           onPressed: _addVehicleRow,
-                                          icon: const Icon(Icons.add, color: Color(0xFF000080)),
-                                          label: Text('Add Another Vehicle', style: GoogleFonts.inter(color: const Color(0xFF000080), fontWeight: FontWeight.w600)),
+                                          icon: Icon(Icons.add, color: Color(0xFF000080)),
+                                          label: Text('Add Another Vehicle', style: GoogleFonts.inter(color: Color(0xFF000080), fontWeight: FontWeight.w600)),
                                           style: OutlinedButton.styleFrom(
-                                            side: const BorderSide(color: Color(0xFF000080)),
+                                            side: BorderSide(color: Color(0xFF000080)),
                                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                             padding: const EdgeInsets.symmetric(vertical: 15,horizontal:13),
                                           ),
@@ -428,14 +432,14 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                               ElevatedButton(
                                 onPressed: saving ? null : _save,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF000080),
+                                  backgroundColor: Color(0xFF000080),
                                   foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  padding: EdgeInsets.symmetric(vertical: 16),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                 ),
                                 child: saving
-                                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                    : Text('Save Customer', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold)),
+                                    ? SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                    : Text('Save Customer', style: GoogleFonts.inter(fontSize: 16.sp, fontWeight: FontWeight.bold)),
                               ),
                             ],
                           ),
@@ -454,21 +458,21 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     Widget? trailing,
   }) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: Offset(0, 2))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, color: const Color(0xFF000080), size: 20),
-              const SizedBox(width: 8),
-              Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15, color: const Color(0xFF000080))),
-              const Spacer(),
+              Icon(icon, color: Color(0xFF000080), size: 20),
+              SizedBox(width: 8),
+              Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15.sp, color: Color(0xFF000080))),
+              Spacer(),
               if (trailing != null) trailing,
             ],
           ),
@@ -490,14 +494,14 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(context.tr(label), style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
-        const SizedBox(height: 6),
+        Text(context.tr(label), style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+        SizedBox(height: 6),
         IntlPhoneField(
           key: ValueKey('${label}_$countryIso'),
           controller: controller,
           initialCountryCode: countryIso,
           onCountryChanged: (country) => onCodeChanged('+${country.dialCode}', country.code),
-          dropdownTextStyle: GoogleFonts.inter(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 14),
+          dropdownTextStyle: GoogleFonts.inter(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 14.sp),
           style: GoogleFonts.inter(fontWeight: FontWeight.w500),
           disableLengthCheck: true,
           decoration: InputDecoration(
@@ -518,8 +522,8 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
-        const SizedBox(height: 6),
+        Text(label, style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+        SizedBox(height: 6),
         TextField(
           controller: ctrl,
           keyboardType: keyboardType,
@@ -570,10 +574,10 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
-        const SizedBox(height: 6),
+        Text(label, style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+        SizedBox(height: 6),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(10),
@@ -606,6 +610,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     final selectedMake = row['make'] as Map<String, dynamic>?;
     final selectedBrand = row['brand_model'] as Map<String, dynamic>?;
     final selectedColor = row['color'] as Map<String, dynamic>?;
+    final selectedEmission = row['emission_standard'] as Map<String, dynamic>?;
 
     final segments = _segmentsForType(selectedType?['id']);
     final makes = _makesForSegment(selectedSegment?['id']);
@@ -616,9 +621,9 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFFF8FAFF),
+          color: Color(0xFFF8FAFF),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF000080).withOpacity(0.15)),
+          border: Border.all(color: Color(0xFF000080).withOpacity(0.15)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -626,10 +631,10 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
             // Header row
             Row(
               children: [
-                Icon(Icons.directions_car, size: 18, color: const Color(0xFF000080).withOpacity(0.7)),
-                const SizedBox(width: 6),
-                Text('Vehicle ${index + 1}', style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: const Color(0xFF000080))),
-                const Spacer(),
+                Icon(Icons.directions_car, size: 18, color: Color(0xFF000080).withOpacity(0.7)),
+                SizedBox(width: 6),
+                Text('Vehicle ${index + 1}', style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: Color(0xFF000080))),
+                Spacer(),
                 if (_vehicleRows.length > 1)
                   GestureDetector(
                     onTap: () => _removeVehicleRow(index),
@@ -723,9 +728,25 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
               const SizedBox(height: 12),
             ],
 
+            // Emission Standard (optional)
+            if (_emissionStandards.isNotEmpty) ...[
+              _buildDropdown<Map<String, dynamic>>(
+                label: 'Emission Standard (Optional)',
+                value: selectedEmission,
+                items: [{'id': '', 'name': 'None'}, ..._emissionStandards.cast<Map<String, dynamic>>()],
+                labelBuilder: (e) => e['name']?.toString() ?? '',
+                hint: 'Select emission standard',
+                onChanged: (val) {
+                  row['emission_standard'] = (val?['id'] == '') ? null : val;
+                  _vehicleRowsNotifier.value++;
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+
             // Vehicle Number
-            Text('Vehicle Number *', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
-            const SizedBox(height: 6),
+            Text('Vehicle Number *', style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+            SizedBox(height: 6),
             TextField(
               controller: row['controller'] as TextEditingController,
               textCapitalization: TextCapitalization.characters,
@@ -733,25 +754,25 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                 hintText: 'Enter Vehicle Number',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
                 enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
-                focusedBorder: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8)), borderSide: BorderSide(color: Color(0xFF000080))),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8)), borderSide: BorderSide(color: Color(0xFF000080))),
                 filled: true,
                 fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 isDense: true,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
 
             // Wheel Type selection
-            Text('Wheel Type *', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
-            const SizedBox(height: 4),
+            Text('Wheel Type *', style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+            SizedBox(height: 4),
             Row(
               children: [
                 Expanded(
                   child: RadioListTile<String>(
                     title: Text(
                       context.tr('Alloy Wheel'),
-                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500),
+                      style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.w500),
                     ),
                     value: 'alloy_wheel',
                     groupValue: row['wheel_type'] ?? 'normal_wheel',
@@ -770,7 +791,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                   child: RadioListTile<String>(
                     title: Text(
                       context.tr('Normal Wheel'),
-                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500),
+                      style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.w500),
                     ),
                     value: 'normal_wheel',
                     groupValue: row['wheel_type'] ?? 'normal_wheel',

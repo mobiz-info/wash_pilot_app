@@ -1099,6 +1099,54 @@ class ApiService {
     }
   }
 
+  /// Soft-delete an invoice and all its associated receipts.
+  static Future<Map<String, dynamic>> deleteInvoice(
+    String invoiceId,
+    String token,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/invoice/delete/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'invoice_id': invoiceId}),
+    );
+    if (response.statusCode == 200 ||
+        response.statusCode == 400 ||
+        response.statusCode == 403 ||
+        response.statusCode == 404 ||
+        response.statusCode == 401) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to delete invoice.');
+    }
+  }
+
+  /// Soft-delete a receipt and restore the invoice outstanding balance.
+  static Future<Map<String, dynamic>> deleteReceipt(
+    String receiptId,
+    String token,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/receipt/delete/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'receipt_id': receiptId}),
+    );
+    if (response.statusCode == 200 ||
+        response.statusCode == 400 ||
+        response.statusCode == 403 ||
+        response.statusCode == 404 ||
+        response.statusCode == 401) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to delete receipt.');
+    }
+  }
+
   static Future<Map<String, dynamic>> _reportGet(
     String path,
     String token,
@@ -1255,6 +1303,34 @@ class ApiService {
     toDate,
     branchId: branchId,
   );
+
+  static Future<Map<String, dynamic>> getStaffIncomeReport(
+    String token,
+    String fromDate,
+    String toDate, {
+    String? branchId,
+    String? staffId,
+  }) async {
+    final query = <String, String>{
+      'from_date': fromDate,
+      'to_date': toDate,
+      if (branchId != null && branchId.isNotEmpty) 'branch_id': branchId,
+      if (staffId != null && staffId.isNotEmpty) 'staff_id': staffId,
+    };
+    final uri = Uri.parse('$baseUrl/reports/staff-income/').replace(queryParameters: query);
+    final response = await http.get(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+    throw Exception('Failed to load staff income report.');
+  }
+
 
   static Future<Map<String, dynamic>> listComplaintTypes(String token) async {
 

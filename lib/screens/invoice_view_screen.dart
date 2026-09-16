@@ -92,22 +92,14 @@ class InvoiceViewScreen extends StatelessWidget {
       if (items != null && items.isNotEmpty) {
         for (final item in items) {
           final brand = item['brand']?.toString() ?? '';
-          final size = item['size']?.toString() ?? '';
+          final tSize = item['size']?.toString() ?? '';
           final qty = item['quantity']?.toString() ?? '1';
           final lineTot = item['line_total'];
           final lineTotVal = (lineTot is num) ? lineTot.toDouble() : double.tryParse(lineTot?.toString() ?? '0') ?? 0.0;
           final priceStr = lineTotVal > 0 ? ' ($currencySymbol${lineTotVal.toStringAsFixed(0)})' : '';
-
-          final labelParts = [if (brand.isNotEmpty) brand, if (size.isNotEmpty) size].join(' ');
-          parts.add('$labelParts x$qty$priceStr');
+          final labelParts = [if (brand.isNotEmpty) brand, if (tSize.isNotEmpty) tSize].join(' ');
+          parts.add('Tyre: $labelParts x$qty$priceStr');
         }
-      } else {
-        final tBrand = detail['tyre_brand']?['brand']?.toString() ?? '';
-        if (tBrand.isNotEmpty) parts.add('Tyre: $tBrand');
-        final size = detail['tyre_size']?.toString();
-        if (size != null && size.isNotEmpty) parts.add('Size: $size');
-        final count = detail['tyres_changed_count']?.toString();
-        if (count != null && count.isNotEmpty) parts.add('Qty: $count');
       }
       final odo = detail['odometer_at_service']?.toString();
       if (odo != null && odo.isNotEmpty && odo != '0') parts.add('Odometer: $odo km');
@@ -217,8 +209,10 @@ class InvoiceViewScreen extends StatelessWidget {
 
     final displayItems = <Map<String, dynamic>>[];
     for (final s in services) {
+      final qty = (s['qty'] as num?)?.toDouble() ?? 1.0;
+      final qtyStr = qty > 1 ? ' (x${qty.toStringAsFixed(qty.truncateToDouble() == qty ? 0 : 1)})' : '';
       displayItems.add({
-        'name': s['name'] ?? '',
+        'name': '${s['name'] ?? ''}$qtyStr',
         'rate': (s['rate'] as num?)?.toDouble() ?? 0.0,
         'discount': (s['discount'] as num?)?.toDouble() ?? 0.0,
         'raw_service': s,
@@ -599,7 +593,9 @@ class InvoiceViewScreen extends StatelessWidget {
 
       final itemLines = <String>[];
       for (final s in services) {
-        itemLines.add("- ${s['name']}: $currencySymbol${_fmt(s['rate'])}");
+        final qty = (s['qty'] as num?)?.toDouble() ?? 1.0;
+        final qtyStr = qty > 1 ? ' (x${qty.toStringAsFixed(qty.truncateToDouble() == qty ? 0 : 1)})' : '';
+        itemLines.add("- ${s['name']}$qtyStr: $currencySymbol${_fmt(s['rate'])}");
       }
       for (final t in tradingItems) {
         if (t['is_operational'] != true) {
@@ -610,30 +606,24 @@ class InvoiceViewScreen extends StatelessWidget {
       }
       final servicesStr = itemLines.join("\n");
 
-      final cleanInvoiceNo = invoiceNumber.replaceAll('/', '_');
-      final pdfUrl = "http://68.183.94.11:78/media/invoices/invoice-$cleanInvoiceNo.pdf";
-
       final branchName = invoiceData['branch']?.toString() ?? context.read<AuthProvider>().branchName ?? 'our branch';
       final companyName = context.read<AuthProvider>().companyName ?? 'Mobiz Autocare Pro';
-      final companyLogo = context.read<AuthProvider>().companyLogo ?? '';
-      final logoSuffix = companyLogo.isNotEmpty ? "\n\nCompany Logo: $companyLogo" : "";
 
       final doubleTot = double.tryParse(total.toString()) ?? 0.0;
       final doubleColl = double.tryParse(collected.toString()) ?? 0.0;
       final balanceVal = doubleTot - doubleColl;
 
       final messageText = 
-          "Dear ${customer['name']},\n\n"
-          "Your invoice *$invoiceNumber* has been generated successfully at $companyName.\n\n"
-          "*Invoice Details:*\n"
-          "Vehicle: ${vehicle['no']}\n"
-          "Services:\n$servicesStr\n"
-          "Total: $currencySymbol$total\n"
-          "Paid: $currencySymbol$collected\n"
-          "Balance: $currencySymbol${_fmt(balanceVal)}\n\n"
-         
-          "Thank you for choosing $branchName!\n"
-          "Powered by Mobiz Technologies";
+          "${context.tr('Dear')} ${customer['name']},\n\n"
+          "${context.tr('Your invoice')} *$invoiceNumber* ${context.tr('has been generated successfully at')} $companyName.\n\n"
+          "*${context.tr('Invoice Details')}:*\n"
+          "${context.tr('Vehicle')}: ${vehicle['no']}\n"
+          "${context.tr('Services')}:\n$servicesStr\n"
+          "${context.tr('Total')}: $currencySymbol$total\n"
+          "${context.tr('Paid')}: $currencySymbol$collected\n"
+          "${context.tr('Balance')}: $currencySymbol${_fmt(balanceVal)}\n\n"
+          "${context.tr('Thank you for choosing')} $branchName!\n"
+          "${context.tr('Powered by')} Mobiz Technologies";
 
       final cleanedPhone = _getCleanedWhatsAppNumber(customer);
       if (cleanedPhone.isEmpty) {
@@ -670,7 +660,9 @@ class InvoiceViewScreen extends StatelessWidget {
 
       final itemLines = <String>[];
       for (final s in services) {
-        itemLines.add("- ${s['name']}: $currencySymbol${_fmt(s['rate'])}");
+        final qty = (s['qty'] as num?)?.toDouble() ?? 1.0;
+        final qtyStr = qty > 1 ? ' (x${qty.toStringAsFixed(qty.truncateToDouble() == qty ? 0 : 1)})' : '';
+        itemLines.add("- ${s['name']}$qtyStr: $currencySymbol${_fmt(s['rate'])}");
       }
       for (final t in tradingItems) {
         if (t['is_operational'] != true) {
@@ -681,28 +673,25 @@ class InvoiceViewScreen extends StatelessWidget {
       }
       final servicesStr = itemLines.join("\n");
       final cleanInvoiceNo = invoiceNumber.replaceAll('/', '_');
-      final pdfUrl = "http://68.183.94.11:78/media/invoices/invoice-$cleanInvoiceNo.pdf";
 
       final branchName = invoiceData['branch']?.toString() ?? context.read<AuthProvider>().branchName ?? 'our branch';
       final companyName = context.read<AuthProvider>().companyName ?? 'Mobiz Autocare Pro';
-      final companyLogo = context.read<AuthProvider>().companyLogo ?? '';
-      final logoSuffix = companyLogo.isNotEmpty ? "\n\nCompany Logo: $companyLogo" : "";
 
       final doubleTot = double.tryParse(total.toString()) ?? 0.0;
       final doubleColl = double.tryParse(collected.toString()) ?? 0.0;
       final balanceVal = doubleTot - doubleColl;
 
       final messageText = 
-          "Dear ${customer['name']},\n\n"
-          "Your invoice *$invoiceNumber* has been generated successfully at $companyName.\n\n"
-          "*Invoice Details:*\n"
-          "Vehicle: ${vehicle['no']}\n"
-          "Services:\n$servicesStr\n"
-          "Total: $currencySymbol$total\n"
-          "Paid: $currencySymbol$collected\n"
-          "Balance: $currencySymbol${_fmt(balanceVal)}\n\n"
-          "Thank you for choosing $branchName!\n"
-          "Powered by Mobiz Technologies";
+          "${context.tr('Dear')} ${customer['name']},\n\n"
+          "${context.tr('Your invoice')} *$invoiceNumber* ${context.tr('has been generated successfully at')} $companyName.\n\n"
+          "*${context.tr('Invoice Details')}:*\n"
+          "${context.tr('Vehicle')}: ${vehicle['no']}\n"
+          "${context.tr('Services')}:\n$servicesStr\n"
+          "${context.tr('Total')}: $currencySymbol$total\n"
+          "${context.tr('Paid')}: $currencySymbol$collected\n"
+          "${context.tr('Balance')}: $currencySymbol${_fmt(balanceVal)}\n\n"
+          "${context.tr('Thank you for choosing')} $branchName!\n"
+          "${context.tr('Powered by')} Mobiz Technologies";
 
       final pdfBytes = await _getInvoicePdfBytes(context);
       final output = await getTemporaryDirectory();
@@ -737,8 +726,8 @@ class InvoiceViewScreen extends StatelessWidget {
                     context.tr('Share Invoice'),
                     style: GoogleFonts.inter(
                       fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                      color: const Color(0xFF000080),
+                      fontSize: 18.sp,
+                      color: Color(0xFF000080),
                     ),
                   ),
                 ),
@@ -753,7 +742,7 @@ class InvoiceViewScreen extends StatelessWidget {
                   ),
                   subtitle: Text(
                     context.tr('Opens chat with pre-filled summary'),
-                    style: GoogleFonts.inter(fontSize: 12),
+                    style: GoogleFonts.inter(fontSize: 12.sp),
                   ),
                   onTap: () {
                     Navigator.pop(bc);
@@ -763,7 +752,7 @@ class InvoiceViewScreen extends StatelessWidget {
                 ListTile(
                   leading: CircleAvatar(
                     backgroundColor: Colors.red.shade50,
-                    child: const Icon(Icons.picture_as_pdf_outlined, color: Colors.red),
+                    child: Icon(Icons.picture_as_pdf_outlined, color: Colors.red),
                   ),
                   title: Text(
                     context.tr('Share PDF Document'),
@@ -771,7 +760,7 @@ class InvoiceViewScreen extends StatelessWidget {
                   ),
                   subtitle: Text(
                     context.tr('Generates PDF and opens sharing menu'),
-                    style: GoogleFonts.inter(fontSize: 12),
+                    style: GoogleFonts.inter(fontSize: 12.sp),
                   ),
                   onTap: () {
                     Navigator.pop(bc);
@@ -799,8 +788,10 @@ class InvoiceViewScreen extends StatelessWidget {
 
     final allItems = <Map<String, dynamic>>[];
     for (final s in services) {
+      final qty = (s['qty'] as num?)?.toDouble() ?? 1.0;
+      final qtyStr = qty > 1 ? ' (x${qty.toStringAsFixed(qty.truncateToDouble() == qty ? 0 : 1)})' : '';
       allItems.add({
-        'name': s['name'] ?? '',
+        'name': '${s['name'] ?? ''}$qtyStr',
         'rate': (s['rate'] as num?)?.toDouble() ?? 0.0,
         'discount': (s['discount'] as num?)?.toDouble() ?? 0.0,
         'raw_service': s,
@@ -828,11 +819,11 @@ class InvoiceViewScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(context.tr('Invoice Details'),
             style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
-        backgroundColor: const Color(0xFF000080),
+        backgroundColor: Color(0xFF000080),
         foregroundColor: Colors.white,
         actions: [
           IconButton(
-            icon: const Icon(Icons.share),
+            icon: Icon(Icons.share),
             onPressed: () => _shareInvoice(context),
             tooltip: context.tr('Share Invoice'),
           ),
@@ -841,7 +832,7 @@ class InvoiceViewScreen extends StatelessWidget {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Container(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(24),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
@@ -849,7 +840,7 @@ class InvoiceViewScreen extends StatelessWidget {
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 10,
-                offset: const Offset(0, 4),
+                offset: Offset(0, 4),
               ),
             ],
           ),
@@ -862,9 +853,9 @@ class InvoiceViewScreen extends StatelessWidget {
                 children: [
                   Text(context.tr('INVOICE'),
                       style: GoogleFonts.inter(
-                          fontSize: 24,
+                          fontSize: 24.sp,
                           fontWeight: FontWeight.w900,
-                          color: const Color(0xFF000080),
+                          color: Color(0xFF000080),
                           letterSpacing: 1)),
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -878,7 +869,7 @@ class InvoiceViewScreen extends StatelessWidget {
                         style: GoogleFonts.inter(
                             color: Colors.green.shade700,
                             fontWeight: FontWeight.bold,
-                            fontSize: 12)),
+                            fontSize: 12.sp)),
                   ),
                 ],
               ),
@@ -887,7 +878,7 @@ class InvoiceViewScreen extends StatelessWidget {
                   style: GoogleFonts.inter(
                       color: Colors.grey.shade500,
                       fontWeight: FontWeight.w600)),
-              const Padding(
+              Padding(
                   padding: EdgeInsets.symmetric(vertical: 20),
                   child: Divider()),
 
@@ -901,18 +892,18 @@ class InvoiceViewScreen extends StatelessWidget {
                     children: [
                       Text(context.tr('BILLED TO'),
                           style: GoogleFonts.inter(
-                              fontSize: 10,
+                              fontSize: 10.sp,
                               fontWeight: FontWeight.bold,
                               color: Colors.grey.shade500,
                               letterSpacing: 0.5)),
-                      const SizedBox(height: 6),
+                      SizedBox(height: 6),
                       Text(customer['name'],
                           style: GoogleFonts.inter(
-                              fontWeight: FontWeight.w700, fontSize: 15)),
-                      const SizedBox(height: 2),
+                              fontWeight: FontWeight.w700, fontSize: 15.sp)),
+                      SizedBox(height: 2),
                       Text(customer['phone'] ?? '',
                           style: GoogleFonts.inter(
-                              color: Colors.grey.shade600, fontSize: 13)),
+                              color: Colors.grey.shade600, fontSize: 13.sp)),
                     ],
                   ),
                   Column(
@@ -920,21 +911,21 @@ class InvoiceViewScreen extends StatelessWidget {
                     children: [
                       Text(context.tr('VEHICLE'),
                           style: GoogleFonts.inter(
-                              fontSize: 10,
+                              fontSize: 10.sp,
                               fontWeight: FontWeight.bold,
                               color: Colors.grey.shade500,
                               letterSpacing: 0.5)),
-                      const SizedBox(height: 6),
+                      SizedBox(height: 6),
                        Text(vehicle['no'],
                           style: GoogleFonts.inter(
-                              fontWeight: FontWeight.w700, fontSize: 15)),
-                      const SizedBox(height: 2),
+                              fontWeight: FontWeight.w700, fontSize: 15.sp)),
+                      SizedBox(height: 2),
                       Text(
                           (vehicle['vehicle_type'] != null && vehicle['vehicle_type'].toString().isNotEmpty)
                               ? "${vehicle['vehicle_type']} - ${vehicle['type']}"
                               : (vehicle['type'] ?? ''),
                           style: GoogleFonts.inter(
-                              color: Colors.grey.shade600, fontSize: 13)),
+                              color: Colors.grey.shade600, fontSize: 13.sp)),
                     ],
                   ),
                 ],
@@ -944,7 +935,7 @@ class InvoiceViewScreen extends StatelessWidget {
               // ── Services ─────────────────────────────────────────────────
               Text(context.tr('SERVICES'),
                   style: GoogleFonts.inter(
-                      fontSize: 10,
+                      fontSize: 10.sp,
                       fontWeight: FontWeight.bold,
                       color: Colors.grey.shade500,
                       letterSpacing: 0.5)),
@@ -958,7 +949,7 @@ class InvoiceViewScreen extends StatelessWidget {
                     Expanded(
                         child: Text(context.tr('Service'),
                             style: GoogleFonts.inter(
-                                fontSize: 11,
+                                fontSize: 11.sp,
                                 color: Colors.grey.shade500,
                                 fontWeight: FontWeight.w600))),
                     SizedBox(
@@ -966,7 +957,7 @@ class InvoiceViewScreen extends StatelessWidget {
                         child: Text(context.tr('Rate'),
                             textAlign: TextAlign.right,
                             style: GoogleFonts.inter(
-                                fontSize: 11,
+                                fontSize: 11.sp,
                                 color: Colors.grey.shade500,
                                 fontWeight: FontWeight.w600))),
                     SizedBox(
@@ -974,7 +965,7 @@ class InvoiceViewScreen extends StatelessWidget {
                         child: Text(context.tr('Disc.'),
                             textAlign: TextAlign.right,
                             style: GoogleFonts.inter(
-                                fontSize: 11,
+                                fontSize: 11.sp,
                                 color: Colors.grey.shade500,
                                 fontWeight: FontWeight.w600))),
                     SizedBox(
@@ -982,7 +973,7 @@ class InvoiceViewScreen extends StatelessWidget {
                         child: Text(context.tr('Net'),
                             textAlign: TextAlign.right,
                             style: GoogleFonts.inter(
-                                fontSize: 11,
+                                fontSize: 11.sp,
                                 color: Colors.grey.shade500,
                                 fontWeight: FontWeight.w600))),
                   ]),
@@ -1008,8 +999,8 @@ class InvoiceViewScreen extends StatelessWidget {
                                 child: Text(allItems[i]['name'] ?? '',
                                     style: GoogleFonts.inter(
                                         fontWeight: FontWeight.w600,
-                                        fontSize: 14,
-                                        color: const Color(0xFF1e293b))),
+                                        fontSize: 14.sp,
+                                        color: Color(0xFF1e293b))),
                               ),
                               SizedBox(
                                 width: 68,
@@ -1017,7 +1008,7 @@ class InvoiceViewScreen extends StatelessWidget {
                                   context.tr('$currencySymbol${_fmt(allItems[i]['rate'])}'),
                                   textAlign: TextAlign.right,
                                   style: GoogleFonts.inter(
-                                      fontSize: 13,
+                                      fontSize: 13.sp,
                                       color: Colors.grey.shade700),
                                 ),
                               ),
@@ -1032,7 +1023,7 @@ class InvoiceViewScreen extends StatelessWidget {
                                       : '—',
                                   textAlign: TextAlign.right,
                                   style: GoogleFonts.inter(
-                                    fontSize: 13,
+                                    fontSize: 13.sp,
                                     color: ((allItems[i]['discount'] as num?)
                                                     ?.toDouble() ??
                                                 0) >
@@ -1055,8 +1046,8 @@ class InvoiceViewScreen extends StatelessWidget {
                                   textAlign: TextAlign.right,
                                   style: GoogleFonts.inter(
                                       fontWeight: FontWeight.w700,
-                                      fontSize: 14,
-                                      color: const Color(0xFF000080)),
+                                      fontSize: 14.sp,
+                                      color: Color(0xFF000080)),
                                 ),
                               ),
                             ])
@@ -1067,8 +1058,8 @@ class InvoiceViewScreen extends StatelessWidget {
                                   child: Text(allItems[i]['name'] ?? '',
                                       style: GoogleFonts.inter(
                                           fontWeight: FontWeight.w600,
-                                          fontSize: 14,
-                                          color: const Color(0xFF1e293b))),
+                                          fontSize: 14.sp,
+                                          color: Color(0xFF1e293b))),
                                 ),
                                 if (allItems[i]['is_operational'] == true)
                                   Container(
@@ -1079,7 +1070,7 @@ class InvoiceViewScreen extends StatelessWidget {
                                     ),
                                     child: Text(
                                       context.tr('Operational'),
-                                      style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
+                                      style: GoogleFonts.inter(fontSize: 10.sp, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
                                     ),
                                   )
                                 else
@@ -1087,8 +1078,8 @@ class InvoiceViewScreen extends StatelessWidget {
                                     context.tr('$currencySymbol${_fmt(allItems[i]['rate'])}'),
                                     style: GoogleFonts.inter(
                                         fontWeight: FontWeight.w700,
-                                        fontSize: 14,
-                                        color: const Color(0xFF000080)),
+                                        fontSize: 14.sp,
+                                        color: Color(0xFF000080)),
                                   ),
                               ],
                             ),
@@ -1097,7 +1088,7 @@ class InvoiceViewScreen extends StatelessWidget {
                         Text(
                           _getServiceDetailText(allItems[i]['raw_service'], currencySymbol),
                           style: GoogleFonts.inter(
-                            fontSize: 11,
+                            fontSize: 11.sp,
                             color: Colors.blue.shade900,
                             fontWeight: FontWeight.w600,
                           ),
@@ -1144,9 +1135,9 @@ class InvoiceViewScreen extends StatelessWidget {
               ],
               const SizedBox(height: 16),
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF000080).withValues(alpha: 0.05),
+                  color: Color(0xFF000080).withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -1154,12 +1145,12 @@ class InvoiceViewScreen extends StatelessWidget {
                   children: [
                     Text(context.tr('Total'),
                         style: GoogleFonts.inter(
-                            fontWeight: FontWeight.w800, fontSize: 17)),
+                            fontWeight: FontWeight.w800, fontSize: 17.sp)),
                     Text(context.tr('$currencySymbol${invoiceData['total']}'),
                         style: GoogleFonts.inter(
                             fontWeight: FontWeight.w900,
-                            fontSize: 20,
-                            color: const Color(0xFF000080))),
+                            fontSize: 20.sp,
+                            color: Color(0xFF000080))),
                   ],
                 ),
               ),
@@ -1173,9 +1164,9 @@ class InvoiceViewScreen extends StatelessWidget {
                 label: Text(context.tr('Share Invoice'),
                     style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF000080),
+                  backgroundColor: Color(0xFF000080),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
@@ -1207,12 +1198,12 @@ class InvoiceViewScreen extends StatelessWidget {
       children: [
         Text(label,
             style: GoogleFonts.inter(
-                color: Colors.grey.shade600, fontSize: 13)),
+                color: Colors.grey.shade600, fontSize: 13.sp)),
         Text(value,
             style: GoogleFonts.inter(
                 fontWeight: FontWeight.w600,
-                fontSize: 13,
-                color: valueColor ?? const Color(0xFF1e293b))),
+                fontSize: 13.sp,
+                color: valueColor ?? Color(0xFF1e293b))),
       ],
     );
   }

@@ -74,13 +74,13 @@ class _StaffLeaveScreenState extends State<StaffLeaveScreen> {
           context.tr('Staff Leaves'),
           style: GoogleFonts.inter(fontWeight: FontWeight.w700),
         ),
-        backgroundColor: const Color(0xFF000080),
+        backgroundColor: Color(0xFF000080),
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
           IconButton(
             onPressed: _fetchLeaves,
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh),
           )
         ],
       ),
@@ -99,11 +99,11 @@ class _StaffLeaveScreenState extends State<StaffLeaveScreen> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Text(errMsg, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
-                              const SizedBox(height: 16),
+                              Text(errMsg, style: TextStyle(color: Colors.red), textAlign: TextAlign.center),
+                              SizedBox(height: 16),
                               ElevatedButton(
                                 onPressed: _fetchLeaves,
-                                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000080), foregroundColor: Colors.white),
+                                style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF000080), foregroundColor: Colors.white),
                                 child: Text(context.tr('Retry')),
                               ),
                             ],
@@ -111,7 +111,7 @@ class _StaffLeaveScreenState extends State<StaffLeaveScreen> {
                         ),
                       )
                     : leaves.isEmpty
-                        ? Center(child: Text(context.tr('No staff leaves recorded'), style: GoogleFonts.inter(color: Colors.grey, fontSize: 15)))
+                        ? Center(child: Text(context.tr('No staff leaves recorded'), style: GoogleFonts.inter(color: Colors.grey, fontSize: 15.sp)))
                         : RefreshIndicator(
                             onRefresh: _fetchLeaves,
                             child: ListView.builder(
@@ -147,14 +147,14 @@ class _StaffLeaveScreenState extends State<StaffLeaveScreen> {
                           Color statusBg = const Color(0xFFE8F5E9);
                           if (status == 'PENDING') {
                             statusColor = Colors.orange;
-                            statusBg = const Color(0xFFFFF3E0);
+                            statusBg = Color(0xFFFFF3E0);
                           } else if (status == 'REJECTED') {
                             statusColor = Colors.red;
-                            statusBg = const Color(0xFFFFEBEE);
+                            statusBg = Color(0xFFFFEBEE);
                           }
 
                           return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
+                            margin: EdgeInsets.only(bottom: 12),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(14),
@@ -162,7 +162,7 @@ class _StaffLeaveScreenState extends State<StaffLeaveScreen> {
                                 BoxShadow(
                                   color: Colors.black.withValues(alpha: 0.03),
                                   blurRadius: 10,
-                                  offset: const Offset(0, 4),
+                                  offset: Offset(0, 4),
                                 )
                               ],
                             ),
@@ -181,7 +181,7 @@ class _StaffLeaveScreenState extends State<StaffLeaveScreen> {
                                             Text(
                                               staffName,
                                               style: GoogleFonts.inter(
-                                                fontSize: 16,
+                                                fontSize: 16.sp,
                                                 fontWeight: FontWeight.bold,
                                                 color: Colors.black87,
                                               ),
@@ -190,7 +190,7 @@ class _StaffLeaveScreenState extends State<StaffLeaveScreen> {
                                             Text(
                                               '$empId • $branchName',
                                               style: GoogleFonts.inter(
-                                                fontSize: 12,
+                                                fontSize: 12.sp,
                                                 color: Colors.grey.shade500,
                                               ),
                                             ),
@@ -209,7 +209,7 @@ class _StaffLeaveScreenState extends State<StaffLeaveScreen> {
                                         child: Text(
                                           context.tr(status),
                                           style: GoogleFonts.inter(
-                                            fontSize: 11,
+                                            fontSize: 11.sp,
                                             fontWeight: FontWeight.bold,
                                             color: statusColor,
                                           ),
@@ -226,7 +226,7 @@ class _StaffLeaveScreenState extends State<StaffLeaveScreen> {
                                         child: Text(
                                           dateRange,
                                           style: GoogleFonts.inter(
-                                            fontSize: 13,
+                                            fontSize: 13.sp,
                                             fontWeight: FontWeight.w600,
                                             color: Colors.grey.shade800,
                                           ),
@@ -245,7 +245,7 @@ class _StaffLeaveScreenState extends State<StaffLeaveScreen> {
                                           child: Text(
                                             reason,
                                             style: GoogleFonts.inter(
-                                              fontSize: 13,
+                                              fontSize: 13.sp,
                                               color: Colors.grey.shade700,
                                             ),
                                           ),
@@ -264,7 +264,7 @@ class _StaffLeaveScreenState extends State<StaffLeaveScreen> {
                                           child: Text(
                                             remarks,
                                             style: GoogleFonts.inter(
-                                              fontSize: 13,
+                                              fontSize: 13.sp,
                                               color: Colors.grey.shade600,
                                               fontStyle: FontStyle.italic,
                                             ),
@@ -285,9 +285,9 @@ class _StaffLeaveScreenState extends State<StaffLeaveScreen> {
               ),
       floatingActionButton: FloatingActionButton(
         onPressed: _navigateToAddLeave,
-        backgroundColor: const Color(0xFF000080),
+        backgroundColor: Color(0xFF000080),
         foregroundColor: Colors.white,
-        child: const Icon(Icons.add),
+        child: Icon(Icons.add),
       ),
     );
   }
@@ -371,7 +371,7 @@ class _AddLeaveScreenState extends State<AddLeaveScreen> {
       lastDate: DateTime.now().add(const Duration(days: 365)),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: const ColorScheme.light(
+          colorScheme: ColorScheme.light(
             primary: Color(0xFF000080),
             onPrimary: Colors.white,
             onSurface: Colors.black,
@@ -481,10 +481,10 @@ class _AddLeaveScreenState extends State<AddLeaveScreen> {
             valueListenable: _status,
             builder: (context, status, _) {
               return Scaffold(
-                backgroundColor: const Color(0xFFF1F5F9),
+                backgroundColor: Color(0xFFF1F5F9),
                 appBar: AppBar(
                   title: Text(context.tr('Record Leave'), style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
-                  backgroundColor: const Color(0xFF000080),
+                  backgroundColor: Color(0xFF000080),
                   foregroundColor: Colors.white,
                   elevation: 0,
                 ),
@@ -497,11 +497,11 @@ class _AddLeaveScreenState extends State<AddLeaveScreen> {
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Text(errMsg, style: const TextStyle(color: Colors.red)),
-                                  const SizedBox(height: 16),
+                                  Text(errMsg, style: TextStyle(color: Colors.red)),
+                                  SizedBox(height: 16),
                                   ElevatedButton(
                                     onPressed: _fetchStaffs,
-                                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000080), foregroundColor: Colors.white),
+                                    style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF000080), foregroundColor: Colors.white),
                                     child: Text(context.tr('Retry')),
                                   )
                                 ],
@@ -514,7 +514,7 @@ class _AddLeaveScreenState extends State<AddLeaveScreen> {
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                       Container(
-                        padding: const EdgeInsets.all(18),
+                        padding: EdgeInsets.all(18),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(16),
@@ -522,7 +522,7 @@ class _AddLeaveScreenState extends State<AddLeaveScreen> {
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.04),
                               blurRadius: 8,
-                              offset: const Offset(0, 2),
+                              offset: Offset(0, 2),
                             )
                           ],
                         ),
@@ -537,8 +537,8 @@ class _AddLeaveScreenState extends State<AddLeaveScreen> {
                                   context.tr('Leave Details'),
                                   style: GoogleFonts.inter(
                                     fontWeight: FontWeight.w700,
-                                    fontSize: 15,
-                                    color: const Color(0xFF000080),
+                                    fontSize: 15.sp,
+                                    color: Color(0xFF000080),
                                   ),
                                 ),
                               ],
@@ -568,7 +568,7 @@ class _AddLeaveScreenState extends State<AddLeaveScreen> {
                                                ? '${_selectedStaff.value!['name']} (${_selectedStaff.value!['employee_id']})'
                                                : context.tr('Select Staff Member'),
                                            style: GoogleFonts.inter(
-                                             fontSize: 15,
+                                             fontSize: 15.sp,
                                              color: _selectedStaff.value != null
                                                  ? Colors.black87
                                                  : Colors.grey.shade500,
@@ -602,7 +602,7 @@ class _AddLeaveScreenState extends State<AddLeaveScreen> {
                                     Text(
                                       DateFormat('dd-MM-yyyy').format(_startDate.value),
                                       style: GoogleFonts.inter(
-                                        fontSize: 15,
+                                        fontSize: 15.sp,
                                         color: Colors.black87,
                                       ),
                                     ),
@@ -633,7 +633,7 @@ class _AddLeaveScreenState extends State<AddLeaveScreen> {
                                     Text(
                                       DateFormat('dd-MM-yyyy').format(_endDate.value),
                                       style: GoogleFonts.inter(
-                                        fontSize: 15,
+                                        fontSize: 15.sp,
                                         color: Colors.black87,
                                       ),
                                     ),
@@ -667,7 +667,7 @@ class _AddLeaveScreenState extends State<AddLeaveScreen> {
                               _buildLabel(context.tr('Status *')),
                               const SizedBox(height: 6),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14),
+                                padding: EdgeInsets.symmetric(horizontal: 14),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(10),
@@ -707,9 +707,9 @@ class _AddLeaveScreenState extends State<AddLeaveScreen> {
                       ElevatedButton(
                         onPressed: saving ? null : _save,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF000080),
+                          backgroundColor: Color(0xFF000080),
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          padding: EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -727,7 +727,7 @@ class _AddLeaveScreenState extends State<AddLeaveScreen> {
                             : Text(
                                 context.tr('Record Leave'),
                                 style: GoogleFonts.inter(
-                                  fontSize: 16,
+                                  fontSize: 16.sp,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -747,7 +747,7 @@ class _AddLeaveScreenState extends State<AddLeaveScreen> {
     return Text(
       label,
       style: GoogleFonts.inter(
-        fontSize: 13,
+        fontSize: 13.sp,
         fontWeight: FontWeight.w600,
         color: Colors.grey.shade700,
       ),
@@ -857,9 +857,9 @@ class _StaffSelectorBottomSheetState extends State<_StaffSelectorBottomSheet> {
               Text(
                 context.tr('Select Staff Member'),
                 style: GoogleFonts.inter(
-                  fontSize: 18,
+                  fontSize: 18.sp,
                   fontWeight: FontWeight.bold,
-                  color: const Color(0xFF000080),
+                  color: Color(0xFF000080),
                 ),
               ),
               IconButton(
@@ -900,8 +900,8 @@ class _StaffSelectorBottomSheetState extends State<_StaffSelectorBottomSheet> {
                         final staff = Map<String, dynamic>.from(filteredStaffs[index] as Map);
                         return ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: const Color(0xFF000080).withValues(alpha: 0.1),
-                            child: const Icon(Icons.person, color: Color(0xFF000080)),
+                            backgroundColor: Color(0xFF000080).withValues(alpha: 0.1),
+                            child: Icon(Icons.person, color: Color(0xFF000080)),
                           ),
                           title: Text(
                             staff['name'] ?? '',
@@ -911,9 +911,9 @@ class _StaffSelectorBottomSheetState extends State<_StaffSelectorBottomSheet> {
                           ),
                           subtitle: Text(
                             '${staff['employee_id'] ?? ''} • ${staff['branch_name'] ?? ''}',
-                            style: GoogleFonts.inter(fontSize: 12),
+                            style: GoogleFonts.inter(fontSize: 12.sp),
                           ),
-                          trailing: const Icon(Icons.chevron_right, size: 18),
+                          trailing: Icon(Icons.chevron_right, size: 18),
                           onTap: () {
                             widget.onSelected(staff);
                             Navigator.pop(context);

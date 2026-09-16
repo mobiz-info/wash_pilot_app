@@ -93,20 +93,31 @@ class NewJobScreen extends StatelessWidget {
 
   void _selectCustomerFromSuggestion(BuildContext context, Map<String, dynamic> suggestion) {
     _customerSuggestionsNotifier.value = [];
-    String rawPhone = suggestion['phone'] ?? '';
-    String phoneCode = '+91';
-    String countryIso = 'IN';
-    for (final code in ['971', '966', '965', '968', '974', '973', '91']) {
-      if (rawPhone.startsWith(code) && rawPhone.length > 10) {
-        phoneCode = '+$code';
-        rawPhone = rawPhone.substring(code.length);
-        countryIso = _isoFromDialCode(phoneCode);
+    final rawPhone = suggestion['phone']?.toString() ?? '';
+    if (rawPhone.isEmpty) return;
+
+    // Try to match any known dial code from CountryConfig
+    String strippedPhone = rawPhone;
+    String phoneCode = _selectedCountryCodeNotifier.value; // keep current if no match
+    String countryIso = _selectedCountryIsoNotifier.value;
+
+    // Sort all country settings by dial-code length descending (match longest prefix first)
+    final allCountries = CountryConfig.all
+      ..sort((a, b) => b.phoneDialCode.length.compareTo(a.phoneDialCode.length));
+
+    for (final country in allCountries) {
+      final cleanCode = country.phoneDialCode.replaceAll('+', '');
+      if (rawPhone.startsWith(cleanCode) && rawPhone.length > cleanCode.length) {
+        phoneCode = country.phoneDialCode;
+        countryIso = country.phoneIsoCode;
+        strippedPhone = rawPhone.substring(cleanCode.length);
         break;
       }
     }
+
     _selectedCountryCodeNotifier.value = phoneCode;
     _selectedCountryIsoNotifier.value = countryIso;
-    _mobileController.text = rawPhone;
+    _mobileController.text = strippedPhone;
 
     _searchCustomer(context, unfocus: true);
   }
@@ -115,19 +126,6 @@ class NewJobScreen extends StatelessWidget {
     _customerSuggestionsNotifier.value = [];
     _mobileController.text = suggestion['vehicle_number'] ?? '';
     _searchCustomer(context, unfocus: true);
-  }
-
-  String _isoFromDialCode(String dialCode) {
-    switch (dialCode) {
-      case '+971': return 'AE';
-      case '+966': return 'SA';
-      case '+965': return 'KW';
-      case '+968': return 'OM';
-      case '+974': return 'QA';
-      case '+973': return 'BH';
-      case '+91':  return 'IN';
-      default:     return 'IN';
-    }
   }
 
   void _searchCustomer(BuildContext context, {bool unfocus = true}) {
@@ -169,10 +167,10 @@ class NewJobScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(context.tr('New Job'), style: const TextStyle(fontWeight: FontWeight.w600)),
+        title: Text(context.tr('New Job'), style: TextStyle(fontWeight: FontWeight.w600)),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -199,7 +197,7 @@ class NewJobScreen extends StatelessWidget {
                             value: selectedBranchId,
                             decoration: InputDecoration(
                               labelText: context.tr('Select Branch'),
-                              labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, color: const Color(0xFF000080)),
+                              labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, color: Color(0xFF000080)),
                               filled: true,
                               fillColor: Colors.white,
                               border: OutlineInputBorder(
@@ -268,8 +266,8 @@ class NewJobScreen extends StatelessWidget {
                         context.tr('Owner Number'),
                         style: GoogleFonts.inter(
                           fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                          color: searchType == 'number' ? const Color(0xFF000080) : Colors.grey.shade600,
+                          fontSize: 14.sp,
+                          color: searchType == 'number' ? Color(0xFF000080) : Colors.grey.shade600,
                         ),
                       ),
                     ),
@@ -298,8 +296,8 @@ class NewJobScreen extends StatelessWidget {
                         context.tr('Vehicle Number'),
                         style: GoogleFonts.inter(
                           fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                          color: searchType == 'vehicle' ? const Color(0xFF000080) : Colors.grey.shade600,
+                          fontSize: 14.sp,
+                          color: searchType == 'vehicle' ? Color(0xFF000080) : Colors.grey.shade600,
                         ),
                       ),
                     ),
@@ -325,8 +323,8 @@ class NewJobScreen extends StatelessWidget {
                                 hintText: context.tr('Enter Vehicle Number'),
                                 filled: true,
                                 fillColor: Colors.white,
-                                prefixIcon: const Icon(Icons.directions_car, color: Color(0xFF000080)),
-                                contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                                prefixIcon: Icon(Icons.directions_car, color: Color(0xFF000080)),
+                                contentPadding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                   borderSide: BorderSide.none,
@@ -345,7 +343,7 @@ class NewJobScreen extends StatelessWidget {
                               controller: _mobileController,
                               keyboardType: TextInputType.phone,
                               initialCountryCode: CountryConfig.phoneIsoCode,
-                              dropdownTextStyle: GoogleFonts.inter(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 14),
+                              dropdownTextStyle: GoogleFonts.inter(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 14.sp),
                               style: GoogleFonts.inter(fontWeight: FontWeight.w500),
                               disableLengthCheck: true,
                               onCountryChanged: (country) {
@@ -356,7 +354,7 @@ class NewJobScreen extends StatelessWidget {
                                 hintText: context.tr('Enter Mobile Number'),
                                 filled: true,
                                 fillColor: Colors.white,
-                                contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                                contentPadding: EdgeInsets.symmetric(vertical: 16),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                   borderSide: BorderSide.none,
@@ -383,10 +381,10 @@ class NewJobScreen extends StatelessWidget {
                         height: 54,
                         width: 54,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF000080),
+                          color: Color(0xFF000080),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(Icons.search, color: Colors.white),
+                        child: Icon(Icons.search, color: Colors.white),
                       ),
                     )
                   ],
@@ -415,23 +413,23 @@ class NewJobScreen extends StatelessWidget {
                             size: 72,
                             color: isNotFound ? Colors.orange.shade300 : Colors.red.shade300,
                           ),
-                          const SizedBox(height: 16),
+                          SizedBox(height: 16),
                           Text(
                             provider.errorMessage,
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: isNotFound ? Colors.orange.shade700 : Colors.red,
-                              fontSize: 16,
+                              fontSize: 16.sp,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                           if (isNotFound) ...[
-                            const SizedBox(height: 24),
+                            SizedBox(height: 24),
                             Text(
                               context.tr('No customer found with this number.'),
-                              style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                              style: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
                             ),
-                            const SizedBox(height: 16),
+                            SizedBox(height: 16),
                             ElevatedButton.icon(
                               onPressed: () async {
                                  final rawMobile = _mobileController.text.trim();
@@ -443,6 +441,7 @@ class NewJobScreen extends StatelessWidget {
                                     builder: (context) => AddCustomerScreen(
                                       phoneNumber: formattedMobile,
                                       initialCountryIso: _selectedCountryIsoNotifier.value,
+                                      initialDialCode: _selectedCountryCodeNotifier.value,
                                       branchId: _selectedBranchIdNotifier.value,
                                     ),
                                   ),
@@ -461,9 +460,9 @@ class NewJobScreen extends StatelessWidget {
                               icon: const Icon(Icons.person_add),
                               label: Text(context.tr('Add New Customer')),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF000080),
+                                backgroundColor: Color(0xFF000080),
                                 foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               ),
                             ),
@@ -483,7 +482,7 @@ class NewJobScreen extends StatelessWidget {
                         children: [
                           // Customer Details Card
                           Container(
-                            padding: const EdgeInsets.all(16),
+                            padding: EdgeInsets.all(16),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(16),
@@ -493,18 +492,18 @@ class NewJobScreen extends StatelessWidget {
                               children: [
                                 CircleAvatar(
                                   radius: 24,
-                                  backgroundColor: const Color(0xFF000080).withValues(alpha: 0.1),
-                                  child: const Icon(Icons.person, color: Color(0xFF000080)),
+                                  backgroundColor: Color(0xFF000080).withValues(alpha: 0.1),
+                                  child: Icon(Icons.person, color: Color(0xFF000080)),
                                 ),
-                                const SizedBox(width: 16),
+                                SizedBox(width: 16),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         data['name'],
-                                        style: const TextStyle(
-                                          fontSize: 18,
+                                        style: TextStyle(
+                                          fontSize: 18.sp,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
@@ -513,17 +512,17 @@ class NewJobScreen extends StatelessWidget {
                                         context.tr('Type: ${data['type']}  •  ${data['phone']}'),
                                         style: TextStyle(
                                           color: Colors.grey.shade600,
-                                          fontSize: 14,
+                                          fontSize: 14.sp,
                                         ),
                                       ),
                                       if (data['branch'] != null && data['branch'].toString().isNotEmpty) ...[
                                         const SizedBox(height: 4),
                                         Text(
                                           '${context.tr("Branch")}: ${data['branch']}',
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             color: Color(0xFF000080),
                                             fontWeight: FontWeight.w600,
-                                            fontSize: 13,
+                                            fontSize: 13.sp,
                                           ),
                                         ),
                                       ],
@@ -534,26 +533,26 @@ class NewJobScreen extends StatelessWidget {
                             ),
                           ),
 
-                          const SizedBox(height: 24),
+                          SizedBox(height: 24),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
                                 context.tr('Customer Vehicles'),
-                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold),
                               ),
                               ElevatedButton.icon(
                                 onPressed: () => _showAddVehicleDialog(context, data),
-                                icon: const Icon(Icons.add_circle_outline, size: 16),
+                                icon: Icon(Icons.add_circle_outline, size: 16),
                                 label: Text(
                                   context.tr('Add Vehicle'),
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp),
                                 ),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF000080).withValues(alpha: 0.08),
-                                  foregroundColor: const Color(0xFF000080),
+                                  backgroundColor: Color(0xFF000080).withValues(alpha: 0.08),
+                                  foregroundColor: Color(0xFF000080),
                                   elevation: 0,
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                     side: const BorderSide(color: Color(0xFF000080), width: 1.2),
@@ -586,20 +585,20 @@ class NewJobScreen extends StatelessWidget {
                                 },
                                 borderRadius: BorderRadius.circular(20),
                                 child: Container(
-                                  padding: const EdgeInsets.all(18),
+                                  padding: EdgeInsets.all(18),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
                                     borderRadius: BorderRadius.circular(20),
                                     border: Border.all(
-                                      color: const Color(0xFF000080).withValues(alpha: 0.15),
+                                      color: Color(0xFF000080).withValues(alpha: 0.15),
                                       width: 1.7,
                                     ),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: const Color(0xFF000080).withValues(alpha: 0.04),
+                                        color: Color(0xFF000080).withValues(alpha: 0.04),
                                         blurRadius: 16,
                                         spreadRadius: 2,
-                                        offset: const Offset(0, 4),
+                                        offset: Offset(0, 4),
                                       ),
                                     ],
                                   ),
@@ -614,9 +613,9 @@ class NewJobScreen extends StatelessWidget {
                                               Text(
                                                 v['no'],
                                                 style: GoogleFonts.inter(
-                                                  fontSize: 19,
+                                                  fontSize: 19.sp,
                                                   fontWeight: FontWeight.w700,
-                                                  color: const Color(0xFF000080),
+                                                  color: Color(0xFF000080),
                                                   letterSpacing: 0.5,
                                                 ),
                                               ),
@@ -625,12 +624,12 @@ class NewJobScreen extends StatelessWidget {
                                             ],
                                           ),
                                           Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                             decoration: BoxDecoration(
-                                              color: const Color(0xFF000080).withValues(alpha: 0.08),
+                                              color: Color(0xFF000080).withValues(alpha: 0.08),
                                               borderRadius: BorderRadius.circular(8),
                                               border: Border.all(
-                                                color: const Color(0xFF000080).withValues(alpha: 0.15),
+                                                color: Color(0xFF000080).withValues(alpha: 0.15),
                                                 width: 1,
                                               ),
                                             ),
@@ -640,8 +639,8 @@ class NewJobScreen extends StatelessWidget {
                                                   : v['type'],
                                               style: GoogleFonts.inter(
                                                 fontWeight: FontWeight.w500,
-                                                color: const Color(0xFF000080),
-                                                fontSize: 11,
+                                                color: Color(0xFF000080),
+                                                fontSize: 11.sp,
                                               ),
                                             ),
                                           ),
@@ -655,7 +654,7 @@ class NewJobScreen extends StatelessWidget {
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
                                           Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                             decoration: BoxDecoration(
                                               color: Colors.grey.shade50,
                                               borderRadius: BorderRadius.circular(8),
@@ -669,7 +668,7 @@ class NewJobScreen extends StatelessWidget {
                                                   context.tr('No. of visits: ${v['visits'] ?? 0}'),
                                                   style: GoogleFonts.inter(
                                                     color: Colors.grey.shade700,
-                                                    fontSize: 12,
+                                                    fontSize: 12.sp,
                                                     fontWeight: FontWeight.w600,
                                                   ),
                                                 ),
@@ -678,16 +677,16 @@ class NewJobScreen extends StatelessWidget {
                                           ),
                                           ElevatedButton.icon(
                                             onPressed: () => _navigateToVehicleHistory(context, v),
-                                            icon: const Icon(Icons.history, size: 14),
+                                            icon: Icon(Icons.history, size: 14),
                                             label: Text(
                                               context.tr('History'),
-                                              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12),
+                                              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12.sp),
                                             ),
                                             style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(0xFF000080).withValues(alpha: 0.08),
-                                              foregroundColor: const Color(0xFF000080),
+                                              backgroundColor: Color(0xFF000080).withValues(alpha: 0.08),
+                                              foregroundColor: Color(0xFF000080),
                                               elevation: 0,
-                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                               minimumSize: Size.zero,
                                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                               shape: RoundedRectangleBorder(
@@ -776,7 +775,7 @@ class NewJobScreen extends StatelessWidget {
                                 Text(
                                   context.tr('Search for a customer\nto start a new job'),
                                   textAlign: TextAlign.center,
-                                  style: TextStyle(color: Colors.grey.shade500, fontSize: 16),
+                                  style: TextStyle(color: Colors.grey.shade500, fontSize: 16.sp),
                                 ),
                               ],
                             ),
@@ -811,7 +810,7 @@ class NewJobScreen extends StatelessWidget {
             : '${c['phone']} · ${c['customer_type']}${(c['branch_name'] != null && c['branch_name'].toString().isNotEmpty) ? ' · ${c['branch_name']}' : ''}';
 
         return Card(
-          margin: const EdgeInsets.only(bottom: 8),
+          margin: EdgeInsets.only(bottom: 8),
           elevation: 0,
           color: Colors.white,
           shape: RoundedRectangleBorder(
@@ -832,10 +831,10 @@ class NewJobScreen extends StatelessWidget {
               child: Row(
                 children: [
                   CircleAvatar(
-                    backgroundColor: const Color(0xFF000080).withValues(alpha: 0.1),
+                    backgroundColor: Color(0xFF000080).withValues(alpha: 0.1),
                     child: Icon(
                       isVehicleSuggestion ? Icons.directions_car : Icons.person,
-                      color: const Color(0xFF000080),
+                      color: Color(0xFF000080),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -846,16 +845,16 @@ class NewJobScreen extends StatelessWidget {
                         Text(
                           name,
                           style: GoogleFonts.inter(
-                            fontSize: 15,
+                            fontSize: 15.sp,
                             fontWeight: FontWeight.bold,
-                            color: const Color(0xFF1E293B),
+                            color: Color(0xFF1E293B),
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           subtitle,
                           style: GoogleFonts.inter(
-                            fontSize: 13,
+                            fontSize: 13.sp,
                             color: Colors.grey.shade600,
                           ),
                         ),
@@ -932,7 +931,7 @@ class NewJobScreen extends StatelessWidget {
           onTap: onPressed,
           borderRadius: BorderRadius.circular(10),
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+            padding: EdgeInsets.symmetric(vertical: 10, horizontal: 4),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.07),
               borderRadius: BorderRadius.circular(10),
@@ -950,7 +949,7 @@ class NewJobScreen extends StatelessWidget {
                   child: Text(
                     label,
                     style: GoogleFonts.inter(
-                      fontSize: 10,
+                      fontSize: 10.sp,
                       fontWeight: FontWeight.bold,
                       color: color,
                     ),
@@ -1022,10 +1021,30 @@ class NewJobScreen extends StatelessWidget {
           ),
         );
       } else {
-        final String messageText = res['message_text']?.toString() ?? '';
+        final String branchName = context.read<AuthProvider>().branchName ?? '';
+        final String effectiveBranch = branchName.isNotEmpty ? branchName : 'Our';
+
+        String messageText = (res['message_text'] != null && res['message_text'].toString().isNotEmpty)
+            ? res['message_text'].toString()
+            : '';
+
+        final bool isOldOrDefault = messageText.isEmpty ||
+            messageText.contains("ready for pickup! Thank you for choosing our service.") ||
+            messageText.contains("thank you for choosing") ||
+            messageText.contains("Welcome to our service center") ||
+            messageText.contains("arrived safely and is in expert hands");
+
+        if (isOldOrDefault) {
+          if (type == 'welcome') {
+            messageText = "Hi $customerName Welcome to $effectiveBranch.Your vehicle $vehicleNumber has arrived safely and is in expert hands.We will keep you posted!";
+          } else if (type == 'ready') {
+            messageText = "Hi $customerName Great news! Your vehicle $vehicleNumber is ready for pickup. Please collect at your earliest convenience.\n$effectiveBranch Support team.";
+          } else {
+            messageText = "Dear $customerName 🙏 Thank you for trusting us with your vehicle $vehicleNumber. We hope you had a great experience. Looking forward to seeing you again!\n$effectiveBranch support team.";
+          }
+        }
 
         final String cleanedPhone = CountryConfig.formatPhoneForWhatsapp(phone);
-
 
         final whatsappUrl = Uri.parse(
           "https://wa.me/$cleanedPhone?text=${Uri.encodeComponent(messageText)}"
@@ -1065,12 +1084,14 @@ class _AddVehicleDialog extends StatelessWidget {
   final ValueNotifier<List<dynamic>> _makesNotifier = ValueNotifier([]);
   final ValueNotifier<List<dynamic>> _brandModelsNotifier = ValueNotifier([]);
   final ValueNotifier<List<dynamic>> _colorsNotifier = ValueNotifier([]);
+  final ValueNotifier<List<dynamic>> _emissionStandardsNotifier = ValueNotifier([]);
 
   final ValueNotifier<Map<String, dynamic>?> _selectedTypeNotifier = ValueNotifier(null);
   final ValueNotifier<Map<String, dynamic>?> _selectedSegmentNotifier = ValueNotifier(null);
   final ValueNotifier<Map<String, dynamic>?> _selectedMakeNotifier = ValueNotifier(null);
   final ValueNotifier<Map<String, dynamic>?> _selectedBrandNotifier = ValueNotifier(null);
   final ValueNotifier<Map<String, dynamic>?> _selectedColorNotifier = ValueNotifier(null);
+  final ValueNotifier<Map<String, dynamic>?> _selectedEmissionNotifier = ValueNotifier(null);
   final ValueNotifier<String> _selectedWheelTypeNotifier = ValueNotifier('normal_wheel');
 
   final TextEditingController _numberController = TextEditingController();
@@ -1093,6 +1114,7 @@ class _AddVehicleDialog extends StatelessWidget {
         _makesNotifier.value = formDataRes['makes'] as List<dynamic>? ?? [];
         _brandModelsNotifier.value = formDataRes['brand_models'] as List<dynamic>? ?? [];
         _colorsNotifier.value = formDataRes['colors'] as List<dynamic>? ?? [];
+        _emissionStandardsNotifier.value = formDataRes['emission_standards'] as List<dynamic>? ?? [];
 
         _fullCustomerDataNotifier.value = customerRes['customer'];
         if (vehicleTypes.isNotEmpty) {
@@ -1156,6 +1178,7 @@ class _AddVehicleDialog extends StatelessWidget {
       if (_selectedMakeNotifier.value != null) vehicleData['make_id'] = _selectedMakeNotifier.value!['id'];
       if (_selectedBrandNotifier.value != null) vehicleData['brand_model_id'] = _selectedBrandNotifier.value!['id'];
       if (_selectedColorNotifier.value != null) vehicleData['color_id'] = _selectedColorNotifier.value!['id'];
+      if (_selectedEmissionNotifier.value != null) vehicleData['emission_standard_id'] = _selectedEmissionNotifier.value!['id'];
 
       final response = await ApiService.editCustomer({
         'customer_id': _fullCustomerDataNotifier.value!['id'],
@@ -1213,10 +1236,10 @@ class _AddVehicleDialog extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
-        const SizedBox(height: 6),
+        Text(label, style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+        SizedBox(height: 6),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(10),
@@ -1227,11 +1250,11 @@ class _AddVehicleDialog extends StatelessWidget {
               isExpanded: true,
               menuMaxHeight: 300,
               value: matchedValue,
-              hint: Text(hint ?? 'Select...', style: TextStyle(color: Colors.grey.shade500, fontSize: 14)),
+              hint: Text(hint ?? 'Select...', style: TextStyle(color: Colors.grey.shade500, fontSize: 14.sp)),
               items: items.map((item) {
                 return DropdownMenuItem<T>(
                   value: item,
-                  child: Text(labelBuilder(item), style: const TextStyle(fontSize: 14)),
+                  child: Text(labelBuilder(item), style: TextStyle(fontSize: 14.sp)),
                 );
               }).toList(),
               onChanged: onChanged,
@@ -1274,10 +1297,10 @@ class _AddVehicleDialog extends StatelessWidget {
                   builder: (context, errorMsg, child) {
                     if (errorMsg.isNotEmpty) {
                       return Padding(
-                        padding: const EdgeInsets.only(bottom: 12.0),
+                        padding: EdgeInsets.only(bottom: 12.0),
                         child: Text(
                           errorMsg,
-                          style: const TextStyle(color: Colors.red, fontSize: 13),
+                          style: TextStyle(color: Colors.red, fontSize: 13.sp),
                         ),
                       );
                     }
@@ -1286,8 +1309,8 @@ class _AddVehicleDialog extends StatelessWidget {
                 ),
 
                 // Vehicle Number
-                Text(context.tr('Vehicle Number *'), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
-                const SizedBox(height: 6),
+                Text(context.tr('Vehicle Number *'), style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+                SizedBox(height: 6),
                 TextField(
                   controller: _numberController,
                   textCapitalization: TextCapitalization.characters,
@@ -1429,12 +1452,36 @@ class _AddVehicleDialog extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
 
+                // Emission Standard selection
+                ValueListenableBuilder<List<dynamic>>(
+                  valueListenable: _emissionStandardsNotifier,
+                  builder: (context, emissions, child) {
+                    if (emissions.isEmpty) return const SizedBox.shrink();
+                    return ValueListenableBuilder<Map<String, dynamic>?>(
+                      valueListenable: _selectedEmissionNotifier,
+                      builder: (context, selectedEmission, child) {
+                        return _buildDropdown<dynamic>(
+                          label: context.tr('Emission Standard'),
+                          value: selectedEmission,
+                          items: emissions,
+                          labelBuilder: (item) => item['name'] ?? '',
+                          hint: context.tr('Select Emission...'),
+                          onChanged: (val) {
+                            _selectedEmissionNotifier.value = val;
+                          },
+                        );
+                      },
+                    );
+                  },
+                ),
+                const SizedBox(height: 14),
+
                 // Wheel Type selection
                 Text(
                   context.tr('Wheel Type *'),
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
+                  style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 ValueListenableBuilder<String>(
                   valueListenable: _selectedWheelTypeNotifier,
                   builder: (context, selectedWheelType, child) {
@@ -1444,7 +1491,7 @@ class _AddVehicleDialog extends StatelessWidget {
                           child: RadioListTile<String>(
                             title: Text(
                               context.tr('Alloy Wheel'),
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                              style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w500),
                             ),
                             value: 'alloy_wheel',
                             groupValue: selectedWheelType,
@@ -1460,7 +1507,7 @@ class _AddVehicleDialog extends StatelessWidget {
                           child: RadioListTile<String>(
                             title: Text(
                               context.tr('Normal Wheel'),
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                              style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w500),
                             ),
                             value: 'normal_wheel',
                             groupValue: selectedWheelType,
@@ -1501,12 +1548,12 @@ class _AddVehicleDialog extends StatelessWidget {
                     return ElevatedButton(
                       onPressed: isSaving ? null : () => _save(context),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF000080),
+                        backgroundColor: Color(0xFF000080),
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
                       child: isSaving
-                          ? const SizedBox(
+                          ? SizedBox(
                               height: 18,
                               width: 18,
                               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),

@@ -21,6 +21,7 @@ import 'broadcast_screen.dart';
 import 'complaints_screen.dart';
 import 'language_screen.dart';
 import 'country_screen.dart';
+import 'font_size_screen.dart';
 import '../config/country_config.dart';
 import '../config/app_defaults.dart';
 import 'expense_screen.dart';
@@ -102,6 +103,11 @@ class _MenuScreenState extends State<MenuScreen> {
       'icon': Icons.card_giftcard,
       'color': Color(0xFFEC4899),
     },
+    {
+      'title': 'Notifications',
+      'icon': Icons.notifications_outlined,
+      'color': Color(0xFF00BFFF),
+    },
     {'title': 'Reports', 'icon': Icons.bar_chart, 'color': Color(0xFF14B8A6)},
     {
       'title': 'Vehicle',
@@ -155,6 +161,11 @@ class _MenuScreenState extends State<MenuScreen> {
       'title': 'Language',
       'icon': Icons.language,
       'color': Color(0xFF92400E),
+    },
+    {
+      'title': 'Font Size',
+      'icon': Icons.format_size,
+      'color': Color(0xFF4F46E5),
     },
   ];
 
@@ -281,6 +292,11 @@ class _MenuScreenState extends State<MenuScreen> {
       'icon': Icons.language,
       'color': Color(0xFF92400E),
     },
+    {
+      'title': 'Font Size',
+      'icon': Icons.format_size,
+      'color': Color(0xFF4F46E5),
+    },
   ];
 
 
@@ -304,6 +320,7 @@ class _MenuScreenState extends State<MenuScreen> {
       'Complaints': const ComplaintsScreen(),
       'Language': const LanguageScreen(),
       'Country': const CountryScreen(),
+      'Font Size': const FontSizeScreen(),
       'Expense': ExpenseScreen(),
       'Suppliers': const SupplierScreen(),
       'Supplier Payables': const SupplierPayablesScreen(),
@@ -475,6 +492,13 @@ class _MenuScreenState extends State<MenuScreen> {
                         MaterialPageRoute(builder: (_) => const CustomersScreen()),
                       );
                     }),
+                    _drawerItem(Icons.notifications_outlined, 'Notifications', () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => BroadcastScreen()),
+                      );
+                    }),
                     _drawerItem(Icons.account_balance_wallet_outlined, 'Expense', () {
                       Navigator.pop(context);
                       Navigator.push(
@@ -585,6 +609,19 @@ class _MenuScreenState extends State<MenuScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (_) => const LanguageScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _drawerItem(
+                      Icons.format_size_outlined,
+                      'Font Size',
+                      () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const FontSizeScreen(),
                           ),
                         );
                       },
@@ -759,7 +796,7 @@ class _MenuScreenState extends State<MenuScreen> {
         borderRadius: BorderRadius.circular(20.r),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF000080).withOpacity(0.25),
+            color: Color(0xFF000080).withOpacity(0.25),
             blurRadius: 16.r,
             offset: Offset(0, 6.h),
           ),
@@ -832,7 +869,7 @@ class _MenuScreenState extends State<MenuScreen> {
         : _branchMenuItems;
     return GridView.builder(
       shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
+      physics: NeverScrollableScrollPhysics(),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         crossAxisSpacing: 12.w,
@@ -882,7 +919,7 @@ class _MenuScreenState extends State<MenuScreen> {
                   textAlign: TextAlign.center,
                   style: GoogleFonts.inter(
                     fontWeight: FontWeight.w600,
-                    color: isEnabled ? const Color(0xFF334155) : Colors.grey,
+                    color: isEnabled ? Color(0xFF334155) : Colors.grey,
                     fontSize: 12.sp,
                   ),
                 ),
@@ -899,13 +936,13 @@ class _MenuScreenState extends State<MenuScreen> {
   // ─── Drawer Item ──────────────────────────────────────────────────────────
   Widget _drawerItem(IconData icon, String label, VoidCallback onTap) {
     return ListTile(
-      leading: Icon(icon, color: const Color(0xFF000080), size: 22.r),
+      leading: Icon(icon, color: Color(0xFF000080), size: 22.r),
       title: Text(
         context.tr(label),
         style: GoogleFonts.inter(
           fontWeight: FontWeight.w600,
           fontSize: 14.sp,
-          color: const Color(0xFF1e293b),
+          color: Color(0xFF1e293b),
         ),
       ),
       onTap: onTap,

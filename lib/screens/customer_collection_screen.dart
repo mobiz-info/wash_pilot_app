@@ -110,17 +110,17 @@ class _CustomerCollectionScreenState extends State<CustomerCollectionScreen> {
                 final isCompanyAdmin = context.watch<AuthProvider>().isCompanyAdmin;
 
                 return Scaffold(
-                  backgroundColor: const Color(0xFFf8fafc),
+                  backgroundColor: Color(0xFFf8fafc),
                   appBar: AppBar(
-                    backgroundColor: const Color(0xFF000080),
+                    backgroundColor: Color(0xFF000080),
                     foregroundColor: Colors.white,
                     title: Text(
                       context.tr('Collection'),
-                      style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 18),
+                      style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 18.sp),
                     ),
                     actions: [
                       IconButton(
-                        icon: const Icon(Icons.refresh),
+                        icon: Icon(Icons.refresh),
                         onPressed: _fetchOutstanding,
                       ),
                     ],
@@ -138,16 +138,16 @@ class _CustomerCollectionScreenState extends State<CustomerCollectionScreen> {
                         ),
                       Container(
                         color: Colors.white,
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                        padding: EdgeInsets.fromLTRB(16, 12, 16, 12),
                         child: TextField(
                           onChanged: (v) => _search.value = v,
                           decoration: InputDecoration(
                             hintText: context.tr('Search by customer or phone'),
                             hintStyle: GoogleFonts.inter(
-                              fontSize: 13,
-                              color: const Color(0xFF94a3b8),
+                              fontSize: 13.sp,
+                              color: Color(0xFF94a3b8),
                             ),
-                            prefixIcon: const Icon(
+                            prefixIcon: Icon(
                               Icons.search,
                               size: 20,
                               color: Color(0xFF94a3b8),
@@ -175,18 +175,18 @@ class _CustomerCollectionScreenState extends State<CustomerCollectionScreen> {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.error_outline,
                                   size: 48,
                                   color: Colors.red,
                                 ),
-                                const SizedBox(height: 12),
+                                SizedBox(height: 12),
                                 Text(
                                   errorMsg,
                                   textAlign: TextAlign.center,
                                   style: GoogleFonts.inter(color: Colors.red),
                                 ),
-                                const SizedBox(height: 16),
+                                SizedBox(height: 16),
                                 ElevatedButton(
                                   onPressed: _fetchOutstanding,
                                   child: Text(context.tr('Retry')),
@@ -212,9 +212,9 @@ class _CustomerCollectionScreenState extends State<CustomerCollectionScreen> {
                                       ? 'No results for "$searchVal"'
                                       : 'No outstanding balances!',
                                   style: GoogleFonts.inter(
-                                    fontSize: 16,
+                                    fontSize: 16.sp,
                                     fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF64748b),
+                                    color: Color(0xFF64748b),
                                   ),
                                 ),
                               ],
@@ -235,20 +235,20 @@ class _CustomerCollectionScreenState extends State<CustomerCollectionScreen> {
                                 final count = c['invoices_count'] ?? 0;
 
                                 return Container(
-                                  margin: const EdgeInsets.only(bottom: 12),
+                                  margin: EdgeInsets.only(bottom: 12),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
                                     borderRadius: BorderRadius.circular(16),
                                     border: Border.all(
-                                      color: const Color(0xFF000080).withValues(alpha: 0.12),
+                                      color: Color(0xFF000080).withValues(alpha: 0.12),
                                       width: 1.5,
                                     ),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: const Color(0xFF000080).withValues(alpha: 0.04),
+                                        color: Color(0xFF000080).withValues(alpha: 0.04),
                                         blurRadius: 16,
                                         spreadRadius: 2,
-                                        offset: const Offset(0, 4),
+                                        offset: Offset(0, 4),
                                       ),
                                     ],
                                   ),
@@ -279,10 +279,10 @@ class _CustomerCollectionScreenState extends State<CustomerCollectionScreen> {
                                             children: [
                                               CircleAvatar(
                                                 radius: 22,
-                                                backgroundColor: const Color(0xFF000080).withValues(alpha: 0.08),
-                                                child: const Icon(Icons.person, color: Color(0xFF000080)),
+                                                backgroundColor: Color(0xFF000080).withValues(alpha: 0.08),
+                                                child: Icon(Icons.person, color: Color(0xFF000080)),
                                               ),
-                                              const SizedBox(width: 16),
+                                              SizedBox(width: 16),
                                               Expanded(
                                                 child: Column(
                                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -291,16 +291,16 @@ class _CustomerCollectionScreenState extends State<CustomerCollectionScreen> {
                                                       c['customer_name'] ?? '',
                                                       style: GoogleFonts.inter(
                                                         fontWeight: FontWeight.w700,
-                                                        fontSize: 15,
-                                                        color: const Color(0xFF1e293b),
+                                                        fontSize: 15.sp,
+                                                        color: Color(0xFF1e293b),
                                                       ),
                                                     ),
                                                     const SizedBox(height: 3),
                                                     Text(
                                                       c['customer_phone'] ?? '',
                                                       style: GoogleFonts.inter(
-                                                        fontSize: 12,
-                                                        color: const Color(0xFF94a3b8),
+                                                        fontSize: 12.sp,
+                                                        color: Color(0xFF94a3b8),
                                                       ),
                                                     ),
                                                     const SizedBox(height: 4),
@@ -314,7 +314,7 @@ class _CustomerCollectionScreenState extends State<CustomerCollectionScreen> {
                                                       child: Text(
                                                         '$count ${context.tr('unpaid invoices')}',
                                                         style: GoogleFonts.inter(
-                                                          fontSize: 10,
+                                                          fontSize: 10.sp,
                                                           fontWeight: FontWeight.w600,
                                                           color: Colors.orange.shade800,
                                                         ),
@@ -342,8 +342,8 @@ class _CustomerCollectionScreenState extends State<CustomerCollectionScreen> {
                                                       '$currencySymbol${outstanding.toStringAsFixed(2)}',
                                                       style: GoogleFonts.inter(
                                                         fontWeight: FontWeight.w900,
-                                                        fontSize: 14,
-                                                        color: const Color(0xFFdc2626),
+                                                        fontSize: 14.sp,
+                                                        color: Color(0xFFdc2626),
                                                       ),
                                                     ),
                                                   ),
@@ -353,9 +353,9 @@ class _CustomerCollectionScreenState extends State<CustomerCollectionScreen> {
                                                       Text(
                                                         context.tr('Collect'),
                                                         style: GoogleFonts.inter(
-                                                          fontSize: 12,
+                                                          fontSize: 12.sp,
                                                           fontWeight: FontWeight.w700,
-                                                          color: const Color(0xFF000080),
+                                                          color: Color(0xFF000080),
                                                         ),
                                                       ),
                                                       const SizedBox(width: 2),
@@ -383,7 +383,7 @@ class _CustomerCollectionScreenState extends State<CustomerCollectionScreen> {
                       if (!loading && errorMsg.isEmpty && filtered.isNotEmpty)
                         Container(
                           color: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -391,16 +391,16 @@ class _CustomerCollectionScreenState extends State<CustomerCollectionScreen> {
                                 context.tr('Total Outstanding'),
                                 style: GoogleFonts.inter(
                                   fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF64748b),
-                                  fontSize: 14,
+                                  color: Color(0xFF64748b),
+                                  fontSize: 14.sp,
                                 ),
                               ),
                               Text(
                                 '$currencySymbol${totalOutstandingVal.toStringAsFixed(2)}',
                                 style: GoogleFonts.inter(
                                   fontWeight: FontWeight.w900,
-                                  color: const Color(0xFFdc2626),
-                                  fontSize: 18,
+                                  color: Color(0xFFdc2626),
+                                  fontSize: 18.sp,
                                 ),
                               ),
                             ],
@@ -427,7 +427,7 @@ class _CustomerCollectionScreenState extends State<CustomerCollectionScreen> {
         decoration: InputDecoration(
           filled: true,
           fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(
+          contentPadding: EdgeInsets.symmetric(
             horizontal: 12,
             vertical: 12,
           ),

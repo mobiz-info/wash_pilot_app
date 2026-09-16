@@ -112,7 +112,7 @@ class _SupplierScreenState extends State<SupplierScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text(context.tr('Delete'), style: const TextStyle(color: Colors.red)),
+            child: Text(context.tr('Delete'), style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -151,13 +151,13 @@ class _SupplierScreenState extends State<SupplierScreen> {
           context.tr('Suppliers'),
           style: GoogleFonts.inter(fontWeight: FontWeight.w700),
         ),
-        backgroundColor: const Color(0xFF000080),
+        backgroundColor: Color(0xFF000080),
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
           IconButton(
             onPressed: _fetchSuppliers,
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh),
           )
         ],
       ),
@@ -170,7 +170,7 @@ class _SupplierScreenState extends State<SupplierScreen> {
               controller: _searchController,
               decoration: InputDecoration(
                 hintText: context.tr('Search suppliers...'),
-                prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                prefixIcon: Icon(Icons.search, color: Colors.grey),
                 filled: true,
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
@@ -197,11 +197,11 @@ class _SupplierScreenState extends State<SupplierScreen> {
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Text(errMsg, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
-                                    const SizedBox(height: 16),
+                                    Text(errMsg, style: TextStyle(color: Colors.red), textAlign: TextAlign.center),
+                                    SizedBox(height: 16),
                                     ElevatedButton(
                                       onPressed: _fetchSuppliers,
-                                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000080), foregroundColor: Colors.white),
+                                      style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF000080), foregroundColor: Colors.white),
                                       child: Text(context.tr('Retry')),
                                     ),
                                   ],
@@ -209,9 +209,9 @@ class _SupplierScreenState extends State<SupplierScreen> {
                               ),
                             )
                           : filtered.isEmpty
-                              ? Center(child: Text(context.tr('No suppliers found'), style: GoogleFonts.inter(color: Colors.grey, fontSize: 15)))
+                              ? Center(child: Text(context.tr('No suppliers found'), style: GoogleFonts.inter(color: Colors.grey, fontSize: 15.sp)))
                               : ListView.builder(
-                                  padding: const EdgeInsets.all(16),
+                                  padding: EdgeInsets.all(16),
                                   itemCount: filtered.length,
                                   itemBuilder: (ctx, i) {
                                     final supplier = Map<String, dynamic>.from(filtered[i] as Map);
@@ -221,7 +221,7 @@ class _SupplierScreenState extends State<SupplierScreen> {
                                     final gst = supplier['gst_no'] ?? '';
 
                                     return Container(
-                                      margin: const EdgeInsets.only(bottom: 10),
+                                      margin: EdgeInsets.only(bottom: 10),
                                       decoration: BoxDecoration(
                                         color: Colors.white,
                                         borderRadius: BorderRadius.circular(12),
@@ -229,7 +229,7 @@ class _SupplierScreenState extends State<SupplierScreen> {
                                           BoxShadow(
                                             color: Colors.black.withValues(alpha: 0.03),
                                             blurRadius: 8,
-                                            offset: const Offset(0, 3),
+                                            offset: Offset(0, 3),
                                           )
                                         ],
                                       ),
@@ -255,30 +255,30 @@ class _SupplierScreenState extends State<SupplierScreen> {
                                                       Text(
                                                         name,
                                                         style: GoogleFonts.inter(
-                                                          fontSize: 15,
+                                                          fontSize: 15.sp,
                                                           fontWeight: FontWeight.w700,
                                                           color: Colors.black87,
                                                         ),
                                                       ),
-                                                      const SizedBox(height: 4),
+                                                      SizedBox(height: 4),
                                                       Text(
                                                         '📞 $phone',
-                                                        style: GoogleFonts.inter(fontSize: 13, color: Colors.black54),
+                                                        style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.black54),
                                                       ),
                                                       if (gst.toString().isNotEmpty) ...
                                                       [
-                                                        const SizedBox(height: 2),
+                                                        SizedBox(height: 2),
                                                         Text(
                                                           '🧾 ${context.tr("Tax")}: $gst',
-                                                          style: GoogleFonts.inter(fontSize: 13, color: Colors.black54),
+                                                          style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.black54),
                                                         ),
                                                       ],
                                                       if (address.toString().isNotEmpty) ...
                                                       [
-                                                        const SizedBox(height: 2),
+                                                        SizedBox(height: 2),
                                                         Text(
                                                           '📍 $address',
-                                                          style: GoogleFonts.inter(fontSize: 12, color: Colors.black38),
+                                                          style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.black38),
                                                           maxLines: 2,
                                                           overflow: TextOverflow.ellipsis,
                                                         ),
@@ -311,7 +311,7 @@ class _SupplierScreenState extends State<SupplierScreen> {
                                                                     ? context.tr('Bill to Bill')
                                                                     : context.tr('Cash'),
                                                             style: GoogleFonts.inter(
-                                                              fontSize: 11,
+                                                              fontSize: 11.sp,
                                                               fontWeight: FontWeight.w600,
                                                               color: supplier['supplier_type'] == 'credit'
                                                                   ? Colors.orange.shade700
@@ -339,9 +339,9 @@ class _SupplierScreenState extends State<SupplierScreen> {
                                                   label: Text(
                                                     context.tr('Edit'),
                                                     style: GoogleFonts.inter(
-                                                      fontSize: 13,
+                                                      fontSize: 13.sp,
                                                       fontWeight: FontWeight.w600,
-                                                      color: const Color(0xFF000080),
+                                                      color: Color(0xFF000080),
                                                     ),
                                                   ),
                                                 ),
@@ -350,11 +350,11 @@ class _SupplierScreenState extends State<SupplierScreen> {
                                               Expanded(
                                                 child: TextButton.icon(
                                                   onPressed: () => _deleteSupplier(supplier),
-                                                  icon: const Icon(Icons.delete_outline, size: 16, color: Colors.red),
+                                                  icon: Icon(Icons.delete_outline, size: 16, color: Colors.red),
                                                   label: Text(
                                                     context.tr('Delete'),
                                                     style: GoogleFonts.inter(
-                                                      fontSize: 13,
+                                                      fontSize: 13.sp,
                                                       fontWeight: FontWeight.w600,
                                                       color: Colors.red,
                                                     ),
@@ -376,9 +376,9 @@ class _SupplierScreenState extends State<SupplierScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _openSupplierPage(),
-        backgroundColor: const Color(0xFF000080),
+        backgroundColor: Color(0xFF000080),
         foregroundColor: Colors.white,
-        child: const Icon(Icons.add),
+        child: Icon(Icons.add),
       ),
     );
   }

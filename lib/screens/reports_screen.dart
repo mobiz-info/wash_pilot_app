@@ -11,12 +11,22 @@ import 'package:printing/printing.dart';
 import '../providers/auth_provider.dart';
 import '../config/country_config.dart';
 import '../services/api_service.dart';
+import 'staff_income_report_screen.dart';
 
 // ─── Entry screen ──────────────────────────────────────────────────────────────
 class ReportsScreen extends StatelessWidget {
   const ReportsScreen({super.key});
 
   static const _reports = [
+    {
+      'title': 'Staff Income Report',
+      'subtitle': 'Revenue generated per staff member',
+      'icon': Icons.badge_outlined,
+      'color': Color(0xFF000080),
+      'bg': Color(0xFFEFF6FF),
+      'type': 'staff_income',
+    },
+
     {
       'title': 'Job Report',
       'subtitle': 'All invoices & job summary',
@@ -147,7 +157,14 @@ class ReportsScreen extends StatelessWidget {
   Widget _buildReportTile(BuildContext context, Map<String, dynamic> r) {
     return GestureDetector(
       onTap: () {
-        if (r['type'] == 'profit') {
+        if (r['type'] == 'staff_income') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const StaffIncomeReportScreen(),
+            ),
+          );
+        } else if (r['type'] == 'profit') {
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -155,6 +172,7 @@ class ReportsScreen extends StatelessWidget {
             ),
           );
         } else {
+
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -167,8 +185,8 @@ class ReportsScreen extends StatelessWidget {
         }
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 14),
-        padding: const EdgeInsets.all(20),
+        margin: EdgeInsets.only(bottom: 14),
+        padding: EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -176,7 +194,7 @@ class ReportsScreen extends StatelessWidget {
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
               blurRadius: 8,
-              offset: const Offset(0, 2),
+              offset: Offset(0, 2),
             ),
           ],
         ),
@@ -204,15 +222,15 @@ class ReportsScreen extends StatelessWidget {
                     r['title'] as String,
                     style: GoogleFonts.inter(
                       fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                      color: const Color(0xFF1E293B),
+                      fontSize: 15.sp,
+                      color: Color(0xFF1E293B),
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     r['subtitle'] as String,
                     style: GoogleFonts.inter(
-                      fontSize: 13,
+                      fontSize: 13.sp,
                       color: Colors.grey.shade500,
                     ),
                   ),
@@ -254,7 +272,7 @@ class ReportsScreen extends StatelessWidget {
           context.tr('Reports'),
           style: GoogleFonts.inter(fontWeight: FontWeight.w700),
         ),
-        backgroundColor: const Color(0xFF000080),
+        backgroundColor: Color(0xFF000080),
         foregroundColor: Colors.white,
         elevation: 0,
       ),
@@ -266,22 +284,22 @@ class ReportsScreen extends StatelessWidget {
             child: Text(
               context.tr('General Reports'),
               style: GoogleFonts.inter(
-                fontSize: 16,
+                fontSize: 16.sp,
                 fontWeight: FontWeight.w800,
-                color: const Color(0xFF000080),
+                color: Color(0xFF000080),
               ),
             ),
           ),
           ...reports.map((r) => _buildReportTile(context, r)),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           Padding(
-            padding: const EdgeInsets.only(bottom: 12),
+            padding: EdgeInsets.only(bottom: 12),
             child: Text(
               context.tr('Daywise Consolidated Reports'),
               style: GoogleFonts.inter(
-                fontSize: 16,
+                fontSize: 16.sp,
                 fontWeight: FontWeight.w800,
-                color: const Color(0xFF000080),
+                color: Color(0xFF000080),
               ),
             ),
           ),
@@ -296,7 +314,7 @@ class ReportsScreen extends StatelessWidget {
 class ReportDetailScreen extends StatefulWidget {
   final String reportType;
   final String title;
-  const ReportDetailScreen({
+  ReportDetailScreen({
     super.key,
     required this.reportType,
     required this.title,
@@ -961,7 +979,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                         widget.title,
                         style: GoogleFonts.inter(fontWeight: FontWeight.w700),
                       ),
-                      backgroundColor: const Color(0xFF000080),
+                      backgroundColor: Color(0xFF000080),
                       foregroundColor: Colors.white,
                       elevation: 0,
                       actions: [
@@ -990,7 +1008,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                         // Date filter bar
                         Container(
                           color: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           child: Column(
                             children: [
                               Row(
@@ -1014,7 +1032,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                                   ElevatedButton(
                                     onPressed: _load,
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF000080),
+                                      backgroundColor: Color(0xFF000080),
                                       foregroundColor: Colors.white,
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(10),
@@ -1024,16 +1042,16 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                                         vertical: 13,
                                       ),
                                     ),
-                                    child: const Icon(Icons.refresh, size: 20),
+                                    child: Icon(Icons.refresh, size: 20),
                                   ),
                                 ],
                               ),
                               if (context.watch<AuthProvider>().isCompanyAdmin) ...[
-                                const SizedBox(height: 12),
+                                SizedBox(height: 12),
                                 _branchDropdown(),
                               ],
                               if (widget.reportType == 'collection') ...[
-                                const SizedBox(height: 12),
+                                SizedBox(height: 12),
                                 _paymentModeDropdown(),
                               ],
                             ],
@@ -1054,12 +1072,12 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                                         size: 48,
                                         color: Colors.red.shade300,
                                       ),
-                                      const SizedBox(height: 12),
+                                      SizedBox(height: 12),
                                       Text(
                                         errorVal,
                                         style: GoogleFonts.inter(color: Colors.red.shade600),
                                       ),
-                                      const SizedBox(height: 16),
+                                      SizedBox(height: 16),
                                       ElevatedButton(
                                         onPressed: _load,
                                         child: Text(context.tr('Retry')),
@@ -1117,13 +1135,13 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(
-                color: const Color(0xFF000080).withOpacity(0.2),
+                color: Color(0xFF000080).withOpacity(0.2),
               ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(
-                color: const Color(0xFF000080).withOpacity(0.2),
+                color: Color(0xFF000080).withOpacity(0.2),
               ),
             ),
           ),
@@ -1162,13 +1180,13 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(
-            color: const Color(0xFF000080).withOpacity(0.2),
+            color: Color(0xFF000080).withOpacity(0.2),
           ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(
-            color: const Color(0xFF000080).withOpacity(0.2),
+            color: Color(0xFF000080).withOpacity(0.2),
           ),
         ),
       ),
@@ -1191,25 +1209,25 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: const Color(0xFFF8FAFF),
+          color: Color(0xFFF8FAFF),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFF000080).withOpacity(0.2)),
+          border: Border.all(color: Color(0xFF000080).withOpacity(0.2)),
         ),
         child: Row(
           children: [
             Icon(
               Icons.calendar_today_outlined,
               size: 15,
-              color: const Color(0xFF000080).withOpacity(0.7),
+              color: Color(0xFF000080).withOpacity(0.7),
             ),
-            const SizedBox(width: 6),
+            SizedBox(width: 6),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   label,
                   style: GoogleFonts.inter(
-                    fontSize: 10,
+                    fontSize: 10.sp,
                     color: Colors.grey.shade500,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1217,9 +1235,9 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                 Text(
                   DateFormat('dd MMM yy').format(date),
                   style: GoogleFonts.inter(
-                    fontSize: 13,
+                    fontSize: 13.sp,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1E293B),
+                    color: Color(0xFF1E293B),
                   ),
                 ),
               ],
@@ -1254,7 +1272,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                         context.tr('No data for this period'),
                         style: GoogleFonts.inter(
                           color: Colors.grey.shade400,
-                          fontSize: 15,
+                          fontSize: 15.sp,
                         ),
                       ),
                     ],
@@ -1296,8 +1314,8 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
 
     if (widget.reportType == 'daywise_income') {
       return Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
+        margin: EdgeInsets.only(bottom: 10),
+        padding: EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
@@ -1305,7 +1323,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
             BoxShadow(
               color: Colors.black.withOpacity(0.04),
               blurRadius: 6,
-              offset: const Offset(0, 2),
+              offset: Offset(0, 2),
             ),
           ],
         ),
@@ -1317,27 +1335,27 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               children: [
                 Text(
                   row['date'] ?? '',
-                  style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14, color: const Color(0xFF000080)),
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14.sp, color: Color(0xFF000080)),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: const Color(0xFFEFF6FF),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     context.tr('Jobs: ${row['count'] ?? 0}'),
-                    style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFF2563EB)),
+                    style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
                   ),
                 ),
               ],
             ),
-            const Divider(height: 16),
+            Divider(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _chip('Revenue', '$currencySymbol${_fmt(row['income'])}', Colors.grey.shade100, Colors.grey.shade800),
-                _chip('Collected', '$currencySymbol${_fmt(row['collected'])}', const Color(0xFFECFDF5), const Color(0xFF059669)),
+                _chip('Collected', '$currencySymbol${_fmt(row['collected'])}', Color(0xFFECFDF5), Color(0xFF059669)),
               ],
             ),
           ],
@@ -1348,8 +1366,8 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
     if (widget.reportType == 'daywise_profit') {
       final profitVal = double.tryParse(row['profit']?.toString() ?? '0') ?? 0;
       return Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
+        margin: EdgeInsets.only(bottom: 10),
+        padding: EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
@@ -1357,7 +1375,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
             BoxShadow(
               color: Colors.black.withOpacity(0.04),
               blurRadius: 6,
-              offset: const Offset(0, 2),
+              offset: Offset(0, 2),
             ),
           ],
         ),
@@ -1366,14 +1384,14 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
           children: [
             Text(
               row['date'] ?? '',
-              style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14, color: const Color(0xFF000080)),
+              style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14.sp, color: Color(0xFF000080)),
             ),
-            const Divider(height: 16),
+            Divider(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _chip('Income', '$currencySymbol${_fmt(row['income'])}', const Color(0xFFECFDF5), const Color(0xFF059669)),
-                _chip('Expense', '$currencySymbol${_fmt(row['expense'])}', const Color(0xFFFEF2F2), const Color(0xFFDC2626)),
+                _chip('Income', '$currencySymbol${_fmt(row['income'])}', Color(0xFFECFDF5), Color(0xFF059669)),
+                _chip('Expense', '$currencySymbol${_fmt(row['expense'])}', Color(0xFFFEF2F2), Color(0xFFDC2626)),
                 _chip(
                   'Profit',
                   '$currencySymbol${_fmt(row['profit'])}',
@@ -1389,8 +1407,8 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
 
     if (widget.reportType == 'daywise_collection') {
       return Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
+        margin: EdgeInsets.only(bottom: 10),
+        padding: EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
@@ -1398,7 +1416,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
             BoxShadow(
               color: Colors.black.withOpacity(0.04),
               blurRadius: 6,
-              offset: const Offset(0, 2),
+              offset: Offset(0, 2),
             ),
           ],
         ),
@@ -1410,20 +1428,20 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               children: [
                 Text(
                   row['date'] ?? '',
-                  style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14, color: const Color(0xFF000080)),
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14.sp, color: Color(0xFF000080)),
                 ),
                 Text(
                   '$currencySymbol${_fmt(row['total'])}',
-                  style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 15, color: const Color(0xFF059669)),
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 15.sp, color: Color(0xFF059669)),
                 ),
               ],
             ),
-            const Divider(height: 16),
+            Divider(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _chip('Cash', '$currencySymbol${_fmt(row['cash'])}', Colors.grey.shade100, Colors.grey.shade800),
-                _chip('Cheque', '$currencySymbol${_fmt(row['cheque'])}', const Color(0xFFFEF3C7), const Color(0xFFD97706)),
+                _chip('Cheque', '$currencySymbol${_fmt(row['cheque'])}', Color(0xFFFEF3C7), Color(0xFFD97706)),
                 _chip('Online', '$currencySymbol${_fmt(row['online'])}', const Color(0xFFEFF6FF), const Color(0xFF2563EB)),
               ],
             ),
@@ -1434,8 +1452,8 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
 
     if (widget.reportType == 'daywise_outstanding') {
       return Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
+        margin: EdgeInsets.only(bottom: 10),
+        padding: EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
@@ -1443,7 +1461,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
             BoxShadow(
               color: Colors.black.withOpacity(0.04),
               blurRadius: 6,
-              offset: const Offset(0, 2),
+              offset: Offset(0, 2),
             ),
           ],
         ),
@@ -1455,17 +1473,17 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               children: [
                 Text(
                   row['date'] ?? '',
-                  style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14, color: const Color(0xFF000080)),
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14.sp, color: Color(0xFF000080)),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFEF2F2),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     context.tr('Unpaid Invoices: ${row['count'] ?? 0}'),
-                    style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFFDC2626)),
+                    style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.bold, color: Color(0xFFDC2626)),
                   ),
                 ),
               ],
@@ -1765,7 +1783,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
 
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: items
             .map(
@@ -1775,7 +1793,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                     Text(
                       item['value'] as String,
                       style: GoogleFonts.inter(
-                        fontSize: 16,
+                        fontSize: 16.sp,
                         fontWeight: FontWeight.w800,
                         color: item['color'] as Color,
                       ),
@@ -1784,7 +1802,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                     Text(
                       item['label'] as String,
                       style: GoogleFonts.inter(
-                        fontSize: 11,
+                        fontSize: 11.sp,
                         color: Colors.grey.shade500,
                         fontWeight: FontWeight.w600,
                       ),
@@ -1822,7 +1840,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                 : 'Completed';
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: statusColor.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
@@ -1831,7 +1849,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
       child: Text(
         statusLabel,
         style: GoogleFonts.inter(
-          fontSize: 12,
+          fontSize: 12.sp,
           fontWeight: FontWeight.bold,
           color: statusColor,
         ),
@@ -1842,8 +1860,8 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
   Widget _buildRow(Map<String, dynamic> row, {bool isReceipt = false}) {
     final isBookingOrCancel = widget.reportType == 'booking' || widget.reportType == 'cancellation';
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
+      margin: EdgeInsets.only(bottom: 10),
+      padding: EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -1851,7 +1869,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
             blurRadius: 6,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -1870,14 +1888,14 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                         : (row['invoice_number'] ?? ''),
                 style: GoogleFonts.inter(
                   fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                  color: const Color(0xFF000080),
+                  fontSize: 14.sp,
+                  color: Color(0xFF000080),
                 ),
               ),
               Text(
                 row['date'] ?? '',
                 style: GoogleFonts.inter(
-                  fontSize: 12,
+                  fontSize: 12.sp,
                   color: Colors.grey.shade500,
                 ),
               ),
@@ -1889,7 +1907,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
             Text(
               context.tr('Invoice: ${row['invoice_number']}'),
               style: GoogleFonts.inter(
-                fontSize: 12,
+                fontSize: 12.sp,
                 color: Colors.grey.shade500,
               ),
             ),
@@ -1905,8 +1923,8 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                 child: Text(
                   context.tr('${row['customer'] ?? ''} · ${row['phone'] ?? ''}'),
                   style: GoogleFonts.inter(
-                    fontSize: 13,
-                    color: const Color(0xFF1E293B),
+                    fontSize: 13.sp,
+                    color: Color(0xFF1E293B),
                   ),
                 ),
               ),
@@ -1924,7 +1942,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               Text(
                 row['vehicle'] ?? '',
                 style: GoogleFonts.inter(
-                  fontSize: 13,
+                  fontSize: 13.sp,
                   color: Colors.grey.shade600,
                 ),
               ),
@@ -1942,7 +1960,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                   child: Text(
                     row['branch'] ?? '',
                     style: GoogleFonts.inter(
-                      fontSize: 11,
+                      fontSize: 11.sp,
                       color: Colors.grey.shade600,
                       fontWeight: FontWeight.w600,
                     ),
@@ -1967,7 +1985,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                   child: Text(
                     row['services'],
                     style: GoogleFonts.inter(
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       color: Colors.grey.shade600,
                     ),
                   ),
@@ -1995,7 +2013,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                     child: Text(
                       row['notes'],
                       style: GoogleFonts.inter(
-                        fontSize: 12,
+                        fontSize: 12.sp,
                         color: Colors.grey.shade700,
                       ),
                     ),
@@ -2021,12 +2039,12 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                 Text(
                   context.tr('${row['scheme']}'),
                   style: GoogleFonts.inter(
-                    fontSize: 12,
+                    fontSize: 12.sp,
                     color: Colors.purple.shade700,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(width: 6),
+                SizedBox(width: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 6,
@@ -2039,7 +2057,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                   child: Text(
                     row['scheme_type'] ?? '',
                     style: GoogleFonts.inter(
-                      fontSize: 10,
+                      fontSize: 10.sp,
                       color: Colors.purple.shade600,
                     ),
                   ),
@@ -2062,7 +2080,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                 Text(
                   (row['payment_mode'] as String).toUpperCase(),
                   style: GoogleFonts.inter(
-                    fontSize: 12,
+                    fontSize: 12.sp,
                     color: Colors.grey.shade600,
                     fontWeight: FontWeight.w600,
                   ),
@@ -2147,14 +2165,14 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
           Text(
             value,
             style: GoogleFonts.inter(
-              fontSize: 13,
+              fontSize: 13.sp,
               fontWeight: FontWeight.w700,
               color: fg,
             ),
           ),
           Text(
             label,
-            style: GoogleFonts.inter(fontSize: 10, color: fg.withOpacity(0.7)),
+            style: GoogleFonts.inter(fontSize: 10.sp, color: fg.withOpacity(0.7)),
           ),
         ],
       ),
@@ -2176,7 +2194,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
     final name = row['expense_head_name'] ?? '';
     final amount = row['total_amount'] ?? '0.00';
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -2184,7 +2202,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
             blurRadius: 6,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -2206,8 +2224,8 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
           name,
           style: GoogleFonts.inter(
             fontWeight: FontWeight.w700,
-            fontSize: 14,
-            color: const Color(0xFF1E293B),
+            fontSize: 14.sp,
+            color: Color(0xFF1E293B),
           ),
         ),
         trailing: Row(
@@ -2217,8 +2235,8 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               '$currencySymbol${_fmt(amount)}',
               style: GoogleFonts.inter(
                 fontWeight: FontWeight.w700,
-                fontSize: 15,
-                color: const Color(0xFFE11D48),
+                fontSize: 15.sp,
+                color: Color(0xFFE11D48),
               ),
             ),
             const SizedBox(width: 8),
@@ -2251,7 +2269,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
     final name = row['service_name'] ?? '';
     final amount = row['revenue'] ?? '0.00';
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -2259,7 +2277,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
             blurRadius: 6,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -2277,8 +2295,8 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               '${index + 1}',
               style: GoogleFonts.inter(
                 fontWeight: FontWeight.bold,
-                color: const Color(0xFF059669),
-                fontSize: 14,
+                color: Color(0xFF059669),
+                fontSize: 14.sp,
               ),
             ),
           ),
@@ -2287,8 +2305,8 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
           name,
           style: GoogleFonts.inter(
             fontWeight: FontWeight.w700,
-            fontSize: 14,
-            color: const Color(0xFF1E293B),
+            fontSize: 14.sp,
+            color: Color(0xFF1E293B),
           ),
         ),
         trailing: Row(
@@ -2298,8 +2316,8 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               '$currencySymbol${_fmt(amount)}',
               style: GoogleFonts.inter(
                 fontWeight: FontWeight.w700,
-                fontSize: 15,
-                color: const Color(0xFF059669),
+                fontSize: 15.sp,
+                color: Color(0xFF059669),
               ),
             ),
             const SizedBox(width: 8),
@@ -2354,8 +2372,8 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
     }
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
+      margin: EdgeInsets.only(bottom: 10),
+      padding: EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -2363,7 +2381,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
             blurRadius: 6,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -2381,14 +2399,14 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                     name,
                     style: GoogleFonts.inter(
                       fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                      color: const Color(0xFF1E293B),
+                      fontSize: 14.sp,
+                      color: Color(0xFF1E293B),
                     ),
                   ),
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: statusColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(6),
@@ -2397,7 +2415,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                 child: Text(
                   status,
                   style: GoogleFonts.inter(
-                    fontSize: 10,
+                    fontSize: 10.sp,
                     fontWeight: FontWeight.w700,
                     color: statusColor,
                   ),
@@ -2418,7 +2436,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                   child: Text(
                     branch,
                     style: GoogleFonts.inter(
-                      fontSize: 11,
+                      fontSize: 11.sp,
                       color: Colors.grey.shade600,
                       fontWeight: FontWeight.w600,
                     ),
@@ -2430,7 +2448,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                 Text(
                   'ID: $empId',
                   style: GoogleFonts.inter(
-                    fontSize: 12,
+                    fontSize: 12.sp,
                     color: Colors.grey.shade500,
                   ),
                 ),
@@ -2444,9 +2462,9 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               Text(
                 '$formattedStart to $formattedEnd',
                 style: GoogleFonts.inter(
-                  fontSize: 13,
+                  fontSize: 13.sp,
                   fontWeight: FontWeight.w600,
-                  color: const Color(0xFF334155),
+                  color: Color(0xFF334155),
                 ),
               ),
             ],
@@ -2462,7 +2480,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                   child: Text(
                     '${context.tr('Reason')}: $reason',
                     style: GoogleFonts.inter(
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       color: Colors.grey.shade600,
                     ),
                   ),
@@ -2481,7 +2499,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                   child: Text(
                     '${context.tr('Remarks')}: $remarks',
                     style: GoogleFonts.inter(
-                      fontSize: 12,
+                      fontSize: 12.sp,
                       color: Colors.grey.shade600,
                     ),
                   ),
@@ -2500,8 +2518,8 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
     final usageLabel = isOperational ? 'Operational' : 'Trading';
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -2515,17 +2533,17 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
             children: [
               Text(
                 row['stock_item_name'] ?? 'Item',
-                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15, color: const Color(0xFF1E293B)),
+                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15.sp, color: Color(0xFF1E293B)),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: usageColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
                   usageLabel,
-                  style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: usageColor),
+                  style: GoogleFonts.inter(fontSize: 11.sp, fontWeight: FontWeight.w700, color: usageColor),
                 ),
               ),
             ],
@@ -2544,12 +2562,12 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
   Widget _rowItemDetail(String label, dynamic val) {
     if (val == null || val.toString().isEmpty) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: EdgeInsets.symmetric(vertical: 3),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(context.tr(label), style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade500)),
-          Text(context.tr(val.toString()), style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+          Text(context.tr(label), style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade500)),
+          Text(context.tr(val.toString()), style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
         ],
       ),
     );
@@ -2765,7 +2783,7 @@ class _ExpenseHeadDetailScreenState extends State<ExpenseHeadDetailScreen> {
                       widget.expenseHeadName,
                       style: GoogleFonts.inter(fontWeight: FontWeight.w700),
                     ),
-                    backgroundColor: const Color(0xFF000080),
+                    backgroundColor: Color(0xFF000080),
                     foregroundColor: Colors.white,
                     elevation: 0,
                     actions: [
@@ -2801,12 +2819,12 @@ class _ExpenseHeadDetailScreenState extends State<ExpenseHeadDetailScreen> {
                                     size: 48,
                                     color: Colors.red.shade300,
                                   ),
-                                  const SizedBox(height: 12),
+                                  SizedBox(height: 12),
                                   Text(
                                     err,
                                     style: GoogleFonts.inter(color: Colors.red.shade600),
                                   ),
-                                  const SizedBox(height: 16),
+                                  SizedBox(height: 16),
                                   ElevatedButton(
                                     onPressed: _load,
                                     child: Text(context.tr('Retry')),
@@ -2829,7 +2847,7 @@ class _ExpenseHeadDetailScreenState extends State<ExpenseHeadDetailScreen> {
                                         context.tr('No details for this head'),
                                         style: GoogleFonts.inter(
                                           color: Colors.grey.shade400,
-                                          fontSize: 15,
+                                          fontSize: 15.sp,
                                         ),
                                       ),
                                     ],
@@ -2846,7 +2864,7 @@ class _ExpenseHeadDetailScreenState extends State<ExpenseHeadDetailScreen> {
                                         BoxShadow(
                                           color: Colors.black.withOpacity(0.04),
                                           blurRadius: 6,
-                                          offset: const Offset(0, 2),
+                                          offset: Offset(0, 2),
                                         ),
                                       ],
                                     ),
@@ -2857,15 +2875,15 @@ class _ExpenseHeadDetailScreenState extends State<ExpenseHeadDetailScreen> {
                                           dividerColor: Colors.grey.shade200,
                                         ),
                                         child: DataTable(
-                                          headingRowColor: MaterialStateProperty.all(const Color(0xFF000080)),
+                                          headingRowColor: MaterialStateProperty.all(Color(0xFF000080)),
                                           headingTextStyle: GoogleFonts.inter(
                                             color: Colors.white,
                                             fontWeight: FontWeight.bold,
-                                            fontSize: 13,
+                                            fontSize: 13.sp,
                                           ),
                                           dataTextStyle: GoogleFonts.inter(
-                                            color: const Color(0xFF1E293B),
-                                            fontSize: 12,
+                                            color: Color(0xFF1E293B),
+                                            fontSize: 12.sp,
                                           ),
                                           columns: [
                                             DataColumn(label: Text(context.tr('SL'))),
@@ -2898,7 +2916,7 @@ class _ExpenseHeadDetailScreenState extends State<ExpenseHeadDetailScreen> {
                                                 return Colors.white;
                                               }),
                                               cells: [
-                                                DataCell(Text('#$slNo', style: const TextStyle(fontWeight: FontWeight.bold))),
+                                                DataCell(Text('#$slNo', style: TextStyle(fontWeight: FontWeight.bold))),
                                                 DataCell(Text(name)),
                                                 DataCell(Text(
                                                   '$currencySymbol${_fmt(amount)}',
@@ -3143,7 +3161,7 @@ class _IncomeDetailScreenState extends State<IncomeDetailScreen> {
                       widget.serviceName,
                       style: GoogleFonts.inter(fontWeight: FontWeight.w700),
                     ),
-                    backgroundColor: const Color(0xFF000080),
+                    backgroundColor: Color(0xFF000080),
                     foregroundColor: Colors.white,
                     elevation: 0,
                     actions: [
@@ -3179,12 +3197,12 @@ class _IncomeDetailScreenState extends State<IncomeDetailScreen> {
                                     size: 48,
                                     color: Colors.red.shade300,
                                   ),
-                                  const SizedBox(height: 12),
+                                  SizedBox(height: 12),
                                   Text(
                                     err,
                                     style: GoogleFonts.inter(color: Colors.red.shade600),
                                   ),
-                                  const SizedBox(height: 16),
+                                  SizedBox(height: 16),
                                   ElevatedButton(
                                     onPressed: _load,
                                     child: Text(context.tr('Retry')),
@@ -3207,7 +3225,7 @@ class _IncomeDetailScreenState extends State<IncomeDetailScreen> {
                                         context.tr('No details for this service'),
                                         style: GoogleFonts.inter(
                                           color: Colors.grey.shade400,
-                                          fontSize: 15,
+                                          fontSize: 15.sp,
                                         ),
                                       ),
                                     ],
@@ -3224,7 +3242,7 @@ class _IncomeDetailScreenState extends State<IncomeDetailScreen> {
                                         BoxShadow(
                                           color: Colors.black.withOpacity(0.04),
                                           blurRadius: 6,
-                                          offset: const Offset(0, 2),
+                                          offset: Offset(0, 2),
                                         ),
                                       ],
                                     ),
@@ -3235,15 +3253,15 @@ class _IncomeDetailScreenState extends State<IncomeDetailScreen> {
                                           dividerColor: Colors.grey.shade200,
                                         ),
                                         child: DataTable(
-                                          headingRowColor: MaterialStateProperty.all(const Color(0xFF000080)),
+                                          headingRowColor: MaterialStateProperty.all(Color(0xFF000080)),
                                           headingTextStyle: GoogleFonts.inter(
                                             color: Colors.white,
                                             fontWeight: FontWeight.bold,
-                                            fontSize: 13,
+                                            fontSize: 13.sp,
                                           ),
                                           dataTextStyle: GoogleFonts.inter(
-                                            color: const Color(0xFF1E293B),
-                                            fontSize: 12,
+                                            color: Color(0xFF1E293B),
+                                            fontSize: 12.sp,
                                           ),
                                           columns: [
                                             DataColumn(label: Text(context.tr('SL'))),
@@ -3281,7 +3299,7 @@ class _IncomeDetailScreenState extends State<IncomeDetailScreen> {
                                                 return Colors.white;
                                               }),
                                               cells: [
-                                                DataCell(Text('#$slNo', style: const TextStyle(fontWeight: FontWeight.bold))),
+                                                DataCell(Text('#$slNo', style: TextStyle(fontWeight: FontWeight.bold))),
                                                 DataCell(Text(formattedDate)),
                                                 DataCell(Text(invNo.toString())),
                                                 DataCell(Text('$custName ($custPhone)')),
@@ -3509,7 +3527,7 @@ class _IncomeVehicleBreakdownScreenState extends State<IncomeVehicleBreakdownScr
                       widget.serviceName,
                       style: GoogleFonts.inter(fontWeight: FontWeight.w700),
                     ),
-                    backgroundColor: const Color(0xFF000080),
+                    backgroundColor: Color(0xFF000080),
                     foregroundColor: Colors.white,
                     elevation: 0,
                     actions: [
@@ -3545,12 +3563,12 @@ class _IncomeVehicleBreakdownScreenState extends State<IncomeVehicleBreakdownScr
                                     size: 48,
                                     color: Colors.red.shade300,
                                   ),
-                                  const SizedBox(height: 12),
+                                  SizedBox(height: 12),
                                   Text(
                                     errorVal,
                                     style: GoogleFonts.inter(color: Colors.red.shade600),
                                   ),
-                                  const SizedBox(height: 16),
+                                  SizedBox(height: 16),
                                   ElevatedButton(
                                     onPressed: _load,
                                     child: Text(context.tr('Retry')),
@@ -3573,7 +3591,7 @@ class _IncomeVehicleBreakdownScreenState extends State<IncomeVehicleBreakdownScr
                                         context.tr('No data for this service'),
                                         style: GoogleFonts.inter(
                                           color: Colors.grey.shade400,
-                                          fontSize: 15,
+                                          fontSize: 15.sp,
                                         ),
                                       ),
                                     ],
@@ -3592,7 +3610,7 @@ class _IncomeVehicleBreakdownScreenState extends State<IncomeVehicleBreakdownScr
                                             BoxShadow(
                                               color: Colors.black.withOpacity(0.04),
                                               blurRadius: 6,
-                                              offset: const Offset(0, 2),
+                                              offset: Offset(0, 2),
                                             ),
                                           ],
                                         ),
@@ -3606,16 +3624,16 @@ class _IncomeVehicleBreakdownScreenState extends State<IncomeVehicleBreakdownScr
                                                   Text(
                                                     '${dataVal?['total_count'] ?? 0}',
                                                     style: GoogleFonts.inter(
-                                                      fontSize: 18,
+                                                      fontSize: 18.sp,
                                                       fontWeight: FontWeight.w800,
-                                                      color: const Color(0xFF1E293B),
+                                                      color: Color(0xFF1E293B),
                                                     ),
                                                   ),
                                                   const SizedBox(height: 3),
                                                   Text(
                                                     context.tr('Total Quantity'),
                                                     style: GoogleFonts.inter(
-                                                      fontSize: 11,
+                                                      fontSize: 11.sp,
                                                       color: Colors.grey.shade500,
                                                       fontWeight: FontWeight.w600,
                                                     ),
@@ -3630,16 +3648,16 @@ class _IncomeVehicleBreakdownScreenState extends State<IncomeVehicleBreakdownScr
                                                   Text(
                                                     '$currencySymbol${_fmt(dataVal?['total_revenue'])}',
                                                     style: GoogleFonts.inter(
-                                                      fontSize: 18,
+                                                      fontSize: 18.sp,
                                                       fontWeight: FontWeight.w800,
-                                                      color: const Color(0xFF059669),
+                                                      color: Color(0xFF059669),
                                                     ),
                                                   ),
                                                   const SizedBox(height: 3),
                                                   Text(
                                                     context.tr('Total Income'),
                                                     style: GoogleFonts.inter(
-                                                      fontSize: 11,
+                                                      fontSize: 11.sp,
                                                       color: Colors.grey.shade500,
                                                       fontWeight: FontWeight.w600,
                                                     ),
@@ -3661,7 +3679,7 @@ class _IncomeVehicleBreakdownScreenState extends State<IncomeVehicleBreakdownScr
                                             BoxShadow(
                                               color: Colors.black.withOpacity(0.04),
                                               blurRadius: 6,
-                                              offset: const Offset(0, 2),
+                                              offset: Offset(0, 2),
                                             ),
                                           ],
                                         ),
@@ -3673,15 +3691,15 @@ class _IncomeVehicleBreakdownScreenState extends State<IncomeVehicleBreakdownScr
                                             ),
                                             child: DataTable(
                                               showCheckboxColumn: false,
-                                              headingRowColor: MaterialStateProperty.all(const Color(0xFF000080)),
+                                              headingRowColor: MaterialStateProperty.all(Color(0xFF000080)),
                                               headingTextStyle: GoogleFonts.inter(
                                                 color: Colors.white,
                                                 fontWeight: FontWeight.bold,
-                                                fontSize: 13,
+                                                fontSize: 13.sp,
                                               ),
                                               dataTextStyle: GoogleFonts.inter(
-                                                color: const Color(0xFF1E293B),
-                                                fontSize: 12,
+                                                color: Color(0xFF1E293B),
+                                                fontSize: 12.sp,
                                               ),
                                               columns: [
                                                 DataColumn(label: Text(context.tr('SL'))),
@@ -4075,7 +4093,7 @@ class _ProfitReportScreenState extends State<ProfitReportScreen> {
                           context.tr('Profit Report'),
                           style: GoogleFonts.inter(fontWeight: FontWeight.w700),
                         ),
-                        backgroundColor: const Color(0xFF000080),
+                        backgroundColor: Color(0xFF000080),
                         foregroundColor: Colors.white,
                         elevation: 0,
                         actions: [
@@ -4104,7 +4122,7 @@ class _ProfitReportScreenState extends State<ProfitReportScreen> {
                           // Filter section (Date & branch selection)
                           Container(
                             color: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                             child: Column(
                               children: [
                                 Row(
@@ -4128,7 +4146,7 @@ class _ProfitReportScreenState extends State<ProfitReportScreen> {
                                     ElevatedButton(
                                       onPressed: _load,
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(0xFF000080),
+                                        backgroundColor: Color(0xFF000080),
                                         foregroundColor: Colors.white,
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(10),
@@ -4138,7 +4156,7 @@ class _ProfitReportScreenState extends State<ProfitReportScreen> {
                                           vertical: 13,
                                         ),
                                       ),
-                                      child: const Icon(Icons.refresh, size: 20),
+                                      child: Icon(Icons.refresh, size: 20),
                                     ),
                                   ],
                                 ),
@@ -4160,9 +4178,9 @@ class _ProfitReportScreenState extends State<ProfitReportScreen> {
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           children: [
                                             Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
-                                            const SizedBox(height: 12),
+                                            SizedBox(height: 12),
                                             Text(errorVal, style: GoogleFonts.inter(color: Colors.red.shade600)),
-                                            const SizedBox(height: 16),
+                                            SizedBox(height: 16),
                                             ElevatedButton(onPressed: _load, child: Text(context.tr('Retry'))),
                                           ],
                                         ),
@@ -4187,10 +4205,10 @@ class _ProfitReportScreenState extends State<ProfitReportScreen> {
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
                                             Padding(
-                                              padding: const EdgeInsets.all(8.0),
+                                              padding: EdgeInsets.all(8.0),
                                               child: Text(
                                                 context.tr('Income'),
-                                                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14, color: const Color(0xFF000080)),
+                                                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14.sp, color: Color(0xFF000080)),
                                               ),
                                             ),
                                             SingleChildScrollView(
@@ -4201,9 +4219,9 @@ class _ProfitReportScreenState extends State<ProfitReportScreen> {
                                                   columnSpacing: 10,
                                                   horizontalMargin: 8,
                                                   showCheckboxColumn: false,
-                                                  headingRowColor: MaterialStateProperty.all(const Color(0xFF000080)),
-                                                  headingTextStyle: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
-                                                  dataTextStyle: GoogleFonts.inter(color: const Color(0xFF1E293B), fontSize: 10),
+                                                  headingRowColor: MaterialStateProperty.all(Color(0xFF000080)),
+                                                  headingTextStyle: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11.sp),
+                                                  dataTextStyle: GoogleFonts.inter(color: Color(0xFF1E293B), fontSize: 10.sp),
                                                   columns: [
                                                     DataColumn(label: Text(context.tr('SL'))),
                                                     DataColumn(label: Text(context.tr('Service'))),
@@ -4244,10 +4262,10 @@ class _ProfitReportScreenState extends State<ProfitReportScreen> {
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
                                             Padding(
-                                              padding: const EdgeInsets.all(8.0),
+                                              padding: EdgeInsets.all(8.0),
                                               child: Text(
                                                 context.tr('Expense'),
-                                                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14, color: const Color(0xFFDC2626)),
+                                                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14.sp, color: Color(0xFFDC2626)),
                                               ),
                                             ),
                                             SingleChildScrollView(
@@ -4258,9 +4276,9 @@ class _ProfitReportScreenState extends State<ProfitReportScreen> {
                                                   columnSpacing: 10,
                                                   horizontalMargin: 8,
                                                   showCheckboxColumn: false,
-                                                  headingRowColor: MaterialStateProperty.all(const Color(0xFFDC2626)),
-                                                  headingTextStyle: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
-                                                  dataTextStyle: GoogleFonts.inter(color: const Color(0xFF1E293B), fontSize: 10),
+                                                  headingRowColor: MaterialStateProperty.all(Color(0xFFDC2626)),
+                                                  headingTextStyle: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11.sp),
+                                                  dataTextStyle: GoogleFonts.inter(color: Color(0xFF1E293B), fontSize: 10.sp),
                                                   columns: [
                                                     DataColumn(label: Text(context.tr('SL'))),
                                                     DataColumn(label: Text(context.tr('Expense'))),
@@ -4296,16 +4314,16 @@ class _ProfitReportScreenState extends State<ProfitReportScreen> {
                           // Bottom Profit / Loss card
                           Container(
                             color: Colors.white,
-                            padding: const EdgeInsets.all(16),
+                            padding: EdgeInsets.all(16),
                             child: SafeArea(
                               top: false,
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                                 decoration: BoxDecoration(
-                                  color: isProfit ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
+                                  color: isProfit ? Color(0xFFECFDF5) : Color(0xFFFEF2F2),
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
-                                    color: isProfit ? const Color(0xFF10B981).withValues(alpha: 0.3) : const Color(0xFFEF4444).withValues(alpha: 0.3),
+                                    color: isProfit ? Color(0xFF10B981).withValues(alpha: 0.3) : Color(0xFFEF4444).withValues(alpha: 0.3),
                                   ),
                                 ),
                                 child: Column(
@@ -4313,52 +4331,52 @@ class _ProfitReportScreenState extends State<ProfitReportScreen> {
                                     Row(
                                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                       children: [
-                                        Text(context.tr('Total Income'), style: GoogleFonts.inter(fontSize: 13, color: Colors.grey.shade600)),
-                                        Text('$currencySymbol${_fmt(totalIncome)}', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+                                        Text(context.tr('Total Income'), style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.grey.shade600)),
+                                        Text('$currencySymbol${_fmt(totalIncome)}', style: GoogleFonts.inter(fontSize: 14.sp, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
                                       ],
                                     ),
-                                    const SizedBox(height: 6),
+                                    SizedBox(height: 6),
                                     Row(
                                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                       children: [
-                                        Text(context.tr('Total Expense'), style: GoogleFonts.inter(fontSize: 13, color: Colors.grey.shade600)),
-                                        Text('$currencySymbol${_fmt(totalExpense)}', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+                                        Text(context.tr('Total Expense'), style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.grey.shade600)),
+                                        Text('$currencySymbol${_fmt(totalExpense)}', style: GoogleFonts.inter(fontSize: 14.sp, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
                                       ],
                                     ),
-                                    const SizedBox(height: 6),
+                                    SizedBox(height: 6),
                                     Row(
                                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                       children: [
-                                        Text(context.tr('Receivables (Outstanding)'), style: GoogleFonts.inter(fontSize: 13, color: Colors.grey.shade600)),
-                                        Text('$currencySymbol${_fmt(totalOutstanding)}', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFFEA580C))),
+                                        Text(context.tr('Receivables (Outstanding)'), style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.grey.shade600)),
+                                        Text('$currencySymbol${_fmt(totalOutstanding)}', style: GoogleFonts.inter(fontSize: 14.sp, fontWeight: FontWeight.bold, color: Color(0xFFEA580C))),
                                       ],
                                     ),
-                                    const SizedBox(height: 6),
+                                    SizedBox(height: 6),
                                     Row(
                                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                       children: [
-                                        Text(context.tr('Payables'), style: GoogleFonts.inter(fontSize: 13, color: Colors.grey.shade600)),
-                                        Text('$currencySymbol${_fmt(totalPayables)}', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFFEA580C))),
+                                        Text(context.tr('Payables'), style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.grey.shade600)),
+                                        Text('$currencySymbol${_fmt(totalPayables)}', style: GoogleFonts.inter(fontSize: 14.sp, fontWeight: FontWeight.bold, color: Color(0xFFEA580C))),
                                       ],
                                     ),
-                                    const Divider(height: 20),
+                                    Divider(height: 20),
                                     Row(
                                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                       children: [
                                         Text(
                                           isProfit ? context.tr('Net Profit') : context.tr('Net Loss'),
                                           style: GoogleFonts.inter(
-                                            fontSize: 16,
+                                            fontSize: 16.sp,
                                             fontWeight: FontWeight.bold,
-                                            color: isProfit ? const Color(0xFF047857) : const Color(0xFFB91C1C),
+                                            color: isProfit ? Color(0xFF047857) : Color(0xFFB91C1C),
                                           ),
                                         ),
                                         Text(
                                           '$currencySymbol${_fmt(netProfit.abs())}',
                                           style: GoogleFonts.inter(
-                                            fontSize: 20,
+                                            fontSize: 20.sp,
                                             fontWeight: FontWeight.w800,
-                                            color: isProfit ? const Color(0xFF047857) : const Color(0xFFB91C1C),
+                                            color: isProfit ? Color(0xFF047857) : Color(0xFFB91C1C),
                                           ),
                                         ),
                                       ],
@@ -4397,14 +4415,14 @@ class _ProfitReportScreenState extends State<ProfitReportScreen> {
             labelText: context.tr('Branch'),
             filled: true,
             fillColor: const Color(0xFFF8FAFF),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: const Color(0xFF000080).withOpacity(0.2)),
+              borderSide: BorderSide(color: Color(0xFF000080).withOpacity(0.2)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: const Color(0xFF000080).withOpacity(0.2)),
+              borderSide: BorderSide(color: Color(0xFF000080).withOpacity(0.2)),
             ),
           ),
           items: [
@@ -4432,21 +4450,21 @@ class _ProfitReportScreenState extends State<ProfitReportScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: const Color(0xFFF8FAFF),
+          color: Color(0xFFF8FAFF),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFF000080).withOpacity(0.2)),
+          border: Border.all(color: Color(0xFF000080).withOpacity(0.2)),
         ),
         child: Row(
           children: [
-            Icon(Icons.calendar_today_outlined, size: 15, color: const Color(0xFF000080).withOpacity(0.7)),
-            const SizedBox(width: 6),
+            Icon(Icons.calendar_today_outlined, size: 15, color: Color(0xFF000080).withOpacity(0.7)),
+            SizedBox(width: 6),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: GoogleFonts.inter(fontSize: 10, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
+                Text(label, style: GoogleFonts.inter(fontSize: 10.sp, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
                 Text(
                   DateFormat('dd MMM yy').format(date),
-                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFF1E293B)),
+                  style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
                 ),
               ],
             ),

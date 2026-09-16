@@ -154,7 +154,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
         ),
         content: Text(
           ctx.tr('Are you sure you want to delete this expense?'),
-          style: GoogleFonts.inter(fontSize: 14),
+          style: GoogleFonts.inter(fontSize: 14.sp),
         ),
         actions: [
           TextButton(
@@ -164,7 +164,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade700),
-            child: Text(ctx.tr('Delete'), style: const TextStyle(color: Colors.white)),
+            child: Text(ctx.tr('Delete'), style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -233,7 +233,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
           Text(
             label,
             style: GoogleFonts.inter(
-              fontSize: 12,
+              fontSize: 12.sp,
               fontWeight: FontWeight.w500,
               color: textColor,
             ),
@@ -248,18 +248,18 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     final auth = context.watch<AuthProvider>();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6F9),
+      backgroundColor: Color(0xFFF4F6F9),
       appBar: AppBar(
         title: Text(
           context.tr('Expenses'),
           style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white),
         ),
-        backgroundColor: const Color(0xFF000080),
-        iconTheme: const IconThemeData(color: Colors.white),
+        backgroundColor: Color(0xFF000080),
+        iconTheme: IconThemeData(color: Colors.white),
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
+            icon: Icon(Icons.refresh, color: Colors.white),
             tooltip: context.tr('Refresh'),
             onPressed: _fetchExpenses,
           ),
@@ -267,8 +267,8 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _navigateToAddExpense,
-        backgroundColor: const Color(0xFF000080),
-        icon: const Icon(Icons.add, color: Colors.white),
+        backgroundColor: Color(0xFF000080),
+        icon: Icon(Icons.add, color: Colors.white),
         label: Text(
           context.tr('Add Expense'),
           style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white),
@@ -290,7 +290,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                     decoration: InputDecoration(
                       hintText: context.tr('Search expenses...'),
                       hintStyle: GoogleFonts.inter(color: Colors.grey.shade500),
-                      prefixIcon: const Icon(Icons.search, color: Color(0xFF000080)),
+                      prefixIcon: Icon(Icons.search, color: Color(0xFF000080)),
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
@@ -314,19 +314,19 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                               onTap: _pickFromDate,
                               borderRadius: BorderRadius.circular(8),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                 decoration: BoxDecoration(
                                   color: Colors.white.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.calendar_today, size: 14, color: Colors.white70),
-                                    const SizedBox(width: 6),
+                                    Icon(Icons.calendar_today, size: 14, color: Colors.white70),
+                                    SizedBox(width: 6),
                                     Expanded(
                                       child: Text(
                                         fromDate != null ? DateFormat('dd-MM-yyyy').format(fromDate) : context.tr('From Date'),
-                                        style: GoogleFonts.inter(fontSize: 12, color: Colors.white),
+                                        style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.white),
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
@@ -347,19 +347,19 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                               onTap: _pickToDate,
                               borderRadius: BorderRadius.circular(8),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                 decoration: BoxDecoration(
                                   color: Colors.white.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.calendar_today, size: 14, color: Colors.white70),
-                                    const SizedBox(width: 6),
+                                    Icon(Icons.calendar_today, size: 14, color: Colors.white70),
+                                    SizedBox(width: 6),
                                     Expanded(
                                       child: Text(
                                         toDate != null ? DateFormat('dd-MM-yyyy').format(toDate) : context.tr('To Date'),
-                                        style: GoogleFonts.inter(fontSize: 12, color: Colors.white),
+                                        style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.white),
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
@@ -389,12 +389,12 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                                       onTap: _clearDateFilters,
                                       borderRadius: BorderRadius.circular(8),
                                       child: Container(
-                                        padding: const EdgeInsets.all(8),
+                                        padding: EdgeInsets.all(8),
                                         decoration: BoxDecoration(
                                           color: Colors.white.withValues(alpha: 0.2),
                                           shape: BoxShape.circle,
                                         ),
-                                        child: const Icon(Icons.close, size: 14, color: Colors.white),
+                                        child: Icon(Icons.close, size: 14, color: Colors.white),
                                       ),
                                     ),
                                   );
@@ -416,7 +416,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                           valueListenable: _selectedFilterBranchIdNotifier,
                           builder: (context, selectedBranchId, child) {
                             return Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              padding: EdgeInsets.symmetric(horizontal: 12),
                               decoration: BoxDecoration(
                                 color: Colors.white.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(8),
@@ -425,18 +425,18 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                                 child: DropdownButton<String?>(
                                   value: selectedBranchId,
                                   isExpanded: true,
-                                  dropdownColor: const Color(0xFF000080),
-                                  icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
+                                  dropdownColor: Color(0xFF000080),
+                                  icon: Icon(Icons.arrow_drop_down, color: Colors.white),
                                   hint: Text(
                                     context.tr('All Branches'),
-                                    style: GoogleFonts.inter(fontSize: 13, color: Colors.white70),
+                                    style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white70),
                                   ),
                                   items: [
                                     DropdownMenuItem<String?>(
                                       value: null,
                                       child: Text(
                                         context.tr('All Branches'),
-                                        style: GoogleFonts.inter(fontSize: 13, color: Colors.white),
+                                        style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
                                       ),
                                     ),
                                     ...branches.map((b) {
@@ -445,7 +445,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                                         value: branch['id']?.toString(),
                                         child: Text(
                                           branch['name'] ?? '',
-                                          style: GoogleFonts.inter(fontSize: 13, color: Colors.white),
+                                          style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
                                         ),
                                       );
                                     }),
@@ -468,7 +468,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                     builder: (context, expenses, child) {
                       final totalAmount = _calculateTotalAmount(expenses);
                       return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(12),
@@ -481,13 +481,13 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                               children: [
                                 Text(
                                   context.tr('Total Expenses'),
-                                  style: GoogleFonts.inter(fontSize: 12, color: Colors.white70),
+                                  style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.white70),
                                 ),
-                                const SizedBox(height: 2),
+                                SizedBox(height: 2),
                                 Text(
                                   '${auth.currencySymbol}${totalAmount.toStringAsFixed(2)}',
                                   style: GoogleFonts.inter(
-                                    fontSize: 20,
+                                    fontSize: 20.sp,
                                     fontWeight: FontWeight.bold,
                                     color: Colors.white,
                                   ),
@@ -495,7 +495,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                               ],
                             ),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(20),
@@ -503,9 +503,9 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                               child: Text(
                                 '${expenses.length} ${context.tr("Entries")}',
                                 style: GoogleFonts.inter(
-                                  fontSize: 12,
+                                  fontSize: 12.sp,
                                   fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF000080),
+                                  color: Color(0xFF000080),
                                 ),
                               ),
                             ),
@@ -538,25 +538,25 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(Icons.receipt_long_outlined, size: 64, color: Colors.grey.shade400),
-                              const SizedBox(height: 12),
+                              SizedBox(height: 12),
                               Text(
                                 context.tr('No expenses recorded yet'),
                                 style: GoogleFonts.inter(
-                                  fontSize: 16,
+                                  fontSize: 16.sp,
                                   color: Colors.grey.shade600,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
-                              const SizedBox(height: 16),
+                              SizedBox(height: 16),
                               ElevatedButton.icon(
                                 onPressed: _navigateToAddExpense,
-                                icon: const Icon(Icons.add, color: Colors.white),
+                                icon: Icon(Icons.add, color: Colors.white),
                                 label: Text(
                                   context.tr('Add Expense'),
                                   style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white),
                                 ),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF000080),
+                                  backgroundColor: Color(0xFF000080),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                 ),
                               ),
@@ -586,16 +586,16 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                           final remarks = (item['remarks'] ?? '').toString();
 
                           return Container(
-                            margin: const EdgeInsets.only(bottom: 14),
+                            margin: EdgeInsets.only(bottom: 14),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFF000080).withValues(alpha: 0.08),
+                                  color: Color(0xFF000080).withValues(alpha: 0.08),
                                   blurRadius: 16,
                                   spreadRadius: 1,
-                                  offset: const Offset(0, 4),
+                                  offset: Offset(0, 4),
                                 ),
                               ],
                               border: Border.all(
@@ -626,13 +626,13 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                                           child: Container(
                                             padding: REdgeInsets.symmetric(horizontal: 10, vertical: 5),
                                             decoration: BoxDecoration(
-                                              color: const Color(0xFF000080).withValues(alpha: 0.08),
+                                              color: Color(0xFF000080).withValues(alpha: 0.08),
                                               borderRadius: BorderRadius.circular(20.r),
                                             ),
                                             child: Row(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
-                                                Icon(Icons.label_outlined, size: 13.r, color: const Color(0xFF000080)),
+                                                Icon(Icons.label_outlined, size: 13.r, color: Color(0xFF000080)),
                                                 SizedBox(width: 4.w),
                                                 Flexible(
                                                   child: Text(
@@ -642,7 +642,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                                                     style: GoogleFonts.inter(
                                                       fontSize: 12.sp,
                                                       fontWeight: FontWeight.w700,
-                                                      color: const Color(0xFF000080),
+                                                      color: Color(0xFF000080),
                                                     ),
                                                   ),
                                                 ),
@@ -659,15 +659,15 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                                             color: Colors.red.shade700,
                                           ),
                                         ),
-                                        const SizedBox(width: 8),
+                                        SizedBox(width: 8),
                                         Material(
                                           color: Colors.red.shade50,
-                                          shape: const CircleBorder(),
+                                          shape: CircleBorder(),
                                           child: InkWell(
                                             onTap: () => _deleteExpense(item['id'].toString()),
                                             customBorder: const CircleBorder(),
                                             child: Padding(
-                                              padding: const EdgeInsets.all(6.0),
+                                              padding: EdgeInsets.all(6.0),
                                               child: Icon(
                                                 Icons.delete_outline,
                                                 color: Colors.red.shade700,
@@ -688,9 +688,9 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                                           child: Text(
                                             expenseName.isNotEmpty ? expenseName : headName,
                                             style: GoogleFonts.inter(
-                                              fontSize: 17,
+                                              fontSize: 17.sp,
                                               fontWeight: FontWeight.w700,
-                                              color: const Color(0xFF1E293B),
+                                              color: Color(0xFF1E293B),
                                               height: 1.2,
                                             ),
                                           ),
@@ -747,7 +747,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                                               child: Text(
                                                 remarks,
                                                 style: GoogleFonts.inter(
-                                                  fontSize: 12,
+                                                  fontSize: 12.sp,
                                                   fontStyle: FontStyle.italic,
                                                   color: Colors.grey.shade700,
                                                 ),
@@ -901,7 +901,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       lastDate: DateTime.now().add(const Duration(days: 365)),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: const ColorScheme.light(
+          colorScheme: ColorScheme.light(
             primary: Color(0xFF000080),
             onPrimary: Colors.white,
             onSurface: Colors.black,
@@ -1066,14 +1066,14 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     final auth = context.watch<AuthProvider>();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6F9),
+      backgroundColor: Color(0xFFF4F6F9),
       appBar: AppBar(
         title: Text(
           context.tr('Add Expense'),
           style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white),
         ),
-        backgroundColor: const Color(0xFF000080),
-        iconTheme: const IconThemeData(color: Colors.white),
+        backgroundColor: Color(0xFF000080),
+        iconTheme: IconThemeData(color: Colors.white),
         elevation: 0,
       ),
       body: ValueListenableBuilder<bool>(
@@ -1094,7 +1094,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(errorMsg, style: GoogleFonts.inter(color: Colors.red)),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       ElevatedButton(
                         onPressed: _fetchInitialData,
                         child: Text(context.tr('Retry')),
@@ -1131,7 +1131,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                         value: branch['id']?.toString(),
                                         child: Text(
                                           branch['name'] ?? '',
-                                          style: GoogleFonts.inter(fontSize: 15),
+                                          style: GoogleFonts.inter(fontSize: 15.sp),
                                         ),
                                       );
                                     }).toList(),
@@ -1190,7 +1190,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                                 ? selectedExpenseHead['name'] ?? ''
                                                 : context.tr('Select Expense Head'),
                                             style: GoogleFonts.inter(
-                                              fontSize: 15,
+                                              fontSize: 15.sp,
                                               color: selectedExpenseHead != null
                                                   ? Colors.black87
                                                   : Colors.grey.shade500,
@@ -1239,9 +1239,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                 title: Text(
                                   context.tr('Has Supplier / Credit Supplier Payment'),
                                   style: GoogleFonts.inter(
-                                    fontSize: 14,
+                                    fontSize: 14.sp,
                                     fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF000080),
+                                    color: Color(0xFF000080),
                                   ),
                                 ),
                                 value: hasSupplier,
@@ -1285,7 +1285,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                               value: sup['id']?.toString(),
                                               child: Text(
                                                 sup['name'] ?? '',
-                                                style: GoogleFonts.inter(fontSize: 15),
+                                                style: GoogleFonts.inter(fontSize: 15.sp),
                                               ),
                                             );
                                           }).toList(),
@@ -1331,9 +1331,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                         return ElevatedButton(
                           onPressed: isSaving ? null : _save,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF000080),
+                            backgroundColor: Color(0xFF000080),
                             foregroundColor: Colors.white,
-                            minimumSize: const Size.fromHeight(52),
+                            minimumSize: Size.fromHeight(52),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -1351,7 +1351,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                               : Text(
                                   context.tr('Save Expense'),
                                   style: GoogleFonts.inter(
-                                    fontSize: 16,
+                                    fontSize: 16.sp,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -1374,7 +1374,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     required List<Widget> children,
   }) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -1382,7 +1382,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 8,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 2),
           )
         ],
       ),
@@ -1397,8 +1397,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                 title,
                 style: GoogleFonts.inter(
                   fontWeight: FontWeight.w700,
-                  fontSize: 15,
-                  color: const Color(0xFF000080),
+                  fontSize: 15.sp,
+                  color: Color(0xFF000080),
                 ),
               ),
             ],
@@ -1414,7 +1414,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     return Text(
       text,
       style: GoogleFonts.inter(
-        fontSize: 13,
+        fontSize: 13.sp,
         fontWeight: FontWeight.w600,
         color: Colors.grey.shade700,
       ),
@@ -1450,7 +1450,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                 Expanded(
                   child: Text(
                     value,
-                    style: GoogleFonts.inter(fontSize: 15, color: Colors.black87),
+                    style: GoogleFonts.inter(fontSize: 15.sp, color: Colors.black87),
                   ),
                 ),
                 Icon(Icons.arrow_drop_down, color: Colors.grey.shade600),
@@ -1484,10 +1484,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
           decoration: InputDecoration(
             prefixIcon: Icon(icon, color: Colors.grey.shade600),
             hintText: hintText,
-            hintStyle: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 14),
+            hintStyle: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 14.sp),
             filled: true,
-            fillColor: const Color(0xFFFAFAFA),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            fillColor: Color(0xFFFAFAFA),
+            contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(color: Colors.grey.shade300),
@@ -1523,7 +1523,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
           controller: controller,
           keyboardType: keyboardType,
           maxLines: maxLines,
-          style: GoogleFonts.inter(fontSize: 15),
+          style: GoogleFonts.inter(fontSize: 15.sp),
           decoration: InputDecoration(
             prefixIcon: Icon(icon, color: Colors.grey.shade600),
             filled: true,
@@ -1571,10 +1571,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                       height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF000080)),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Text(
                       context.tr('Loading expense items...'),
-                      style: GoogleFonts.inter(fontSize: 14, color: Colors.grey.shade600),
+                      style: GoogleFonts.inter(fontSize: 14.sp, color: Colors.grey.shade600),
                     ),
                   ],
                 ),
@@ -1617,14 +1617,14 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                 value: name,
                                 child: Text(
                                   name,
-                                  style: GoogleFonts.inter(fontSize: 15),
+                                  style: GoogleFonts.inter(fontSize: 15.sp),
                                 ),
                               )),
                           DropdownMenuItem<String>(
                             value: '__CUSTOM__',
                             child: Text(
                               '+ ${context.tr("Custom Expense Name")}',
-                              style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: const Color(0xFF000080)),
+                              style: GoogleFonts.inter(fontSize: 15.sp, fontWeight: FontWeight.bold, color: Color(0xFF000080)),
                             ),
                           ),
                         ],
@@ -1776,11 +1776,11 @@ class _ExpenseHeadBottomSheet extends StatelessWidget {
                           }
                         },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF000080),
+                    backgroundColor: Color(0xFF000080),
                     foregroundColor: Colors.white,
                   ),
                   child: isCreating
-                      ? const SizedBox(
+                      ? SizedBox(
                           height: 18,
                           width: 18,
                           child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
@@ -1819,9 +1819,9 @@ class _ExpenseHeadBottomSheet extends StatelessWidget {
               Text(
                 context.tr('Select Expense Head'),
                 style: GoogleFonts.inter(
-                  fontSize: 18,
+                  fontSize: 18.sp,
                   fontWeight: FontWeight.bold,
-                  color: const Color(0xFF000080),
+                  color: Color(0xFF000080),
                 ),
               ),
               Row(
@@ -1829,7 +1829,7 @@ class _ExpenseHeadBottomSheet extends StatelessWidget {
                   if (context.read<AuthProvider>().isCompanyAdmin)
                     IconButton(
                       onPressed: () => _addNewExpenseHead(context),
-                      icon: const Icon(Icons.add, color: Color(0xFF000080)),
+                      icon: Icon(Icons.add, color: Color(0xFF000080)),
                       tooltip: context.tr('Add Expense Head'),
                     ),
                   IconButton(
@@ -1880,7 +1880,7 @@ class _ExpenseHeadBottomSheet extends StatelessWidget {
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      trailing: const Icon(Icons.chevron_right, size: 18),
+                      trailing: Icon(Icons.chevron_right, size: 18),
                       onTap: () {
                         onSelected(head);
                         Navigator.pop(context);

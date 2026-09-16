@@ -115,10 +115,10 @@ class _OilStockBodyViewState extends State<OilStockBodyView> {
                   Row(
                     children: [
                       const Icon(Icons.add_business_outlined, color: Color(0xFF000080)),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Text(
                         context.tr('Add Oil Stock (Stock-In)'),
-                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16, color: const Color(0xFF000080)),
+                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16.sp, color: Color(0xFF000080)),
                       ),
                     ],
                   ),
@@ -134,7 +134,7 @@ class _OilStockBodyViewState extends State<OilStockBodyView> {
                       final vol = p['recommended_qty_litres'] ?? 1.0;
                       return DropdownMenuItem<String>(
                         value: p['id'] as String,
-                        child: Text('$name (${vol}L)', style: const TextStyle(fontSize: 13)),
+                        child: Text('$name (${vol}L)', style: TextStyle(fontSize: 13.sp)),
                       );
                     }).toList(),
                     onChanged: (val) => setModalState(() => selectedProductId = val),
@@ -198,13 +198,13 @@ class _OilStockBodyViewState extends State<OilStockBodyView> {
                             }
                           },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF000080),
+                      backgroundColor: Color(0xFF000080),
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
                     child: isSubmitting
-                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        ? SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                         : Text(context.tr('Record Stock-In'), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
                   ),
                 ],
@@ -229,26 +229,26 @@ class _OilStockBodyViewState extends State<OilStockBodyView> {
             builder: (context, stocks, _) => ValueListenableBuilder<String>(
               valueListenable: _searchQuery,
               builder: (context, query, _) => Scaffold(
-                backgroundColor: const Color(0xFFF1F5F9),
+                backgroundColor: Color(0xFFF1F5F9),
                 appBar: widget.showAppBar
                     ? AppBar(
                         title: Text(context.tr('Oil Stock Management'), style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
-                        backgroundColor: const Color(0xFF000080),
+                        backgroundColor: Color(0xFF000080),
                         foregroundColor: Colors.white,
                         elevation: 0,
                       )
                     : null,
                 body: loading
-                    ? const Center(child: CircularProgressIndicator())
+                    ? Center(child: CircularProgressIndicator())
                     : errMsg.isNotEmpty
-                        ? Center(child: Text(errMsg, style: const TextStyle(color: Colors.red)))
+                        ? Center(child: Text(errMsg, style: TextStyle(color: Colors.red)))
                         : Column(
                             children: [
                               if (branches.isNotEmpty)
                                 Padding(
                                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                                    padding: EdgeInsets.symmetric(horizontal: 14, vertical: 2),
                                     decoration: BoxDecoration(
                                       color: Colors.white,
                                       borderRadius: BorderRadius.circular(12),
@@ -266,7 +266,7 @@ class _OilStockBodyViewState extends State<OilStockBodyView> {
                                             value: bId,
                                             child: Text(
                                               'Branch: $bName',
-                                              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14, color: const Color(0xFF000080)),
+                                              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14.sp, color: Color(0xFF000080)),
                                             ),
                                           );
                                         }).toList(),
@@ -304,7 +304,7 @@ class _OilStockBodyViewState extends State<OilStockBodyView> {
                                     fillColor: Colors.white,
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
                                     enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
-                                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF000080), width: 1.5)),
+                                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Color(0xFF000080), width: 1.5)),
                                     contentPadding: const EdgeInsets.symmetric(vertical: 12),
                                   ),
                                 ),
@@ -341,43 +341,43 @@ class _OilStockBodyViewState extends State<OilStockBodyView> {
                                           return Card(
                                             color: Colors.white,
                                             elevation: 0,
-                                            margin: const EdgeInsets.only(bottom: 12),
+                                            margin: EdgeInsets.only(bottom: 12),
                                             shape: RoundedRectangleBorder(
                                               borderRadius: BorderRadius.circular(14),
                                               side: BorderSide(color: isLow ? Colors.red.shade200 : Colors.grey.shade200),
                                             ),
                                             child: Padding(
-                                              padding: const EdgeInsets.all(16),
+                                              padding: EdgeInsets.all(16),
                                               child: Row(
                                                 children: [
                                                   Container(
-                                                    padding: const EdgeInsets.all(12),
+                                                    padding: EdgeInsets.all(12),
                                                     decoration: BoxDecoration(
-                                                      color: (isLow ? Colors.red : const Color(0xFF000080)).withOpacity(0.08),
+                                                      color: (isLow ? Colors.red : Color(0xFF000080)).withOpacity(0.08),
                                                       shape: BoxShape.circle,
                                                     ),
-                                                    child: Icon(Icons.oil_barrel, color: isLow ? Colors.red : const Color(0xFF000080), size: 26),
+                                                    child: Icon(Icons.oil_barrel, color: isLow ? Colors.red : Color(0xFF000080), size: 26),
                                                   ),
-                                                  const SizedBox(width: 16),
+                                                  SizedBox(width: 16),
                                                   Expanded(
                                                     child: Column(
                                                       crossAxisAlignment: CrossAxisAlignment.start,
                                                       children: [
-                                                        Text(product, style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: const Color(0xFF1e293b))),
-                                                        const SizedBox(height: 2),
-                                                        Text('$brand · Grade: $grade · Volume: ${vol}L', style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade500)),
+                                                        Text(product, style: GoogleFonts.inter(fontSize: 15.sp, fontWeight: FontWeight.bold, color: Color(0xFF1e293b))),
+                                                        SizedBox(height: 2),
+                                                        Text('$brand · Grade: $grade · Volume: ${vol}L', style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade500)),
                                                         if (isLow) ...[
-                                                          const SizedBox(height: 6),
+                                                          SizedBox(height: 6),
                                                           Container(
-                                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                                             decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(4)),
-                                                            child: Text(context.tr('LOW STOCK ALERT'), style: GoogleFonts.inter(fontSize: 10, color: Colors.red.shade700, fontWeight: FontWeight.bold)),
+                                                            child: Text(context.tr('LOW STOCK ALERT'), style: GoogleFonts.inter(fontSize: 10.sp, color: Colors.red.shade700, fontWeight: FontWeight.bold)),
                                                           ),
                                                         ],
                                                       ],
                                                     ),
                                                   ),
-                                                  Text('${qty.toInt()} units', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w900, color: isLow ? Colors.red.shade700 : const Color(0xFF000080))),
+                                                  Text('${qty.toInt()} units', style: GoogleFonts.inter(fontSize: 18.sp, fontWeight: FontWeight.w900, color: isLow ? Colors.red.shade700 : Color(0xFF000080))),
                                                 ],
                                               ),
                                             ),
@@ -392,9 +392,9 @@ class _OilStockBodyViewState extends State<OilStockBodyView> {
                           ),
                 floatingActionButton: FloatingActionButton.extended(
                   onPressed: () => _openStockInModal(stocks),
-                  backgroundColor: const Color(0xFF000080),
+                  backgroundColor: Color(0xFF000080),
                   foregroundColor: Colors.white,
-                  icon: const Icon(Icons.add),
+                  icon: Icon(Icons.add),
                   label: Text(context.tr('Stock-In'), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
                 ),
               ),

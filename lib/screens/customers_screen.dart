@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
+import '../config/country_config.dart';
 import 'add_customer_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -46,6 +47,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
   List<dynamic> _makes = [];
   List<dynamic> _brandModels = [];
   List<dynamic> _colors = [];
+  List<dynamic> _emissionStandards = [];
 
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -293,6 +295,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
       final makes = formRes['makes'] as List<dynamic>? ?? [];
       final brandModels = formRes['brand_models'] as List<dynamic>? ?? [];
       final colors = formRes['colors'] as List<dynamic>? ?? [];
+      final emissionStandards = formRes['emission_standards'] as List<dynamic>? ?? [];
 
       final c = customerRes['customer'] as Map<String, dynamic>;
       final typeId = c['customer_type_id'] as String?;
@@ -303,22 +306,27 @@ class _CustomersScreenState extends State<CustomersScreen> {
 
       _nameController.text = c['name'] ?? '';
 
-      // Detect & strip country code from phone
+      // Strip dial code from phone — supports any country via CountryConfig
+      final allCountries = CountryConfig.all
+        ..sort((a, b) => b.phoneDialCode.length.compareTo(a.phoneDialCode.length));
+
       String rawPhone = c['phone'] ?? '';
-      String phoneCode = '+91';
-      for (final code in ['971', '966', '965', '968', '974', '973', '91']) {
-        if (rawPhone.startsWith(code) && rawPhone.length > 10) {
-          phoneCode = '+$code';
-          rawPhone = rawPhone.substring(code.length);
+      String phoneCode = CountryConfig.phoneDialCode;
+      for (final country in allCountries) {
+        final cleanCode = country.phoneDialCode.replaceAll('+', '');
+        if (rawPhone.startsWith(cleanCode) && rawPhone.length > cleanCode.length) {
+          phoneCode = country.phoneDialCode;
+          rawPhone = rawPhone.substring(cleanCode.length);
           break;
         }
       }
       String rawWhatsapp = c['whatsapp_number'] ?? '';
-      String whatsappCode = '+91';
-      for (final code in ['971', '966', '965', '968', '974', '973', '91']) {
-        if (rawWhatsapp.startsWith(code) && rawWhatsapp.length > 10) {
-          whatsappCode = '+$code';
-          rawWhatsapp = rawWhatsapp.substring(code.length);
+      String whatsappCode = CountryConfig.phoneDialCode;
+      for (final country in allCountries) {
+        final cleanCode = country.phoneDialCode.replaceAll('+', '');
+        if (rawWhatsapp.startsWith(cleanCode) && rawWhatsapp.length > cleanCode.length) {
+          whatsappCode = country.phoneDialCode;
+          rawWhatsapp = rawWhatsapp.substring(cleanCode.length);
           break;
         }
       }
@@ -339,6 +347,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
         final brandId = v['brand_model_id']?.toString();
         final makeId = v['make_id']?.toString();
         final colorId = v['color_id']?.toString();
+        final emissionId = v['emission_standard_id']?.toString();
 
         final matchedSegment = segmentId != null
             ? vehicleTypeModels.firstWhere((m) => m['id'].toString() == segmentId, orElse: () => null)
@@ -363,6 +372,10 @@ class _CustomersScreenState extends State<CustomersScreen> {
             ? colors.firstWhere((col) => col['id'].toString() == colorId, orElse: () => null)
             : null;
 
+        final matchedEmission = emissionId != null
+            ? emissionStandards.firstWhere((e) => e['id'].toString() == emissionId, orElse: () => null)
+            : null;
+
         _existingVehicleRows.add({
           'id': v['id'],
           'controller': TextEditingController(text: v['vehicle_number'] ?? ''),
@@ -371,6 +384,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
           'make': matchedMake,
           'brand_model': matchedBrand,
           'color': matchedColor,
+          'emission_standard': matchedEmission,
           'wheel_type': v['wheel_type'] ?? 'normal_wheel',
         });
       }
@@ -384,6 +398,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
       _makes = makes;
       _brandModels = brandModels;
       _colors = colors;
+      _emissionStandards = emissionStandards;
       _selectedCustomerType.value = selectedType as Map<String, dynamic>?;
       _selectedPhoneCode.value = phoneCode;
       _selectedWhatsappCode.value = whatsappCode;
@@ -446,6 +461,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
           _showMsg('Please select Segment/Model for Vehicle ${i + 1} ($num)', isError: true);
           return;
         }
+        final emission = row['emission_standard'];
         updatedVehicles.add({
           'id': row['id'],
           'vehicle_number': num,
@@ -453,6 +469,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
           'brand_model_id': brand != null ? brand['id'] : null,
           'make_id': make != null ? make['id'] : null,
           'color_id': color != null ? color['id'] : null,
+          'emission_standard_id': emission != null ? emission['id'] : null,
           'wheel_type': row['wheel_type'] ?? 'normal_wheel',
         });
       } else {
@@ -476,12 +493,14 @@ class _CustomersScreenState extends State<CustomersScreen> {
           _showMsg('Please select Segment/Model for New Vehicle ${i + 1} ($num)', isError: true);
           return;
         }
+        final emission = row['emission_standard'];
         newVehicles.add({
           'vehicle_number': num,
           'vehicle_model_id': model['id'],
           'brand_model_id': brand != null ? brand['id'] : null,
           'make_id': make != null ? make['id'] : null,
           'color_id': color != null ? color['id'] : null,
+          'emission_standard_id': emission != null ? emission['id'] : null,
           'wheel_type': row['wheel_type'] ?? 'normal_wheel',
         });
       } else {
@@ -655,7 +674,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                   getTitle(),
                   style: GoogleFonts.inter(fontWeight: FontWeight.w700),
                 ),
-                backgroundColor: const Color(0xFF000080),
+                backgroundColor: Color(0xFF000080),
                 foregroundColor: Colors.white,
                 elevation: 0,
                 leading: (selectedCust != null || categoryVal != null)
@@ -731,12 +750,12 @@ class _CustomersScreenState extends State<CustomersScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       Text(listErr, style: GoogleFonts.inter(color: Colors.red.shade600)),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       ElevatedButton.icon(
                           onPressed: _fetchCustomers,
-                          icon: const Icon(Icons.refresh),
+                          icon: Icon(Icons.refresh),
                           label: Text(context.tr('Retry'))),
                     ],
                   ));
@@ -819,7 +838,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -827,7 +846,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
             BoxShadow(
               color: Colors.black.withOpacity(0.04),
               blurRadius: 8,
-              offset: const Offset(0, 2),
+              offset: Offset(0, 2),
             )
           ],
           border: Border.all(color: color.withOpacity(0.15), width: 1),
@@ -836,7 +855,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
             ? Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(14),
+                    padding: EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: color.withOpacity(0.1),
                       shape: BoxShape.circle,
@@ -853,7 +872,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                           style: GoogleFonts.inter(
                             fontSize: 16.sp,
                             fontWeight: FontWeight.w700,
-                            color: const Color(0xFF1E293B),
+                            color: Color(0xFF1E293B),
                           ),
                         ),
                         SizedBox(height: 4.h),
@@ -909,7 +928,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                     style: GoogleFonts.inter(
                       fontSize: 14.sp,
                       fontWeight: FontWeight.w700,
-                      color: const Color(0xFF1E293B),
+                      color: Color(0xFF1E293B),
                     ),
                   ),
                   SizedBox(height: 4.h),
@@ -946,17 +965,17 @@ class _CustomersScreenState extends State<CustomersScreen> {
                 // Search bar
                 Container(
                   color: const Color(0xFF000080),
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
                   child: TextField(
                     controller: _searchController,
                     style: GoogleFonts.inter(color: Colors.white),
                     decoration: InputDecoration(
                       hintText: context.tr('Search by name, phone, vehicle...'),
                       hintStyle: GoogleFonts.inter(color: Colors.white60),
-                      prefixIcon: const Icon(Icons.search, color: Colors.white70),
+                      prefixIcon: Icon(Icons.search, color: Colors.white70),
                       suffixIcon: _searchController.text.isNotEmpty
                           ? IconButton(
-                              icon: const Icon(Icons.clear, color: Colors.white70),
+                              icon: Icon(Icons.clear, color: Colors.white70),
                               onPressed: () {
                                 _searchController.clear();
                               },
@@ -1007,8 +1026,8 @@ class _CustomersScreenState extends State<CustomersScreen> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Icon(icon, size: 56, color: Colors.grey.shade400),
-        const SizedBox(height: 12),
-        Text(msg, style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 14)),
+        SizedBox(height: 12),
+        Text(msg, style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 14.sp)),
       ],
     ));
   }
@@ -1054,8 +1073,8 @@ class _CustomersScreenState extends State<CustomersScreen> {
     return GestureDetector(
       onTap: () => _openEdit(c),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
+        margin: EdgeInsets.only(bottom: 10),
+        padding: EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
@@ -1063,7 +1082,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 6,
-              offset: const Offset(0, 2),
+              offset: Offset(0, 2),
             ),
           ],
         ),
@@ -1073,16 +1092,16 @@ class _CustomersScreenState extends State<CustomersScreen> {
               width: 46,
               height: 46,
               decoration: BoxDecoration(
-                color: const Color(0xFF000080).withValues(alpha: 0.1),
+                color: Color(0xFF000080).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
                 child: Text(
                   nameStr.isNotEmpty ? nameStr[0].toUpperCase() : '?',
                   style: GoogleFonts.inter(
-                    fontSize: 20,
+                    fontSize: 20.sp,
                     fontWeight: FontWeight.w800,
-                    color: const Color(0xFF000080),
+                    color: Color(0xFF000080),
                   ),
                 ),
               ),
@@ -1096,8 +1115,8 @@ class _CustomersScreenState extends State<CustomersScreen> {
                     nameStr,
                     style: GoogleFonts.inter(
                       fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                      color: const Color(0xFF1E293B),
+                      fontSize: 15.sp,
+                      color: Color(0xFF1E293B),
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -1106,7 +1125,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                       Text(
                         phoneStr,
                         style: GoogleFonts.inter(
-                          fontSize: 13,
+                          fontSize: 13.sp,
                           color: Colors.grey.shade600,
                         ),
                       ),
@@ -1127,9 +1146,9 @@ class _CustomersScreenState extends State<CustomersScreen> {
                           child: Text(
                             (c['customer_type'] ?? '').toString(),
                             style: GoogleFonts.inter(
-                              fontSize: 11,
+                              fontSize: 11.sp,
                               fontWeight: FontWeight.w600,
-                              color: const Color(0xFF2563EB),
+                              color: Color(0xFF2563EB),
                             ),
                           ),
                         ),
@@ -1139,7 +1158,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                       Text(
                         context.tr('$vehicleCount vehicle${vehicleCount != 1 ? "s" : ""}'),
                         style: GoogleFonts.inter(
-                          fontSize: 12,
+                          fontSize: 12.sp,
                           color: Colors.grey.shade500,
                         ),
                       ),
@@ -1162,9 +1181,9 @@ class _CustomersScreenState extends State<CustomersScreen> {
                           child: Text(
                             "Branch: $branchName",
                             style: GoogleFonts.inter(
-                              fontSize: 11,
+                              fontSize: 11.sp,
                               fontWeight: FontWeight.w600,
-                              color: const Color(0xFF7C3AED),
+                              color: Color(0xFF7C3AED),
                             ),
                           ),
                         ),
@@ -1177,7 +1196,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                         Text(
                           dateInfo,
                           style: GoogleFonts.inter(
-                            fontSize: 11,
+                            fontSize: 11.sp,
                             fontWeight: FontWeight.w600,
                             color: dateColor,
                           ),
@@ -1189,27 +1208,27 @@ class _CustomersScreenState extends State<CustomersScreen> {
             GestureDetector(
               onTap: () => _callCustomer(c['phone']),
               child: Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: Colors.green.withValues(alpha: 0.08),
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.green.withValues(alpha: 0.3), width: 1),
                 ),
-                child: const Icon(Icons.phone, size: 18, color: Colors.green),
+                child: Icon(Icons.phone, size: 18, color: Colors.green),
               ),
             ),
             if (context.read<AuthProvider>().isCompanyAdmin) ...[
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               GestureDetector(
                 onTap: () => _confirmDeleteCustomerFromList(c),
                 child: Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: Colors.red.withValues(alpha: 0.08),
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.red.withValues(alpha: 0.3), width: 1),
                   ),
-                  child: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                  child: Icon(Icons.delete_outline, size: 18, color: Colors.red),
                 ),
               ),
             ],
@@ -1250,16 +1269,16 @@ class _CustomersScreenState extends State<CustomersScreen> {
                     child: Text(
                   (_selectedCustomer.value!['name'] as String)[0].toUpperCase(),
                   style: GoogleFonts.inter(
-                      fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white),
+                      fontSize: 22.sp, fontWeight: FontWeight.w800, color: Colors.white),
                 )),
               ),
-              const SizedBox(width: 14),
+              SizedBox(width: 14),
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(_selectedCustomer.value!['name'],
                     style: GoogleFonts.inter(
-                        color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
+                        color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16.sp)),
                 Text(_selectedCustomer.value!['phone'],
-                    style: GoogleFonts.inter(color: Colors.white70, fontSize: 13)),
+                    style: GoogleFonts.inter(color: Colors.white70, fontSize: 13.sp)),
               ]),
             ]),
           ),
@@ -1311,13 +1330,13 @@ class _CustomersScreenState extends State<CustomersScreen> {
               const SizedBox(height: 14),
               _buildTextField(_addressController, 'Address', Icons.location_on_outlined,
                   maxLines: 2),
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               Text(context.tr('Customer Type *'),
                   style: GoogleFonts.inter(
-                      fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
-              const SizedBox(height: 6),
+                      fontSize: 13.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+              SizedBox(height: 6),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
+                padding: EdgeInsets.symmetric(horizontal: 14),
                 decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(10),
@@ -1379,33 +1398,33 @@ class _CustomersScreenState extends State<CustomersScreen> {
           ElevatedButton(
             onPressed: _isSaving.value ? null : _save,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF000080),
+              backgroundColor: Color(0xFF000080),
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               disabledBackgroundColor: Colors.grey.shade400,
             ),
             child: _isSaving.value
-                ? const SizedBox(
+                ? SizedBox(
                     height: 20,
                     width: 20,
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                 : Text(context.tr('Save Changes'),
-                    style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold)),
+                    style: GoogleFonts.inter(fontSize: 16.sp, fontWeight: FontWeight.bold)),
           ),
           if (context.read<AuthProvider>().isCompanyAdmin) ...[
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             OutlinedButton(
               onPressed: _isSaving.value ? null : _confirmDeleteCustomer,
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.red.shade700,
                 side: BorderSide(color: Colors.red.shade300, width: 1.5),
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                padding: EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               child: Text(
                 context.tr('Delete Customer'),
-                style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold),
+                style: GoogleFonts.inter(fontSize: 16.sp, fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -1427,6 +1446,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
     final selectedMake = row['make'] as Map<String, dynamic>?;
     final selectedBrand = row['brand_model'] as Map<String, dynamic>?;
     final selectedColor = row['color'] as Map<String, dynamic>?;
+    final selectedEmission = row['emission_standard'] as Map<String, dynamic>?;
 
     final segments = _segmentsForType(selectedType?['id']);
     final makes = _makesForSegment(selectedSegment?['id']);
@@ -1442,7 +1462,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
           border: Border.all(
             color: isNew
                 ? Colors.green.shade200
-                : const Color(0xFF000080).withOpacity(0.15),
+                : Color(0xFF000080).withOpacity(0.15),
           ),
         ),
         child: Column(
@@ -1452,12 +1472,12 @@ class _CustomersScreenState extends State<CustomersScreen> {
             Row(
               children: [
                 Icon(Icons.directions_car, size: 18,
-                    color: isNew ? Colors.green.shade700 : const Color(0xFF000080).withOpacity(0.7)),
-                const SizedBox(width: 6),
+                    color: isNew ? Colors.green.shade700 : Color(0xFF000080).withOpacity(0.7)),
+                SizedBox(width: 6),
                 Text(label, style: GoogleFonts.inter(
                     fontWeight: FontWeight.w600,
-                    color: isNew ? Colors.green.shade700 : const Color(0xFF000080))),
-                const Spacer(),
+                    color: isNew ? Colors.green.shade700 : Color(0xFF000080))),
+                Spacer(),
                 GestureDetector(
                   onTap: () {
                     if (isNew) {
@@ -1556,11 +1576,27 @@ class _CustomersScreenState extends State<CustomersScreen> {
                 _vehicleRowsNotifier.value++;
               },
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
+
+            // Emission Standard (optional)
+            if (_emissionStandards.isNotEmpty) ...[
+              _buildDropdown<Map<String, dynamic>>(
+                label: 'Emission Standard',
+                value: selectedEmission,
+                items: [{'id': '', 'name': 'None'}, ..._emissionStandards.cast<Map<String, dynamic>>()],
+                labelBuilder: (e) => e['name']?.toString() ?? '',
+                hint: 'Select emission standard',
+                onChanged: (val) {
+                  row['emission_standard'] = (val?['id'] == '') ? null : val;
+                  _vehicleRowsNotifier.value++;
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
 
             // Vehicle Number Input
-            Text(context.tr('Vehicle Number *'), style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
-            const SizedBox(height: 6),
+            Text(context.tr('Vehicle Number *'), style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+            SizedBox(height: 6),
             TextField(
               controller: row['controller'] as TextEditingController,
               textCapitalization: TextCapitalization.characters,
@@ -1568,25 +1604,25 @@ class _CustomersScreenState extends State<CustomersScreen> {
                 hintText: context.tr('e.g. KL 01 AB 1234'),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
                 enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
-                focusedBorder: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8)), borderSide: BorderSide(color: Color(0xFF000080))),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8)), borderSide: BorderSide(color: Color(0xFF000080))),
                 filled: true,
                 fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 isDense: true,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
 
             // Wheel Type selection
-            Text(context.tr('Wheel Type *'), style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
-            const SizedBox(height: 4),
+            Text(context.tr('Wheel Type *'), style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+            SizedBox(height: 4),
             Row(
               children: [
                 Expanded(
                   child: RadioListTile<String>(
                     title: Text(
                       context.tr('Alloy Wheel'),
-                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500),
+                      style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.w500),
                     ),
                     value: 'alloy_wheel',
                     groupValue: row['wheel_type'] ?? 'normal_wheel',
@@ -1605,7 +1641,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                   child: RadioListTile<String>(
                     title: Text(
                       context.tr('Normal Wheel'),
-                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500),
+                      style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.w500),
                     ),
                     value: 'normal_wheel',
                     groupValue: row['wheel_type'] ?? 'normal_wheel',
@@ -1681,10 +1717,10 @@ class _CustomersScreenState extends State<CustomersScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
-        const SizedBox(height: 6),
+        Text(label, style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+        SizedBox(height: 6),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(10),
@@ -1722,6 +1758,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
       'make': null,
       'brand_model': null,
       'color': null,
+      'emission_standard': null,
       'wheel_type': 'normal_wheel',
     });
     _vehicleRowsNotifier.value++;
@@ -1733,7 +1770,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
       required List<Widget> children,
       Widget? trailing}) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -1741,17 +1778,17 @@ class _CustomersScreenState extends State<CustomersScreen> {
           BoxShadow(
               color: Colors.black.withOpacity(0.04),
               blurRadius: 8,
-              offset: const Offset(0, 2))
+              offset: Offset(0, 2))
         ],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(icon, color: const Color(0xFF000080), size: 20),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Text(title,
               style: GoogleFonts.inter(
-                  fontWeight: FontWeight.w700, fontSize: 15, color: const Color(0xFF000080))),
-          const Spacer(),
+                  fontWeight: FontWeight.w700, fontSize: 15.sp, color: Color(0xFF000080))),
+          Spacer(),
           if (trailing != null) trailing,
         ]),
         const Divider(height: 24),
@@ -1761,16 +1798,13 @@ class _CustomersScreenState extends State<CustomersScreen> {
   }
 
   String _isoFromDialCode(String dialCode) {
-    switch (dialCode) {
-      case '+971': return 'AE';
-      case '+966': return 'SA';
-      case '+965': return 'KW';
-      case '+968': return 'OM';
-      case '+974': return 'QA';
-      case '+973': return 'BH';
-      case '+91':  return 'IN';
-      default:     return 'IN';
-    }
+    // Dynamic lookup via CountryConfig — handles all supported countries
+    return CountryConfig.all
+        .firstWhere(
+          (c) => c.phoneDialCode == dialCode,
+          orElse: () => CountryConfig.current,
+        )
+        .phoneIsoCode;
   }
 
   Widget _buildPhoneField({
@@ -1785,8 +1819,8 @@ class _CustomersScreenState extends State<CustomersScreen> {
       children: [
         Text(context.tr(label),
             style: GoogleFonts.inter(
-                fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
-        const SizedBox(height: 6),
+                fontSize: 13.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+        SizedBox(height: 6),
         IntlPhoneField(
           key: ValueKey('${label}_$countryIso'),
           controller: controller,
@@ -1795,7 +1829,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
             onCodeChanged('+${country.dialCode}', country.code);
           },
           dropdownTextStyle:
-              GoogleFonts.inter(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 14),
+              GoogleFonts.inter(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 14.sp),
           style: GoogleFonts.inter(fontWeight: FontWeight.w500),
           disableLengthCheck: true,
           decoration: InputDecoration(
@@ -1823,8 +1857,8 @@ class _CustomersScreenState extends State<CustomersScreen> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(label,
           style: GoogleFonts.inter(
-              fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
-      const SizedBox(height: 6),
+              fontSize: 13.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+      SizedBox(height: 6),
       TextField(
         controller: ctrl,
         keyboardType: keyboardType,

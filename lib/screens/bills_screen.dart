@@ -98,6 +98,62 @@ class _BillsScreenState extends State<BillsScreen> {
     );
   }
 
+  Future<void> _deleteInvoice(BuildContext context, Map<String, dynamic> inv) async {
+    final invoiceNumber = inv['invoice_number'] ?? '';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        title: Text(context.tr('Delete Invoice'), style: GoogleFonts.inter(fontWeight: FontWeight.w800)),
+        content: Text(
+          context.tr('Delete invoice $invoiceNumber?\n\nThis will also remove all linked receipts.\n\nThis action cannot be undone.'),
+          style: GoogleFonts.inter(fontSize: 13.sp),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(context.tr('Cancel'), style: GoogleFonts.inter(color: Colors.grey.shade600)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade600, foregroundColor: Colors.white),
+            child: Text(context.tr('Delete'), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
+
+    try {
+      final res = await ApiService.deleteInvoice(inv['id'], token);
+      if (!mounted) return;
+      if (res['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.tr('Invoice $invoiceNumber deleted successfully')),
+            backgroundColor: Colors.green.shade700,
+          ),
+        );
+        _fetchInvoices(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.tr(res['message'] ?? 'Failed to delete invoice')),
+            backgroundColor: Colors.red.shade600,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('Error: $e')), backgroundColor: Colors.red.shade600),
+      );
+    }
+  }
+
   Future<void> _pickDate(BuildContext context, {required bool isFrom}) async {
     final initial = isFrom ? (_fromDateNotifier.value ?? DateTime.now()) : (_toDateNotifier.value ?? DateTime.now());
     final picked = await showDatePicker(
@@ -107,7 +163,7 @@ class _BillsScreenState extends State<BillsScreen> {
       lastDate: DateTime(2030),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: const ColorScheme.light(primary: Color(0xFF000080), onPrimary: Colors.white),
+          colorScheme: ColorScheme.light(primary: Color(0xFF000080), onPrimary: Colors.white),
         ),
         child: child!,
       ),
@@ -128,6 +184,7 @@ class _BillsScreenState extends State<BillsScreen> {
     _fetchInvoices(context);
   }
 
+  // ── PDF Generation & Share/Download/Print ──────────────────────────
   // ── PDF Generation & Share/Download/Print ──────────────────────────
   Future<Uint8List> _getInvoicePdfBytes(BuildContext context, Map<String, dynamic> inv) async {
     final invoiceNumber = inv['invoice_number'] as String? ?? '';
@@ -268,12 +325,23 @@ class _BillsScreenState extends State<BillsScreen> {
           pw.Text('SERVICES', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.grey500)),
           pw.SizedBox(height: 8),
           pw.Table.fromTextArray(
-            headers: ['Service', 'Rate ($symbol)'],
-            data: services.map((s) => [s['name'], s['rate']]).toList(),
+            headers: ['Service / Item', 'Qty', 'Rate ($symbol)', 'Amount ($symbol)'],
+            data: services.map((s) {
+              final qty = (s['qty'] as num?)?.toDouble() ?? 1.0;
+              final rate = (s['rate'] as num?)?.toDouble() ?? 0.0;
+              final net = (s['net_taxable_amount'] as num?)?.toDouble() ?? (qty * rate);
+              final qtyStr = qty > 1 ? qty.toStringAsFixed(qty.truncateToDouble() == qty ? 0 : 1) : '1';
+              return [
+                s['name'] ?? '',
+                qtyStr,
+                _fmt(rate),
+                _fmt(net),
+              ];
+            }).toList(),
             headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
             headerDecoration: const pw.BoxDecoration(color: PdfColors.indigo900),
             cellHeight: 28,
-            cellAlignments: {0: pw.Alignment.centerLeft, 1: pw.Alignment.centerRight},
+            cellAlignments: {0: pw.Alignment.centerLeft, 1: pw.Alignment.center, 2: pw.Alignment.centerRight, 3: pw.Alignment.centerRight},
           ),
           pw.SizedBox(height: 20),
 
@@ -296,7 +364,7 @@ class _BillsScreenState extends State<BillsScreen> {
           pw.Center(
             child: pw.Column(
               children: [
-                pw.Text('Thanks for choosing $branchName',
+                pw.Text('Thank you for choosing $branchName',
                     style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
                 pw.SizedBox(height: 4),
                 pw.Text('Powered by Mobiz Technologies',
@@ -371,7 +439,11 @@ class _BillsScreenState extends State<BillsScreen> {
       final collected = _fmt(inv['amount_collected']);
       final invoiceNumber = inv['invoice_number'] as String? ?? '';
 
-      final servicesStr = services.map((s) => "- ${s['name']}: $symbol${_fmt(s['rate'])}").join("\n");
+      final servicesStr = services.map((s) {
+        final qty = (s['qty'] as num?)?.toDouble() ?? 1.0;
+        final qtyStr = qty > 1 ? ' (x${qty.toStringAsFixed(qty.truncateToDouble() == qty ? 0 : 1)})' : '';
+        return "- ${s['name']}$qtyStr: $symbol${_fmt(s['rate'])}";
+      }).join("\n");
 
       final branchName = inv['branch']?.toString() ?? context.read<AuthProvider>().branchName ?? 'our branch';
       final companyName = context.read<AuthProvider>().companyName ?? 'Mobiz Autocare Pro';
@@ -381,16 +453,16 @@ class _BillsScreenState extends State<BillsScreen> {
       final balanceVal = doubleTot - doubleColl;
 
       final messageText = 
-          "Dear ${customer['name']},\n\n"
-          "Your invoice *$invoiceNumber* has been generated successfully at $companyName.\n\n"
-          "*Invoice Details:*\n"
-          "Vehicle: ${vehicle['number'] ?? vehicle['no'] ?? ''}\n"
-          "Services:\n$servicesStr\n"
-          "Total: $symbol$total\n"
-          "Paid: $symbol$collected\n"
-          "Balance: $symbol${_fmt(balanceVal)}\n\n"
-          "Thank you for choosing $branchName!\n"
-          "Powered by Mobiz Technologies";
+          "${context.tr('Dear')} ${customer['name']},\n\n"
+          "${context.tr('Your invoice')} *$invoiceNumber* ${context.tr('has been generated successfully at')} $companyName.\n\n"
+          "*${context.tr('Invoice Details')}:*\n"
+          "${context.tr('Vehicle')}: ${vehicle['number'] ?? vehicle['no'] ?? ''}\n"
+          "${context.tr('Services')}:\n$servicesStr\n"
+          "${context.tr('Total')}: $symbol$total\n"
+          "${context.tr('Paid')}: $symbol$collected\n"
+          "${context.tr('Balance')}: $symbol${_fmt(balanceVal)}\n\n"
+          "${context.tr('Thank you for choosing')} $branchName!\n"
+          "${context.tr('Powered by')} Mobiz Technologies";
 
       final cleanedPhone = _getCleanedWhatsAppNumber(customer);
       if (cleanedPhone.isEmpty) {
@@ -429,7 +501,11 @@ class _BillsScreenState extends State<BillsScreen> {
       final collected = _fmt(inv['amount_collected']);
       final invoiceNumber = inv['invoice_number'] as String? ?? '';
 
-      final servicesStr = services.map((s) => "- ${s['name']}: $symbol${_fmt(s['rate'])}").join("\n");
+      final servicesStr = services.map((s) {
+        final qty = (s['qty'] as num?)?.toDouble() ?? 1.0;
+        final qtyStr = qty > 1 ? ' (x${qty.toStringAsFixed(qty.truncateToDouble() == qty ? 0 : 1)})' : '';
+        return "- ${s['name']}$qtyStr: $symbol${_fmt(s['rate'])}";
+      }).join("\n");
 
       final branchName = inv['branch']?.toString() ?? context.read<AuthProvider>().branchName ?? 'our branch';
       final companyName = context.read<AuthProvider>().companyName ?? 'Mobiz Autocare Pro';
@@ -439,16 +515,16 @@ class _BillsScreenState extends State<BillsScreen> {
       final balanceVal = doubleTot - doubleColl;
 
       final messageText = 
-          "Dear ${customer['name']},\n\n"
-          "Your invoice *$invoiceNumber* has been generated successfully at $companyName.\n\n"
-          "*Invoice Details:*\n"
-          "Vehicle: ${vehicle['number'] ?? vehicle['no'] ?? ''}\n"
-          "Services:\n$servicesStr\n"
-          "Total: $symbol$total\n"
-          "Paid: $symbol$collected\n"
-          "Balance: $symbol${_fmt(balanceVal)}\n\n"
-          "Thank you for choosing $branchName!\n"
-          "Powered by Mobiz Technologies";
+          "${context.tr('Dear')} ${customer['name']},\n\n"
+          "${context.tr('Your invoice')} *$invoiceNumber* ${context.tr('has been generated successfully at')} $companyName.\n\n"
+          "*${context.tr('Invoice Details')}:*\n"
+          "${context.tr('Vehicle')}: ${vehicle['number'] ?? vehicle['no'] ?? ''}\n"
+          "${context.tr('Services')}:\n$servicesStr\n"
+          "${context.tr('Total')}: $symbol$total\n"
+          "${context.tr('Paid')}: $symbol$collected\n"
+          "${context.tr('Balance')}: $symbol${_fmt(balanceVal)}\n\n"
+          "${context.tr('Thank you for choosing')} $branchName!\n"
+          "${context.tr('Powered by')} Mobiz Technologies";
 
       final pdfBytes = await _getInvoicePdfBytes(context, inv);
       final dir = await getTemporaryDirectory();
@@ -482,8 +558,8 @@ class _BillsScreenState extends State<BillsScreen> {
                     bc.tr('Share Invoice'),
                     style: GoogleFonts.inter(
                       fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                      color: const Color(0xFF000080),
+                      fontSize: 18.sp,
+                      color: Color(0xFF000080),
                     ),
                   ),
                 ),
@@ -498,7 +574,7 @@ class _BillsScreenState extends State<BillsScreen> {
                   ),
                   subtitle: Text(
                     bc.tr('Opens chat with pre-filled summary'),
-                    style: GoogleFonts.inter(fontSize: 12),
+                    style: GoogleFonts.inter(fontSize: 12.sp),
                   ),
                   onTap: () {
                     Navigator.pop(bc);
@@ -508,7 +584,7 @@ class _BillsScreenState extends State<BillsScreen> {
                 ListTile(
                   leading: CircleAvatar(
                     backgroundColor: Colors.red.shade50,
-                    child: const Icon(Icons.picture_as_pdf_outlined, color: Colors.red),
+                    child: Icon(Icons.picture_as_pdf_outlined, color: Colors.red),
                   ),
                   title: Text(
                     bc.tr('Share PDF Document'),
@@ -516,7 +592,7 @@ class _BillsScreenState extends State<BillsScreen> {
                   ),
                   subtitle: Text(
                     bc.tr('Generates PDF and opens sharing menu'),
-                    style: GoogleFonts.inter(fontSize: 12),
+                    style: GoogleFonts.inter(fontSize: 12.sp),
                   ),
                   onTap: () {
                     Navigator.pop(bc);
@@ -605,14 +681,14 @@ class _BillsScreenState extends State<BillsScreen> {
       0, (sum, inv) => sum + (double.tryParse(inv['total'].toString()) ?? 0));
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
+      backgroundColor: Color(0xFFF1F5F9),
       appBar: AppBar(
         title: Text(context.tr('Bills'), style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
-        backgroundColor: const Color(0xFF000080),
+        backgroundColor: Color(0xFF000080),
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: () => _fetchInvoices(context)),
+          IconButton(icon: Icon(Icons.refresh), onPressed: () => _fetchInvoices(context)),
         ],
       ),
       body: Column(
@@ -648,7 +724,7 @@ class _BillsScreenState extends State<BillsScreen> {
                       child: Container(
                         height: 48, width: 48,
                         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
-                        child: const Icon(Icons.search, color: Color(0xFF000080)),
+                        child: Icon(Icons.search, color: Color(0xFF000080)),
                       ),
                     ),
                   ],
@@ -663,18 +739,18 @@ class _BillsScreenState extends State<BillsScreen> {
           if (!isLoading && invoices.isNotEmpty)
             Container(
               color: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Row(children: [
                     Icon(Icons.receipt_long, size: 16, color: Colors.grey.shade500),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Text(context.tr('${invoices.length} invoice${invoices.length == 1 ? '' : 's'}'),
-                        style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: Colors.grey.shade700, fontSize: 13)),
+                        style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: Colors.grey.shade700, fontSize: 13.sp)),
                   ]),
                   Text(context.tr('Total: $symbol${totalAmount.toStringAsFixed(2)}'),
-                      style: GoogleFonts.inter(fontWeight: FontWeight.w800, color: const Color(0xFF000080), fontSize: 14)),
+                      style: GoogleFonts.inter(fontWeight: FontWeight.w800, color: Color(0xFF000080), fontSize: 14.sp)),
                 ],
               ),
             ),
@@ -705,16 +781,16 @@ class _BillsScreenState extends State<BillsScreen> {
     return GestureDetector(
       onTap: () => _pickDate(context, isFrom: isFrom),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
         child: Row(children: [
-          const Icon(Icons.calendar_today, size: 15, color: Color(0xFF000080)),
-          const SizedBox(width: 8),
+          Icon(Icons.calendar_today, size: 15, color: Color(0xFF000080)),
+          SizedBox(width: 8),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(label, style: GoogleFonts.inter(fontSize: 10, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
+              Text(label, style: GoogleFonts.inter(fontSize: 10.sp, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
               Text(date != null ? _displayDate(context, date) : 'Select',
-                  style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF1e293b))),
+                  style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.w700, color: Color(0xFF1e293b))),
             ]),
           ),
         ]),
@@ -730,37 +806,37 @@ class _BillsScreenState extends State<BillsScreen> {
     final symbol = currencySymbol(context);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 3))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: Offset(0, 3))],
       ),
       child: Column(
         children: [
           // Header
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFF000080).withValues(alpha: 0.04),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              color: Color(0xFF000080).withValues(alpha: 0.04),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
             ),
             child: Row(
               children: [
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(inv['invoice_number'],
-                        style: GoogleFonts.inter(fontWeight: FontWeight.w900, fontSize: 15, color: const Color(0xFF000080))),
-                    const SizedBox(height: 2),
+                        style: GoogleFonts.inter(fontWeight: FontWeight.w900, fontSize: 15.sp, color: Color(0xFF000080))),
+                    SizedBox(height: 2),
                     Text(_formatDisplayDate(context, inv['date']),
-                        style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade500)),
+                        style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade500)),
                   ]),
                 ),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
                         color: inv['invoice_type'] == 'creditinvoice' ? Colors.red.shade50 : Colors.green.shade50,
                         borderRadius: BorderRadius.circular(20),
@@ -768,11 +844,11 @@ class _BillsScreenState extends State<BillsScreen> {
                       ),
                       child: Text(inv['invoice_type'] == 'creditinvoice' ? context.tr('Credit') : context.tr('Cash'),
                           style: GoogleFonts.inter(
-                              fontSize: 11,
+                              fontSize: 11.sp,
                               fontWeight: FontWeight.bold,
                               color: inv['invoice_type'] == 'creditinvoice' ? Colors.red.shade700 : Colors.green.shade700)),
                     ),
-                    const SizedBox(width: 6),
+                    SizedBox(width: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
@@ -782,7 +858,7 @@ class _BillsScreenState extends State<BillsScreen> {
                       ),
                       child: Text(isFullyPaid ? '✓ ${context.tr('Paid')}' : '⏳ ${context.tr('Partial')}',
                           style: GoogleFonts.inter(
-                              fontSize: 11,
+                              fontSize: 11.sp,
                               fontWeight: FontWeight.bold,
                               color: isFullyPaid ? Colors.green.shade700 : Colors.orange.shade700)),
                     ),
@@ -813,12 +889,12 @@ class _BillsScreenState extends State<BillsScreen> {
 
                 // Services List
                 ...services.map((s) => Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
+                      padding: EdgeInsets.only(bottom: 6),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(context.tr(s['name']), style: GoogleFonts.inter(fontSize: 13, color: Colors.grey.shade700)),
-                          Text(context.tr('$symbol${s['rate']}'), style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13)),
+                          Text(context.tr(s['name']), style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.grey.shade700)),
+                          Text(context.tr('$symbol${s['rate']}'), style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13.sp)),
                         ],
                       ),
                     )),
@@ -828,38 +904,38 @@ class _BillsScreenState extends State<BillsScreen> {
                 _totalRow(context, 'Subtotal', inv['subtotal']),
                 _totalRow(context, 'Discount', inv['discount'], isNegative: true),
                 _totalRow(context, 'Tax', inv['tax_amount']),
-                const Divider(height: 16),
+                Divider(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(context.tr('Total'), style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 16)),
+                    Text(context.tr('Total'), style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 16.sp)),
                     Text(context.tr('$symbol${inv['total']}'),
-                        style: GoogleFonts.inter(fontWeight: FontWeight.w900, fontSize: 18, color: const Color(0xFF000080))),
+                        style: GoogleFonts.inter(fontWeight: FontWeight.w900, fontSize: 18.sp, color: Color(0xFF000080))),
                   ],
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(context.tr('Collected'), style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 12)),
+                    Text(context.tr('Collected'), style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 12.sp)),
                     Text(context.tr('$symbol${inv['amount_collected']}'),
-                        style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.green.shade700)),
+                        style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13.sp, color: Colors.green.shade700)),
                   ],
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
 
                 Row(
                   children: [
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: () => _downloadInvoice(context, inv),
-                        icon: const Icon(Icons.download, size: 16),
-                        label: Text(context.tr('Download'), style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 11)),
+                        icon: Icon(Icons.download, size: 16),
+                        label: Text(context.tr('Download'), style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 11.sp)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
-                          foregroundColor: const Color(0xFF000080),
-                          side: const BorderSide(color: Color(0xFF000080)),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          foregroundColor: Color(0xFF000080),
+                          side: BorderSide(color: Color(0xFF000080)),
+                          padding: EdgeInsets.symmetric(vertical: 10),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           elevation: 0,
                         ),
@@ -869,13 +945,13 @@ class _BillsScreenState extends State<BillsScreen> {
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: () => _printInvoice(context, inv),
-                        icon: const Icon(Icons.print, size: 16),
-                        label: Text(context.tr('Print'), style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 11)),
+                        icon: Icon(Icons.print, size: 16),
+                        label: Text(context.tr('Print'), style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 11.sp)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
-                          foregroundColor: const Color(0xFF000080),
-                          side: const BorderSide(color: Color(0xFF000080)),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          foregroundColor: Color(0xFF000080),
+                          side: BorderSide(color: Color(0xFF000080)),
+                          padding: EdgeInsets.symmetric(vertical: 10),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           elevation: 0,
                         ),
@@ -885,18 +961,35 @@ class _BillsScreenState extends State<BillsScreen> {
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: () => _shareInvoice(context, inv),
-                        icon: const Icon(Icons.share, size: 16),
-                        label: Text(context.tr('Share'), style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 11)),
+                        icon: Icon(Icons.share, size: 16),
+                        label: Text(context.tr('Share'), style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 11.sp)),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF000080),
+                          backgroundColor: Color(0xFF000080),
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          padding: EdgeInsets.symmetric(vertical: 10),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           elevation: 0,
                         ),
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _deleteInvoice(context, inv),
+                    icon: Icon(Icons.delete_outline, size: 16),
+                    label: Text(context.tr('Delete Invoice'), style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 11.sp)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red.shade50,
+                      foregroundColor: Colors.red.shade700,
+                      side: BorderSide(color: Colors.red.shade300),
+                      padding: EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      elevation: 0,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -912,10 +1005,10 @@ class _BillsScreenState extends State<BillsScreen> {
       decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.grey.shade100)),
       child: Row(children: [
         Icon(icon, size: 16, color: Colors.grey.shade400),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 12, color: const Color(0xFF1e293b)), maxLines: 1, overflow: TextOverflow.ellipsis),
-          Text(sub, style: GoogleFonts.inter(fontSize: 11, color: Colors.grey.shade500), maxLines: 1, overflow: TextOverflow.ellipsis),
+          Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 12.sp, color: Color(0xFF1e293b)), maxLines: 1, overflow: TextOverflow.ellipsis),
+          Text(sub, style: GoogleFonts.inter(fontSize: 11.sp, color: Colors.grey.shade500), maxLines: 1, overflow: TextOverflow.ellipsis),
         ])),
       ]),
     );
@@ -924,11 +1017,11 @@ class _BillsScreenState extends State<BillsScreen> {
   Widget _totalRow(BuildContext context, String label, dynamic value, {bool isNegative = false}) {
     final symbol = currencySymbol(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: EdgeInsets.only(bottom: 4),
       child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Text(context.tr(label), style: GoogleFonts.inter(color: Colors.grey.shade600, fontSize: 13)),
+        Text(context.tr(label), style: GoogleFonts.inter(color: Colors.grey.shade600, fontSize: 13.sp)),
         Text(context.tr('${isNegative ? '-' : ''}$symbol$value'),
-            style: GoogleFonts.inter(fontWeight: FontWeight.w500, fontSize: 13,
+            style: GoogleFonts.inter(fontWeight: FontWeight.w500, fontSize: 13.sp,
                 color: isNegative ? Colors.red.shade400 : Colors.grey.shade800)),
       ]),
     );
@@ -937,9 +1030,9 @@ class _BillsScreenState extends State<BillsScreen> {
   Widget _buildEmpty(BuildContext context) {
     return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
       Icon(Icons.receipt_long_outlined, size: 80, color: Colors.grey.shade200),
-      const SizedBox(height: 16),
-      Text(context.tr('No invoices found'), style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 16, fontWeight: FontWeight.w600)),
-      Text(context.tr('for the selected date range.'), style: GoogleFonts.inter(color: Colors.grey.shade400, fontSize: 13)),
+      SizedBox(height: 16),
+      Text(context.tr('No invoices found'), style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 16.sp, fontWeight: FontWeight.w600)),
+      Text(context.tr('for the selected date range.'), style: GoogleFonts.inter(color: Colors.grey.shade400, fontSize: 13.sp)),
     ]));
   }
 
@@ -947,8 +1040,8 @@ class _BillsScreenState extends State<BillsScreen> {
     final msg = message ?? '';
     return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
       Icon(Icons.error_outline, size: 60, color: Colors.red.shade200),
-      const SizedBox(height: 16),
-      Text(context.tr(msg), textAlign: TextAlign.center, style: GoogleFonts.inter(color: Colors.red, fontSize: 14)),
+      SizedBox(height: 16),
+      Text(context.tr(msg), textAlign: TextAlign.center, style: GoogleFonts.inter(color: Colors.red, fontSize: 14.sp)),
     ]));
   }
 
@@ -963,7 +1056,7 @@ class _BillsScreenState extends State<BillsScreen> {
           decoration: InputDecoration(
             filled: true,
             fillColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(
+            contentPadding: EdgeInsets.symmetric(
               horizontal: 12,
               vertical: 12,
             ),

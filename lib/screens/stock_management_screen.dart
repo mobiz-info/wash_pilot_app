@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
@@ -105,12 +107,12 @@ class _StockManagementScreenState extends State<StockManagementScreen> {
           context.tr('Stock Management'),
           style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: Colors.white),
         ),
-        backgroundColor: const Color(0xFF000080),
-        iconTheme: const IconThemeData(color: Colors.white),
+        backgroundColor: Color(0xFF000080),
+        iconTheme: IconThemeData(color: Colors.white),
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh),
             onPressed: _loadAllData,
             tooltip: context.tr('Refresh'),
           ),
@@ -136,7 +138,7 @@ class _StockManagementScreenState extends State<StockManagementScreen> {
                     }
                     if (errMsg.isNotEmpty) {
                       return Center(
-                        child: Text(errMsg, style: const TextStyle(color: Colors.red)),
+                        child: Text(errMsg, style: TextStyle(color: Colors.red)),
                       );
                     }
 
@@ -189,7 +191,7 @@ class _StockManagementScreenState extends State<StockManagementScreen> {
                         // ── Top Header Controls: Branch Selector & Stock Group Category Filter Dropdown ──
                         Container(
                           color: Colors.white,
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                          padding: EdgeInsets.fromLTRB(16, 12, 16, 12),
                           child: Column(
                             children: [
                               Row(
@@ -214,7 +216,7 @@ class _StockManagementScreenState extends State<StockManagementScreen> {
                                                 value: b['id']?.toString(),
                                                 child: Text(
                                                   b['name']?.toString() ?? '',
-                                                  style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
+                                                  style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13.sp),
                                                   overflow: TextOverflow.ellipsis,
                                                 ),
                                               );
@@ -253,8 +255,8 @@ class _StockManagementScreenState extends State<StockManagementScreen> {
                                                 context.tr('All Stock Groups'),
                                                 style: GoogleFonts.inter(
                                                   fontWeight: FontWeight.bold,
-                                                  fontSize: 13,
-                                                  color: const Color(0xFF1D4ED8),
+                                                  fontSize: 13.sp,
+                                                  color: Color(0xFF1D4ED8),
                                                 ),
                                                 overflow: TextOverflow.ellipsis,
                                               ),
@@ -269,8 +271,8 @@ class _StockManagementScreenState extends State<StockManagementScreen> {
                                                   grpName,
                                                   style: GoogleFonts.inter(
                                                     fontWeight: FontWeight.bold,
-                                                    fontSize: 13,
-                                                    color: const Color(0xFF1D4ED8),
+                                                    fontSize: 13.sp,
+                                                    color: Color(0xFF1D4ED8),
                                                   ),
                                                   overflow: TextOverflow.ellipsis,
                                                 ),
@@ -330,7 +332,7 @@ class _StockManagementScreenState extends State<StockManagementScreen> {
                                 ? Center(
                                     child: Text(
                                       context.tr('No inventory items found'),
-                                      style: GoogleFonts.inter(color: Colors.grey, fontSize: 14),
+                                      style: GoogleFonts.inter(color: Colors.grey, fontSize: 14.sp),
                                     ),
                                   )
                                 : ListView.builder(
@@ -346,7 +348,7 @@ class _StockManagementScreenState extends State<StockManagementScreen> {
                                       return Card(
                                         color: Colors.white,
                                         elevation: 0,
-                                        margin: const EdgeInsets.only(bottom: 10),
+                                        margin: EdgeInsets.only(bottom: 10),
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(12),
                                           side: BorderSide(
@@ -354,37 +356,37 @@ class _StockManagementScreenState extends State<StockManagementScreen> {
                                           ),
                                         ),
                                         child: ListTile(
-                                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                                          contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                                           leading: CircleAvatar(
-                                            backgroundColor: isLow ? Colors.red.shade50 : const Color(0xFFE0F2FE),
+                                            backgroundColor: isLow ? Colors.red.shade50 : Color(0xFFE0F2FE),
                                             child: Icon(
                                               Icons.inventory_2_outlined,
-                                              color: isLow ? Colors.red : const Color(0xFF0284C7),
+                                              color: isLow ? Colors.red : Color(0xFF0284C7),
                                               size: 22,
                                             ),
                                           ),
                                           title: Text(
                                             title,
                                             style: GoogleFonts.inter(
-                                              fontSize: 14,
+                                              fontSize: 14.sp,
                                               fontWeight: FontWeight.bold,
-                                              color: const Color(0xFF1E293B),
+                                              color: Color(0xFF1E293B),
                                             ),
                                           ),
                                           subtitle: Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
-                                              const SizedBox(height: 2),
+                                              SizedBox(height: 2),
                                               Text(
                                                 subtitle,
-                                                style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade600),
+                                                style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade600),
                                               ),
                                               if (isLow) ...[
-                                                const SizedBox(height: 4),
+                                                SizedBox(height: 4),
                                                 Text(
                                                   'LOW STOCK ALERT',
                                                   style: GoogleFonts.inter(
-                                                    fontSize: 10,
+                                                    fontSize: 10.sp,
                                                     color: Colors.red.shade700,
                                                     fontWeight: FontWeight.bold,
                                                   ),
@@ -395,9 +397,9 @@ class _StockManagementScreenState extends State<StockManagementScreen> {
                                           trailing: Text(
                                             qtyText,
                                             style: GoogleFonts.inter(
-                                              fontSize: 14,
+                                              fontSize: 14.sp,
                                               fontWeight: FontWeight.w900,
-                                              color: isLow ? Colors.red.shade700 : const Color(0xFF000080),
+                                              color: isLow ? Colors.red.shade700 : Color(0xFF000080),
                                             ),
                                           ),
                                         ),

@@ -35,6 +35,7 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
   List<dynamic> _makes = [];             // all manufacturers/makes
   List<dynamic> _brandModels = [];       // all brand models
   List<dynamic> _colors = [];
+  List<dynamic> _emissionStandards = [];
 
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -152,6 +153,7 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
       final makes = formRes['makes'] as List<dynamic>? ?? [];
       final brandModels = formRes['brand_models'] as List<dynamic>? ?? [];
       final colors = formRes['colors'] as List<dynamic>? ?? [];
+      final emissionStandards = formRes['emission_standards'] as List<dynamic>? ?? [];
 
       final c = customerRes['customer'] as Map<String, dynamic>;
       final typeId = c['customer_type_id'] as String?;
@@ -160,22 +162,28 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
               orElse: () => types.isNotEmpty ? types.first : null)
           : (types.isNotEmpty ? types.first : null);
 
+      // Strip dial code from phone — supports any country via CountryConfig
+      final allCountries = CountryConfig.all
+        ..sort((a, b) => b.phoneDialCode.length.compareTo(a.phoneDialCode.length));
+
       String rawPhone = c['phone'] ?? '';
-      String phoneCode = '+91';
-      for (final code in ['971', '966', '965', '968', '974', '973', '91']) {
-        if (rawPhone.startsWith(code)) {
-          phoneCode = '+$code';
-          rawPhone = rawPhone.substring(code.length);
+      String phoneCode = CountryConfig.phoneDialCode;
+      for (final country in allCountries) {
+        final cleanCode = country.phoneDialCode.replaceAll('+', '');
+        if (rawPhone.startsWith(cleanCode) && rawPhone.length > cleanCode.length) {
+          phoneCode = country.phoneDialCode;
+          rawPhone = rawPhone.substring(cleanCode.length);
           break;
         }
       }
 
       String rawWhatsapp = c['whatsapp_number'] ?? '';
-      String whatsappCode = '+91';
-      for (final code in ['971', '966', '965', '968', '974', '973', '91']) {
-        if (rawWhatsapp.startsWith(code)) {
-          whatsappCode = '+$code';
-          rawWhatsapp = rawWhatsapp.substring(code.length);
+      String whatsappCode = CountryConfig.phoneDialCode;
+      for (final country in allCountries) {
+        final cleanCode = country.phoneDialCode.replaceAll('+', '');
+        if (rawWhatsapp.startsWith(cleanCode) && rawWhatsapp.length > cleanCode.length) {
+          whatsappCode = country.phoneDialCode;
+          rawWhatsapp = rawWhatsapp.substring(cleanCode.length);
           break;
         }
       }
@@ -198,6 +206,7 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
         final brandId = v['brand_model_id']?.toString();
         final makeId = v['make_id']?.toString();
         final colorId = v['color_id']?.toString();
+        final emissionId = v['emission_standard_id']?.toString();
 
         final matchedSegment = segmentId != null
             ? vehicleTypeModels.firstWhere((m) => m['id'].toString() == segmentId, orElse: () => null)
@@ -223,6 +232,10 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
             ? colors.firstWhere((col) => col['id'].toString() == colorId, orElse: () => null)
             : null;
 
+        final matchedEmission = emissionId != null
+            ? emissionStandards.firstWhere((e) => e['id'].toString() == emissionId, orElse: () => null)
+            : null;
+
         _existingVehicleRows.add({
           'id': v['id'],
           'controller': TextEditingController(text: v['vehicle_number'] ?? ''),
@@ -231,6 +244,7 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
           'make': matchedMake,
           'brand_model': matchedBrand,
           'color': matchedColor,
+          'emission_standard': matchedEmission,
           'wheel_type': v['wheel_type'] ?? 'normal_wheel',
         });
       }
@@ -244,6 +258,7 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
       _makes = makes;
       _brandModels = brandModels;
       _colors = colors;
+      _emissionStandards = emissionStandards;
       _selectedCustomerType.value = selectedType as Map<String, dynamic>?;
       _selectedPhoneCode.value = phoneCode;
       _selectedWhatsappCode.value = whatsappCode;
@@ -300,6 +315,8 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
         if (brandModel != null) vehicleData['brand_model_id'] = brandModel['id'];
         if (make != null) vehicleData['make_id'] = make['id'];
         if (color != null) vehicleData['color_id'] = color['id'];
+        final emission = row['emission_standard'] as Map<String, dynamic>?;
+        if (emission != null) vehicleData['emission_standard_id'] = emission['id'];
         updatedVehicles.add(vehicleData);
       } else {
         _showMsg('Please enter Vehicle Number for Vehicle ${i + 1}', isError: true);
@@ -330,6 +347,8 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
         if (brandModel != null) vehicleData['brand_model_id'] = brandModel['id'];
         if (make != null) vehicleData['make_id'] = make['id'];
         if (color != null) vehicleData['color_id'] = color['id'];
+        final emission = row['emission_standard'] as Map<String, dynamic>?;
+        if (emission != null) vehicleData['emission_standard_id'] = emission['id'];
         newVehicles.add(vehicleData);
       } else {
         _showMsg('Please enter Vehicle Number for New Vehicle ${i + 1}', isError: true);
@@ -443,7 +462,7 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
                   selectedCust == null ? 'Select Customer to Edit' : 'Edit Customer',
                   style: GoogleFonts.inter(fontWeight: FontWeight.w700),
                 ),
-                backgroundColor: const Color(0xFF000080),
+                backgroundColor: Color(0xFF000080),
                 foregroundColor: Colors.white,
                 elevation: 0,
                 leading: selectedCust != null
@@ -480,24 +499,24 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
       children: [
         Container(
           color: const Color(0xFF000080),
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: TextField(
             controller: _searchController,
             style: GoogleFonts.inter(color: Colors.white),
             decoration: InputDecoration(
               hintText: context.tr('Search by name or phone…'),
               hintStyle: GoogleFonts.inter(color: Colors.white60),
-              prefixIcon: const Icon(Icons.search, color: Colors.white70),
+              prefixIcon: Icon(Icons.search, color: Colors.white70),
               suffixIcon: _searchController.text.isNotEmpty
                   ? IconButton(
-                      icon: const Icon(Icons.clear, color: Colors.white70),
+                      icon: Icon(Icons.clear, color: Colors.white70),
                       onPressed: () { _searchController.clear(); _filterCustomers(); },
                     )
                   : null,
               filled: true,
               fillColor: Colors.white.withOpacity(0.15),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-              contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              contentPadding: EdgeInsets.symmetric(vertical: 12),
             ),
           ),
         ),
@@ -509,20 +528,20 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
               builder: (context, listErr, _) => ValueListenableBuilder<List<dynamic>>(
                 valueListenable: _filteredCustomers,
                 builder: (context, filteredCusts, _) => loadingList
-                    ? const Center(child: CircularProgressIndicator())
+                    ? Center(child: CircularProgressIndicator())
                     : listErr.isNotEmpty
                         ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                             Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
-                            const SizedBox(height: 12),
+                            SizedBox(height: 12),
                             Text(listErr, style: GoogleFonts.inter(color: Colors.red.shade600)),
-                            const SizedBox(height: 16),
-                            ElevatedButton.icon(onPressed: _fetchCustomers, icon: const Icon(Icons.refresh), label: Text(context.tr('Retry'))),
+                            SizedBox(height: 16),
+                            ElevatedButton.icon(onPressed: _fetchCustomers, icon: Icon(Icons.refresh), label: Text(context.tr('Retry'))),
                           ]))
                         : filteredCusts.isEmpty
                             ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                                 Icon(Icons.person_search, size: 56, color: Colors.grey.shade400),
-                                const SizedBox(height: 12),
-                                Text(context.tr('No customers found'), style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 15)),
+                                SizedBox(height: 12),
+                                Text(context.tr('No customers found'), style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 15.sp)),
                               ]))
                             : RefreshIndicator(
                                 onRefresh: _fetchCustomers,
@@ -544,43 +563,43 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
     return GestureDetector(
       onTap: () => _openEdit(c),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
+        margin: EdgeInsets.only(bottom: 10),
+        padding: EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2))],
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6, offset: Offset(0, 2))],
         ),
         child: Row(
           children: [
             Container(
               width: 46, height: 46,
               decoration: BoxDecoration(
-                color: const Color(0xFF000080).withOpacity(0.1),
+                color: Color(0xFF000080).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
                 child: Text(
                   (c['name'] as String).isNotEmpty ? (c['name'] as String)[0].toUpperCase() : '?',
-                  style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w800, color: const Color(0xFF000080)),
+                  style: GoogleFonts.inter(fontSize: 20.sp, fontWeight: FontWeight.w800, color: Color(0xFF000080)),
                 ),
               ),
             ),
-            const SizedBox(width: 14),
+            SizedBox(width: 14),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(c['name'], style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15, color: const Color(0xFF1E293B))),
-                const SizedBox(height: 3),
-                Text(c['phone'], style: GoogleFonts.inter(fontSize: 13, color: Colors.grey.shade600)),
-                const SizedBox(height: 4),
+                Text(c['name'], style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15.sp, color: Color(0xFF1E293B))),
+                SizedBox(height: 3),
+                Text(c['phone'], style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.grey.shade600)),
+                SizedBox(height: 4),
                 Row(children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(20)),
-                    child: Text(c['customer_type'] ?? '', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFF2563EB))),
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(color: Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(20)),
+                    child: Text(c['customer_type'] ?? '', style: GoogleFonts.inter(fontSize: 11.sp, fontWeight: FontWeight.w600, color: Color(0xFF2563EB))),
                   ),
                   if ((c['branch_name']?.toString() ?? c['branch']?.toString() ?? '').isNotEmpty) ...[
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
@@ -589,16 +608,16 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
                       child: Text(
                           c['branch_name']?.toString() ?? c['branch']?.toString() ?? '',
                           style: GoogleFonts.inter(
-                              fontSize: 11,
+                              fontSize: 11.sp,
                               fontWeight: FontWeight.w600,
-                              color: const Color(0xFF7C3AED))),
+                              color: Color(0xFF7C3AED))),
                     ),
                   ],
                   const SizedBox(width: 8),
                   Icon(Icons.directions_car, size: 13, color: Colors.grey.shade500),
-                  const SizedBox(width: 3),
+                  SizedBox(width: 3),
                   Text(context.tr('${c['vehicle_count']} vehicle${(c['vehicle_count'] as int) != 1 ? "s" : ""}'),
-                      style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade500)),
+                      style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade500)),
                 ]),
               ]),
             ),
@@ -631,13 +650,13 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
                 decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
                 child: Center(child: Text(
                   (cust['name'] as String).isNotEmpty ? (cust['name'] as String)[0].toUpperCase() : '?',
-                  style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white),
+                  style: GoogleFonts.inter(fontSize: 22.sp, fontWeight: FontWeight.w800, color: Colors.white),
                 )),
               ),
-              const SizedBox(width: 14),
+              SizedBox(width: 14),
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(cust['name'] ?? '', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
-                Text(cust['phone'] ?? '', style: GoogleFonts.inter(color: Colors.white70, fontSize: 13)),
+                Text(cust['name'] ?? '', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16.sp)),
+                Text(cust['phone'] ?? '', style: GoogleFonts.inter(color: Colors.white70, fontSize: 13.sp)),
               ]),
             ]),
           ),
@@ -687,13 +706,13 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
               ),
               const SizedBox(height: 14),
               _buildTextField(_emailController, 'Email', Icons.email_outlined, keyboardType: TextInputType.emailAddress),
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               _buildTextField(_addressController, 'Address', Icons.location_on_outlined, maxLines: 2),
-              const SizedBox(height: 14),
-              Text(context.tr('Customer Type *'), style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
-              const SizedBox(height: 6),
+              SizedBox(height: 14),
+              Text(context.tr('Customer Type *'), style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+              SizedBox(height: 6),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
+                padding: EdgeInsets.symmetric(horizontal: 14),
                 decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.grey.shade300)),
                 child: DropdownButtonHideUnderline(
                   child: ValueListenableBuilder<Map<String, dynamic>?>(
@@ -746,29 +765,29 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
           ElevatedButton(
             onPressed: isSaving ? null : _save,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF000080),
+              backgroundColor: Color(0xFF000080),
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               disabledBackgroundColor: Colors.grey.shade400,
             ),
             child: isSaving
-                ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : Text(context.tr('Save Changes'), style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold)),
+                ? SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : Text(context.tr('Save Changes'), style: GoogleFonts.inter(fontSize: 16.sp, fontWeight: FontWeight.bold)),
           ),
           // if (context.read<AuthProvider>().isCompanyAdmin) ...[
-          //   const SizedBox(height: 12),
+          //   SizedBox(height: 12),
           //   OutlinedButton(
           //     onPressed: isSaving ? null : _confirmDeleteCustomer,
           //     style: OutlinedButton.styleFrom(
           //       foregroundColor: Colors.red.shade700,
           //       side: BorderSide(color: Colors.red.shade300, width: 1.5),
-          //       padding: const EdgeInsets.symmetric(vertical: 16),
+          //       padding: EdgeInsets.symmetric(vertical: 16),
           //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           //     ),
           //     child: Text(
           //       context.tr('Delete Customer'),
-          //       style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold),
+          //       style: GoogleFonts.inter(fontSize: 16.sp, fontWeight: FontWeight.bold),
           //     ),
           //   ),
           // ],
@@ -792,6 +811,7 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
     final selectedMake = row['make'] as Map<String, dynamic>?;
     final selectedBrand = row['brand_model'] as Map<String, dynamic>?;
     final selectedColor = row['color'] as Map<String, dynamic>?;
+    final selectedEmission = row['emission_standard'] as Map<String, dynamic>?;
 
     final segments = _segmentsForType(selectedType?['id']);
     final makes = _makesForSegment(selectedSegment?['id']);
@@ -807,7 +827,7 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
           border: Border.all(
             color: isNew
                 ? Colors.green.shade200
-                : const Color(0xFF000080).withOpacity(0.15),
+                : Color(0xFF000080).withOpacity(0.15),
           ),
         ),
         child: Column(
@@ -817,12 +837,12 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
             Row(
               children: [
                 Icon(Icons.directions_car, size: 18,
-                    color: isNew ? Colors.green.shade700 : const Color(0xFF000080).withOpacity(0.7)),
-                const SizedBox(width: 6),
+                    color: isNew ? Colors.green.shade700 : Color(0xFF000080).withOpacity(0.7)),
+                SizedBox(width: 6),
                 Text(label, style: GoogleFonts.inter(
                     fontWeight: FontWeight.w600,
-                    color: isNew ? Colors.green.shade700 : const Color(0xFF000080))),
-                const Spacer(),
+                    color: isNew ? Colors.green.shade700 : Color(0xFF000080))),
+                Spacer(),
                 GestureDetector(
                   onTap: () {
                     if (isNew) {
@@ -925,9 +945,25 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
               const SizedBox(height: 12),
             ],
 
+            // Emission Standard (optional)
+            if (_emissionStandards.isNotEmpty) ...[
+              _buildDropdown<Map<String, dynamic>>(
+                label: 'Emission Standard (Optional)',
+                value: selectedEmission,
+                items: [{'id': '', 'name': 'None'}, ..._emissionStandards.cast<Map<String, dynamic>>()],
+                labelBuilder: (e) => e['name']?.toString() ?? '',
+                hint: 'Select emission standard',
+                onChanged: (val) {
+                  row['emission_standard'] = (val?['id'] == '') ? null : val;
+                  _vehicleRowsNotifier.value++;
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+
             // Vehicle Number
-            Text('Vehicle Number *', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
-            const SizedBox(height: 6),
+            Text('Vehicle Number *', style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+            SizedBox(height: 6),
             TextField(
               controller: row['controller'] as TextEditingController,
               textCapitalization: TextCapitalization.characters,
@@ -935,25 +971,25 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
                 hintText: 'Enter Vehicle Number',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
                 enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
-                focusedBorder: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8)), borderSide: BorderSide(color: Color(0xFF000080))),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8)), borderSide: BorderSide(color: Color(0xFF000080))),
                 filled: true,
                 fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 isDense: true,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
 
             // Wheel Type selection
-            Text('Wheel Type *', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
-            const SizedBox(height: 4),
+            Text('Wheel Type *', style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+            SizedBox(height: 4),
             Row(
               children: [
                 Expanded(
                   child: RadioListTile<String>(
                     title: Text(
                       context.tr('Alloy Wheel'),
-                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500),
+                      style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.w500),
                     ),
                     value: 'alloy_wheel',
                     groupValue: row['wheel_type'] ?? 'normal_wheel',
@@ -972,7 +1008,7 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
                   child: RadioListTile<String>(
                     title: Text(
                       context.tr('Normal Wheel'),
-                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500),
+                      style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.w500),
                     ),
                     value: 'normal_wheel',
                     groupValue: row['wheel_type'] ?? 'normal_wheel',
@@ -1048,10 +1084,10 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
-        const SizedBox(height: 6),
+        Text(label, style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+        SizedBox(height: 6),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(10),
@@ -1089,6 +1125,7 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
       'make': null,
       'brand_model': null,
       'color': null,
+      'emission_standard': null,
       'wheel_type': 'normal_wheel',
     });
     _vehicleRowsNotifier.value++;
@@ -1096,18 +1133,18 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
 
   Widget _buildCard({required String title, required IconData icon, required List<Widget> children, Widget? trailing}) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: Offset(0, 2))],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Icon(icon, color: const Color(0xFF000080), size: 20),
-          const SizedBox(width: 8),
-          Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15, color: const Color(0xFF000080))),
-          const Spacer(),
+          Icon(icon, color: Color(0xFF000080), size: 20),
+          SizedBox(width: 8),
+          Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15.sp, color: Color(0xFF000080))),
+          Spacer(),
           if (trailing != null) trailing,
         ]),
         const Divider(height: 24),
@@ -1117,16 +1154,13 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
   }
 
   String _isoFromDialCode(String dialCode) {
-    switch (dialCode) {
-      case '+971': return 'AE';
-      case '+966': return 'SA';
-      case '+965': return 'KW';
-      case '+968': return 'OM';
-      case '+974': return 'QA';
-      case '+973': return 'BH';
-      case '+91':  return 'IN';
-      default:     return 'IN';
-    }
+    // Dynamic lookup via CountryConfig — handles all supported countries
+    return CountryConfig.all
+        .firstWhere(
+          (c) => c.phoneDialCode == dialCode,
+          orElse: () => CountryConfig.current,
+        )
+        .phoneIsoCode;
   }
 
   Widget _buildPhoneField({
@@ -1140,8 +1174,8 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(context.tr(label), style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
-        const SizedBox(height: 6),
+        Text(context.tr(label), style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+        SizedBox(height: 6),
         IntlPhoneField(
           key: ValueKey('${label}_$countryIso'),
           controller: controller,
@@ -1149,7 +1183,7 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
           onCountryChanged: (country) {
             onCodeChanged('+${country.dialCode}', country.code);
           },
-          dropdownTextStyle: GoogleFonts.inter(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 14),
+          dropdownTextStyle: GoogleFonts.inter(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 14.sp),
           style: GoogleFonts.inter(fontWeight: FontWeight.w500),
           disableLengthCheck: true,
           decoration: InputDecoration(
@@ -1168,8 +1202,8 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
 
   Widget _buildTextField(TextEditingController ctrl, String label, IconData icon, {TextInputType? keyboardType, int maxLines = 1}) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
-      const SizedBox(height: 6),
+      Text(label, style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+      SizedBox(height: 6),
       TextField(
         controller: ctrl,
         keyboardType: keyboardType,

@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:provider/provider.dart';
@@ -163,7 +165,7 @@ class _BookNowScreenState extends State<BookNowScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
+      backgroundColor: Color(0xFFF1F5F9),
       appBar: AppBar(
         title: Text(context.tr('Book Now'), style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
         backgroundColor: _primaryColor,
@@ -187,7 +189,7 @@ class _BookNowScreenState extends State<BookNowScreen> {
                       valueListenable: _branchesNotifier,
                       builder: (_, branches, __) {
                         if (!context.read<AuthProvider>().isCompanyAdmin || branches.isEmpty) {
-                          return const SizedBox.shrink();
+                          return SizedBox.shrink();
                         }
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
@@ -200,15 +202,15 @@ class _BookNowScreenState extends State<BookNowScreen> {
                                 decoration: InputDecoration(
                                   filled: true,
                                   fillColor: Colors.white,
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                     borderSide: BorderSide.none,
                                   ),
                                   labelText: context.tr('Select Branch'),
-                                  labelStyle: GoogleFonts.inter(color: Colors.grey.shade600, fontSize: 12),
+                                  labelStyle: GoogleFonts.inter(color: Colors.grey.shade600, fontSize: 12.sp),
                                 ),
-                                style: GoogleFonts.inter(color: const Color(0xFF1e293b), fontWeight: FontWeight.w600),
+                                style: GoogleFonts.inter(color: Color(0xFF1e293b), fontWeight: FontWeight.w600),
                                 items: branches.map((b) => DropdownMenuItem<String>(
                                   value: b['id']?.toString(),
                                   child: Text(b['name'] ?? ''),
@@ -259,8 +261,8 @@ class _BookNowScreenState extends State<BookNowScreen> {
                                     hintStyle: GoogleFonts.inter(color: Colors.grey.shade400),
                                     filled: true,
                                     fillColor: Colors.white,
-                                    prefixIcon: const Icon(Icons.directions_car, color: _primaryColor),
-                                    contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                                    prefixIcon: Icon(Icons.directions_car, color: _primaryColor),
+                                    contentPadding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                                   ),
                                   onSubmitted: (_) => _searchCustomer(),
@@ -269,7 +271,7 @@ class _BookNowScreenState extends State<BookNowScreen> {
                                   controller: _mobileController,
                                   keyboardType: TextInputType.phone,
                                   initialCountryCode: CountryConfig.phoneIsoCode,
-                                  dropdownTextStyle: GoogleFonts.inter(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 14),
+                                  dropdownTextStyle: GoogleFonts.inter(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 14.sp),
                                   style: GoogleFonts.inter(fontWeight: FontWeight.w500),
                                   disableLengthCheck: true,
                                   onCountryChanged: (country) {
@@ -280,7 +282,7 @@ class _BookNowScreenState extends State<BookNowScreen> {
                                     hintStyle: GoogleFonts.inter(color: Colors.grey.shade400),
                                     filled: true,
                                     fillColor: Colors.white,
-                                    contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                                    contentPadding: EdgeInsets.symmetric(vertical: 16),
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                                   ),
                                   onSubmitted: (_) => _searchCustomer(),
@@ -296,7 +298,7 @@ class _BookNowScreenState extends State<BookNowScreen> {
                             height: 54,
                             width: 54,
                             decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-                            child: const Icon(Icons.search, color: _primaryColor, size: 26),
+                            child: Icon(Icons.search, color: _primaryColor, size: 26),
                           ),
                         ),
                       ],
@@ -326,7 +328,7 @@ class _BookNowScreenState extends State<BookNowScreen> {
                         Text(
                           provider.errorMessage,
                           textAlign: TextAlign.center,
-                          style: GoogleFonts.inter(color: Colors.red, fontSize: 15, fontWeight: FontWeight.w600),
+                          style: GoogleFonts.inter(color: Colors.red, fontSize: 15.sp, fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),
@@ -360,7 +362,7 @@ class _BookNowScreenState extends State<BookNowScreen> {
                               Text(
                                 context.tr('Search a customer to book a slot'),
                                 textAlign: TextAlign.center,
-                                style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 15),
+                                style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 15.sp),
                               ),
                             ],
                           ),
@@ -387,8 +389,8 @@ class _BookNowScreenState extends State<BookNowScreen> {
         context.read<CustomerProvider>().clearData();
       },
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        duration: Duration(milliseconds: 200),
+        padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
           color: isActive ? Colors.white : Colors.white.withOpacity(0.15),
           borderRadius: BorderRadius.circular(20),
@@ -397,11 +399,11 @@ class _BookNowScreenState extends State<BookNowScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 14, color: isActive ? _primaryColor : Colors.white70),
-            const SizedBox(width: 6),
+            SizedBox(width: 6),
             Text(
               label,
               style: GoogleFonts.inter(
-                fontSize: 13,
+                fontSize: 13.sp,
                 fontWeight: FontWeight.w600,
                 color: isActive ? _primaryColor : Colors.white70,
               ),
@@ -425,7 +427,7 @@ class _BookNowScreenState extends State<BookNowScreen> {
             : '${c['phone']} · ${c['customer_type']}${(c['branch_name'] != null && c['branch_name'].toString().isNotEmpty) ? ' · ${c['branch_name']}' : ''}';
 
         return Card(
-          margin: const EdgeInsets.only(bottom: 8),
+          margin: EdgeInsets.only(bottom: 8),
           elevation: 0,
           color: Colors.white,
           shape: RoundedRectangleBorder(
@@ -434,7 +436,7 @@ class _BookNowScreenState extends State<BookNowScreen> {
           ),
           child: ListTile(
             leading: Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: _primaryColor.withOpacity(0.07),
                 borderRadius: BorderRadius.circular(8),
@@ -445,9 +447,9 @@ class _BookNowScreenState extends State<BookNowScreen> {
                 size: 20,
               ),
             ),
-            title: Text(name.toString(), style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14)),
-            subtitle: Text(subtitle.toString(), style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade600)),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFF000080)),
+            title: Text(name.toString(), style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14.sp)),
+            subtitle: Text(subtitle.toString(), style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade600)),
+            trailing: Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFF000080)),
             onTap: () {
               if (isVehicle) {
                 _selectCustomerFromVehicleSuggestion(Map<String, dynamic>.from(c));
@@ -467,7 +469,7 @@ class _BookNowScreenState extends State<BookNowScreen> {
       children: [
         // Customer Info Card
         Container(
-          padding: const EdgeInsets.all(18),
+          padding: EdgeInsets.all(18),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
@@ -476,12 +478,12 @@ class _BookNowScreenState extends State<BookNowScreen> {
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: _primaryColor.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.person, color: _primaryColor, size: 28),
+                child: Icon(Icons.person, color: _primaryColor, size: 28),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -490,12 +492,12 @@ class _BookNowScreenState extends State<BookNowScreen> {
                   children: [
                     Text(
                       customer['name'],
-                      style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800, color: const Color(0xFF1e293b)),
+                      style: GoogleFonts.inter(fontSize: 18.sp, fontWeight: FontWeight.w800, color: Color(0xFF1e293b)),
                     ),
-                    const SizedBox(height: 4),
-                    Text(customer['phone'], style: GoogleFonts.inter(color: Colors.grey.shade600, fontSize: 13)),
+                    SizedBox(height: 4),
+                    Text(customer['phone'], style: GoogleFonts.inter(color: Colors.grey.shade600, fontSize: 13.sp)),
                     if ((customer['type'] ?? '').toString().isNotEmpty)
-                      Text(customer['type'], style: GoogleFonts.inter(color: Colors.blue.shade700, fontSize: 12, fontWeight: FontWeight.w600)),
+                      Text(customer['type'], style: GoogleFonts.inter(color: Colors.blue.shade700, fontSize: 12.sp, fontWeight: FontWeight.w600)),
                   ],
                 ),
               ),
@@ -506,9 +508,9 @@ class _BookNowScreenState extends State<BookNowScreen> {
 
         Text(
           context.tr('Select a Vehicle to Book'),
-          style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15, color: Colors.grey.shade700),
+          style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15.sp, color: Colors.grey.shade700),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
 
         if (vehicles.isEmpty)
           Center(
@@ -528,8 +530,8 @@ class _BookNowScreenState extends State<BookNowScreen> {
               : (vehicle['type'] ?? '');
 
           return Container(
-            margin: const EdgeInsets.only(bottom: 14),
-            padding: const EdgeInsets.all(16),
+            margin: EdgeInsets.only(bottom: 14),
+            padding: EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(14),
@@ -539,7 +541,7 @@ class _BookNowScreenState extends State<BookNowScreen> {
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: isEligible ? Colors.green.shade50 : _primaryColor.withOpacity(0.07),
                     borderRadius: BorderRadius.circular(12),
@@ -553,22 +555,22 @@ class _BookNowScreenState extends State<BookNowScreen> {
                     children: [
                       Text(
                         vehicleNo,
-                        style: GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w800, color: const Color(0xFF1e293b), letterSpacing: 0.8),
+                        style: GoogleFonts.inter(fontSize: 17.sp, fontWeight: FontWeight.w800, color: Color(0xFF1e293b), letterSpacing: 0.8),
                       ),
-                      Text(vehicleType.toString(), style: GoogleFonts.inter(color: Colors.grey.shade600, fontSize: 12)),
+                      Text(vehicleType.toString(), style: GoogleFonts.inter(color: Colors.grey.shade600, fontSize: 12.sp)),
                       if (hasScheme) ...[
-                        const SizedBox(height: 4),
+                        SizedBox(height: 4),
                         Row(
                           children: [
                             Icon(Icons.local_offer_outlined, size: 12, color: Colors.indigo.shade400),
-                            const SizedBox(width: 4),
-                            Flexible(child: Text(vehicle['scheme_name'], style: GoogleFonts.inter(fontSize: 11, color: Colors.indigo.shade700, fontWeight: FontWeight.w600))),
+                            SizedBox(width: 4),
+                            Flexible(child: Text(vehicle['scheme_name'], style: GoogleFonts.inter(fontSize: 11.sp, color: Colors.indigo.shade700, fontWeight: FontWeight.w600))),
                             if (isEligible) ...[
-                              const SizedBox(width: 6),
+                              SizedBox(width: 6),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(color: Colors.green.shade100, borderRadius: BorderRadius.circular(20)),
-                                child: Text(context.tr('FREE'), style: GoogleFonts.inter(fontSize: 10, color: Colors.green.shade800, fontWeight: FontWeight.bold)),
+                                child: Text(context.tr('FREE'), style: GoogleFonts.inter(fontSize: 10.sp, color: Colors.green.shade800, fontWeight: FontWeight.bold)),
                               ),
                             ],
                           ],
@@ -593,11 +595,11 @@ class _BookNowScreenState extends State<BookNowScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: isEligible ? Colors.green : _primaryColor,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     elevation: 0,
                   ),
-                  child: Text(context.tr('Book Now'), style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13)),
+                  child: Text(context.tr('Book Now'), style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13.sp)),
                 ),
               ],
             ),

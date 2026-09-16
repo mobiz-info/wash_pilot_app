@@ -95,7 +95,7 @@ class _PurchaseRequestScreenState extends State<PurchaseRequestScreen> {
                       '${context.tr("Remaining Balance")}: ${CountryConfig.currencySymbol}${maxBalance.toStringAsFixed(2)}',
                       style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: Colors.red.shade700),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     TextFormField(
                       controller: controller,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -161,12 +161,12 @@ class _PurchaseRequestScreenState extends State<PurchaseRequestScreen> {
                           }
                         },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF000080),
+                    backgroundColor: Color(0xFF000080),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   child: isSaving
-                      ? const SizedBox(
+                      ? SizedBox(
                           height: 18,
                           width: 18,
                           child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
@@ -209,13 +209,13 @@ class _PurchaseRequestScreenState extends State<PurchaseRequestScreen> {
           context.tr('Purchase Expenses'),
           style: GoogleFonts.inter(fontWeight: FontWeight.w700),
         ),
-        backgroundColor: const Color(0xFF000080),
+        backgroundColor: Color(0xFF000080),
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
           IconButton(
             onPressed: _fetchPurchaseExpenses,
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh),
           )
         ],
       ),
@@ -234,11 +234,11 @@ class _PurchaseRequestScreenState extends State<PurchaseRequestScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text(errMsg, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
-                            const SizedBox(height: 16),
+                            Text(errMsg, style: TextStyle(color: Colors.red), textAlign: TextAlign.center),
+                            SizedBox(height: 16),
                             ElevatedButton(
                               onPressed: _fetchPurchaseExpenses,
-                              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000080), foregroundColor: Colors.white),
+                              style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF000080), foregroundColor: Colors.white),
                               child: Text(context.tr('Retry')),
                             ),
                           ],
@@ -246,7 +246,7 @@ class _PurchaseRequestScreenState extends State<PurchaseRequestScreen> {
                       ),
                     )
                   : expenses.isEmpty
-                      ? Center(child: Text(context.tr('No purchase expenses found'), style: GoogleFonts.inter(color: Colors.grey, fontSize: 15)))
+                      ? Center(child: Text(context.tr('No purchase expenses found'), style: GoogleFonts.inter(color: Colors.grey, fontSize: 15.sp)))
                       : RefreshIndicator(
                           onRefresh: _fetchPurchaseExpenses,
                           child: ListView.builder(
@@ -265,7 +265,7 @@ class _PurchaseRequestScreenState extends State<PurchaseRequestScreen> {
                           final balance = double.tryParse(expense['balance_amount']?.toString() ?? '0') ?? 0;
 
                           return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
+                            margin: EdgeInsets.only(bottom: 12),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(14),
@@ -273,7 +273,7 @@ class _PurchaseRequestScreenState extends State<PurchaseRequestScreen> {
                                 BoxShadow(
                                   color: Colors.black.withValues(alpha: 0.03),
                                   blurRadius: 10,
-                                  offset: const Offset(0, 4),
+                                  offset: Offset(0, 4),
                                 )
                               ],
                             ),
@@ -289,24 +289,24 @@ class _PurchaseRequestScreenState extends State<PurchaseRequestScreen> {
                                         child: Text(
                                           name,
                                           style: GoogleFonts.inter(
-                                            fontSize: 16,
+                                            fontSize: 16.sp,
                                             fontWeight: FontWeight.bold,
                                             color: Colors.black87,
                                           ),
                                         ),
                                       ),
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFF000080).withValues(alpha: 0.05),
+                                          color: Color(0xFF000080).withValues(alpha: 0.05),
                                           borderRadius: BorderRadius.circular(12),
                                         ),
                                         child: Text(
                                           branch,
                                           style: GoogleFonts.inter(
-                                            fontSize: 11,
+                                            fontSize: 11.sp,
                                             fontWeight: FontWeight.bold,
-                                            color: const Color(0xFF000080),
+                                            color: Color(0xFF000080),
                                           ),
                                         ),
                                       ),
@@ -320,7 +320,7 @@ class _PurchaseRequestScreenState extends State<PurchaseRequestScreen> {
                                       Text(
                                         '${context.tr("Supplier")}: $supplier',
                                         style: GoogleFonts.inter(
-                                          fontSize: 13,
+                                          fontSize: 13.sp,
                                           color: Colors.grey.shade700,
                                         ),
                                       ),
@@ -334,7 +334,7 @@ class _PurchaseRequestScreenState extends State<PurchaseRequestScreen> {
                                       Text(
                                         dateStr,
                                         style: GoogleFonts.inter(
-                                          fontSize: 13,
+                                          fontSize: 13.sp,
                                           color: Colors.grey.shade700,
                                         ),
                                       ),
@@ -350,7 +350,7 @@ class _PurchaseRequestScreenState extends State<PurchaseRequestScreen> {
                                           child: Text(
                                             remarks,
                                             style: GoogleFonts.inter(
-                                              fontSize: 13,
+                                              fontSize: 13.sp,
                                               color: Colors.grey.shade600,
                                               fontStyle: FontStyle.italic,
                                             ),
@@ -359,35 +359,35 @@ class _PurchaseRequestScreenState extends State<PurchaseRequestScreen> {
                                       ],
                                     ),
                                   ],
-                                  const Divider(height: 24),
+                                  Divider(height: 24),
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
                                       Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Text(context.tr('Total'), style: GoogleFonts.inter(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
-                                          const SizedBox(height: 2),
-                                          Text('${CountryConfig.currencySymbol}${total.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
+                                          Text(context.tr('Total'), style: GoogleFonts.inter(fontSize: 11.sp, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
+                                          SizedBox(height: 2),
+                                          Text('${CountryConfig.currencySymbol}${total.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 14.sp, fontWeight: FontWeight.bold, color: Colors.black87)),
                                         ],
                                       ),
                                       Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Text(context.tr('Paid'), style: GoogleFonts.inter(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
-                                          const SizedBox(height: 2),
-                                          Text('${CountryConfig.currencySymbol}${paid.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.green.shade700)),
+                                          Text(context.tr('Paid'), style: GoogleFonts.inter(fontSize: 11.sp, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
+                                          SizedBox(height: 2),
+                                          Text('${CountryConfig.currencySymbol}${paid.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 14.sp, fontWeight: FontWeight.bold, color: Colors.green.shade700)),
                                         ],
                                       ),
                                       Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Text(context.tr('Balance'), style: GoogleFonts.inter(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
-                                          const SizedBox(height: 2),
+                                          Text(context.tr('Balance'), style: GoogleFonts.inter(fontSize: 11.sp, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
+                                          SizedBox(height: 2),
                                           Text(
                                             '${CountryConfig.currencySymbol}${balance.toStringAsFixed(2)}',
                                             style: GoogleFonts.inter(
-                                              fontSize: 14,
+                                              fontSize: 14.sp,
                                               fontWeight: FontWeight.bold,
                                               color: balance > 0 ? Colors.red.shade700 : Colors.grey.shade700,
                                             ),
@@ -405,10 +405,10 @@ class _PurchaseRequestScreenState extends State<PurchaseRequestScreen> {
                                         icon: const Icon(Icons.payment, size: 18),
                                         label: Text(context.tr('Record Payment')),
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor: const Color(0xFF000080),
+                                          backgroundColor: Color(0xFF000080),
                                           foregroundColor: Colors.white,
                                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                          padding: const EdgeInsets.symmetric(vertical: 12),
+                                          padding: EdgeInsets.symmetric(vertical: 12),
                                         ),
                                       ),
                                     )
@@ -425,9 +425,9 @@ class _PurchaseRequestScreenState extends State<PurchaseRequestScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _navigateToAddPurchaseExpense,
-        backgroundColor: const Color(0xFF000080),
+        backgroundColor: Color(0xFF000080),
         foregroundColor: Colors.white,
-        child: const Icon(Icons.add),
+        child: Icon(Icons.add),
       ),
     );
   }

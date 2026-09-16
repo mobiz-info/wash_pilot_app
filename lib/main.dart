@@ -16,6 +16,7 @@ import 'providers/expense_provider.dart';
 import 'providers/navigation_provider.dart';
 import 'providers/dashboard_provider.dart';
 import 'providers/add_customer_provider.dart';
+import 'providers/font_size_provider.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/menu_screen.dart';
 import 'screens/login_screen.dart';
@@ -33,6 +34,7 @@ void main() async {
         ),
         ChangeNotifierProvider(create: (_) => CustomerProvider()),
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
+        ChangeNotifierProvider(create: (_) => FontSizeProvider()),
         ChangeNotifierProvider(create: (_) => InvoiceProvider()),
         ChangeNotifierProvider(create: (_) => BroadcastProvider()),
         ChangeNotifierProvider(create: (_) => InventoryProvider()),
@@ -52,15 +54,28 @@ class CarWashApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final languageProvider = context.watch<LanguageProvider>();
+    final fontSizeProvider = context.watch<FontSizeProvider>();
 
     return ScreenUtilInit(
       designSize: const Size(375, 812),
       minTextAdapt: true,
       splitScreenMode: true,
       builder: (context, child) {
-        return MaterialApp(
-          title: ApiService.appName,
-          debugShowCheckedModeBanner: false,
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: TextScaler.linear(fontSizeProvider.scaleFactor),
+          ),
+          child: MaterialApp(
+            title: ApiService.appName,
+            debugShowCheckedModeBanner: false,
+            builder: (context, widget) {
+              return MediaQuery(
+                data: MediaQuery.of(context).copyWith(
+                  textScaler: TextScaler.linear(fontSizeProvider.scaleFactor),
+                ),
+                child: widget!,
+              );
+            },
           locale: languageProvider.locale,
           supportedLocales: const [
             Locale('en', 'US'),
@@ -118,9 +133,10 @@ class CarWashApp extends StatelessWidget {
               }
             },
           ),
-        );
-      },
-    );
+        ),
+      );
+    },
+  );
   }
 }
 

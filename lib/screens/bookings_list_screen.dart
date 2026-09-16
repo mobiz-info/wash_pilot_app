@@ -122,7 +122,7 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
       lastDate: DateTime(2030),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: const ColorScheme.light(primary: Color(0xFF000080), onPrimary: Colors.white),
+          colorScheme: ColorScheme.light(primary: Color(0xFF000080), onPrimary: Colors.white),
         ),
         child: child!,
       ),
@@ -170,9 +170,9 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
           children: [
             Icon(isStart ? Icons.play_circle : Icons.cancel_outlined,
                 color: isStart ? Colors.green : Colors.red),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Text(isStart ? 'Start Booking' : 'Cancel Booking',
-                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16)),
+                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16.sp)),
           ],
         ),
         content: Column(
@@ -182,10 +182,10 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
             Text(isStart
                 ? 'Mark this booking as started/confirmed?'
                 : 'Are you sure you want to cancel this booking?',
-                style: GoogleFonts.inter(fontSize: 14, color: Colors.grey.shade700)),
-            const SizedBox(height: 12),
+                style: GoogleFonts.inter(fontSize: 14.sp, color: Colors.grey.shade700)),
+            SizedBox(height: 12),
             _dialogRow(Icons.directions_car, booking['vehicle']['number']),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             _dialogRow(Icons.person, booking['customer']['name']),
             const SizedBox(height: 4),
             _dialogRow(Icons.calendar_today, _formatDisplayDate(booking['booking_date'])),
@@ -218,8 +218,8 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
     return Row(
       children: [
         Icon(icon, size: 15, color: Colors.grey.shade500),
-        const SizedBox(width: 8),
-        Text(text, style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13)),
+        SizedBox(width: 8),
+        Text(text, style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13.sp)),
       ],
     );
   }
@@ -240,15 +240,15 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
-            const Icon(Icons.notifications_active_outlined, color: Colors.green),
-            const SizedBox(width: 8),
+            Icon(Icons.notifications_active_outlined, color: Colors.green),
+            SizedBox(width: 8),
             Text(context.tr('Send Ready Alert'),
-                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16)),
+                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16.sp)),
           ],
         ),
         content: Text(
           context.tr('Send the automated WhatsApp ready alert notification to this customer?'),
-          style: GoogleFonts.inter(fontSize: 14, color: Colors.grey.shade700),
+          style: GoogleFonts.inter(fontSize: 14.sp, color: Colors.grey.shade700),
         ),
         actions: [
           TextButton(
@@ -292,7 +292,9 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
           final customer = booking['customer'] ?? {};
           final name = customer['name'] ?? 'Customer';
           final vehicleNumber = booking['vehicle']?['number'] ?? 'your vehicle';
-          final message = "Hello $name, your vehicle ($vehicleNumber) is ready for pickup! Thank you for choosing our service.";
+          final String branchName = context.read<AuthProvider>().branchName ?? '';
+          final String branchStr = branchName.isNotEmpty ? branchName : 'Our';
+          final message = "Hi $name Great news! Your vehicle $vehicleNumber is ready for pickup. Please collect at your earliest convenience.\n$branchStr Support team.";
           
           String phone = (customer['whatsapp_number']?.toString().isNotEmpty == true)
               ? customer['whatsapp_number'].toString()
@@ -363,15 +365,15 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
+      backgroundColor: Color(0xFFF1F5F9),
       appBar: AppBar(
         title: Text(context.tr('Bookings'), style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
-        backgroundColor: const Color(0xFF000080),
+        backgroundColor: Color(0xFF000080),
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh),
             onPressed: _fetchBookings,
           ),
         ],
@@ -406,7 +408,7 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
                         height: 48,
                         width: 48,
                         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
-                        child: const Icon(Icons.search, color: Color(0xFF000080)),
+                        child: Icon(Icons.search, color: Color(0xFF000080)),
                       ),
                     ),
                   ],
@@ -420,7 +422,7 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
                       child: ListView.separated(
                         scrollDirection: Axis.horizontal,
                         itemCount: _serviceFilters.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        separatorBuilder: (_, __) => SizedBox(width: 8),
                         itemBuilder: (_, i) {
                           final f = _serviceFilters[i];
                           final isAll = f['id'] == 'all';
@@ -441,8 +443,8 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
                               _fetchBookings();
                             },
                             child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                              duration: Duration(milliseconds: 200),
+                              padding: EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                               decoration: BoxDecoration(
                                 color: isSelected ? Colors.white : Colors.white.withOpacity(0.15),
                                 borderRadius: BorderRadius.circular(20),
@@ -453,9 +455,9 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
                               child: Text(
                                 f['name'] ?? '',
                                 style: GoogleFonts.inter(
-                                  fontSize: 12,
+                                  fontSize: 12.sp,
                                   fontWeight: FontWeight.w600,
-                                  color: isSelected ? const Color(0xFF000080) : Colors.white70,
+                                  color: isSelected ? Color(0xFF000080) : Colors.white70,
                                 ),
                               ),
                             ),
@@ -478,14 +480,14 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
                 if (!loading && bookingList.isNotEmpty) {
                   return Container(
                     color: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                     child: Row(
                       children: [
                         Icon(Icons.calendar_month, size: 16, color: Colors.grey.shade500),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Text(
                           context.tr('${bookingList.length} booking${bookingList.length == 1 ? '' : 's'}'),
-                          style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: Colors.grey.shade700, fontSize: 13),
+                          style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: Colors.grey.shade700, fontSize: 13.sp),
                         ),
                       ],
                     ),
@@ -536,20 +538,20 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
     return GestureDetector(
       onTap: () => _pickDate(isFrom: isFrom),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
         child: Row(
           children: [
-            const Icon(Icons.calendar_today, size: 16, color: Color(0xFF000080)),
+            Icon(Icons.calendar_today, size: 16, color: Color(0xFF000080)),
             const SizedBox(width: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: GoogleFonts.inter(fontSize: 10, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
+                  Text(label, style: GoogleFonts.inter(fontSize: 10.sp, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
                   Text(
                     date != null ? _displayDate(date) : 'Select',
-                    style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFF1e293b)),
+                    style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.w700, color: Color(0xFF1e293b)),
                   ),
                 ],
               ),
@@ -586,15 +588,15 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
     final serviceName = (booking['service_name'] as String? ?? '').trim();
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
+      margin: EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: statusColor.withOpacity(0.2)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: Offset(0, 2))],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -609,21 +611,21 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(8),
+                            padding: EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF000080).withOpacity(0.07),
+                              color: Color(0xFF000080).withOpacity(0.07),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Icon(Icons.directions_car, color: Color(0xFF000080), size: 18),
+                            child: Icon(Icons.directions_car, color: Color(0xFF000080), size: 18),
                           ),
                           const SizedBox(width: 10),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(booking['vehicle']['number'],
-                                  style: GoogleFonts.inter(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 0.8, color: const Color(0xFF1e293b))),
+                                  style: GoogleFonts.inter(fontWeight: FontWeight.w900, fontSize: 16.sp, letterSpacing: 0.8, color: Color(0xFF1e293b))),
                               Text(booking['vehicle']['model'],
-                                  style: GoogleFonts.inter(fontSize: 11, color: Colors.grey.shade500)),
+                                  style: GoogleFonts.inter(fontSize: 11.sp, color: Colors.grey.shade500)),
                             ],
                           ),
                         ],
@@ -632,11 +634,11 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
                       if (serviceName.isNotEmpty) ...[
                         const SizedBox(height: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF000080).withOpacity(0.07),
+                            color: Color(0xFF000080).withOpacity(0.07),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: const Color(0xFF000080).withOpacity(0.15)),
+                            border: Border.all(color: Color(0xFF000080).withOpacity(0.15)),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -646,9 +648,9 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
                               Text(
                                 serviceName,
                                 style: GoogleFonts.inter(
-                                  fontSize: 11,
+                                  fontSize: 11.sp,
                                   fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF000080),
+                                  color: Color(0xFF000080),
                                 ),
                               ),
                             ],
@@ -658,14 +660,14 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
                       const SizedBox(height: 10),
                       Row(children: [
                         Icon(Icons.person_outline, size: 14, color: Colors.grey.shade400),
-                        const SizedBox(width: 6),
-                        Text(booking['customer']['name'], style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.grey.shade800)),
+                        SizedBox(width: 6),
+                        Text(booking['customer']['name'], style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13.sp, color: Colors.grey.shade800)),
                       ]),
-                      const SizedBox(height: 2),
+                      SizedBox(height: 2),
                       Row(children: [
                         Icon(Icons.phone_outlined, size: 14, color: Colors.grey.shade400),
-                        const SizedBox(width: 6),
-                        Text(booking['customer']['phone'], style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade600)),
+                        SizedBox(width: 6),
+                        Text(booking['customer']['phone'], style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade600)),
                       ]),
                     ],
                   ),
@@ -675,20 +677,20 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(_formatDisplayDate(booking['booking_date']),
-                        style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13, color: const Color(0xFF000080))),
+                        style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13.sp, color: Color(0xFF000080))),
                     if (booking['booking_time'] != null)
                       Text(booking['booking_time'],
-                          style: GoogleFonts.inter(fontSize: 11, color: Colors.grey.shade500)),
-                    const SizedBox(height: 8),
+                          style: GoogleFonts.inter(fontSize: 11.sp, color: Colors.grey.shade500)),
+                    SizedBox(height: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: statusColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(color: statusColor.withOpacity(0.3)),
                       ),
                       child: Text(statusLabel,
-                          style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: statusColor)),
+                          style: GoogleFonts.inter(fontSize: 11.sp, fontWeight: FontWeight.bold, color: statusColor)),
                     ),
                   ],
                 ),
@@ -704,8 +706,8 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
                 child: Row(
                   children: [
                     Icon(Icons.notes, size: 14, color: Colors.grey.shade400),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(booking['notes'], style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade700))),
+                    SizedBox(width: 8),
+                    Expanded(child: Text(booking['notes'], style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade700))),
                   ],
                 ),
               ),
@@ -723,7 +725,7 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
                     _actionBtn(
                       label: 'Create Invoice',
                       icon: Icons.receipt_long,
-                      color: const Color(0xFF000080),
+                      color: Color(0xFF000080),
                       isFilled: true,
                       onTap: () {
                         Navigator.push(
@@ -854,7 +856,7 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
           color: isFilled ? color : color.withOpacity(0.08),
           borderRadius: BorderRadius.circular(12),
@@ -864,7 +866,7 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
                   BoxShadow(
                     color: color.withOpacity(0.25),
                     blurRadius: 8,
-                    offset: const Offset(0, 4),
+                    offset: Offset(0, 4),
                   )
                 ]
               : [],
@@ -873,13 +875,13 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, size: 18, color: isFilled ? Colors.white : color),
-            const SizedBox(width: 6),
+            SizedBox(width: 6),
             Text(
               label,
               style: GoogleFonts.inter(
                 color: isFilled ? Colors.white : color,
                 fontWeight: FontWeight.bold,
-                fontSize: 13,
+                fontSize: 13.sp,
               ),
             ),
           ],
@@ -894,9 +896,9 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.calendar_today_outlined, size: 80, color: Colors.grey.shade200),
-          const SizedBox(height: 16),
-          Text(context.tr('No bookings found'), style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 16, fontWeight: FontWeight.w600)),
-          Text(context.tr('for the selected date range.'), style: GoogleFonts.inter(color: Colors.grey.shade400, fontSize: 13)),
+          SizedBox(height: 16),
+          Text(context.tr('No bookings found'), style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 16.sp, fontWeight: FontWeight.w600)),
+          Text(context.tr('for the selected date range.'), style: GoogleFonts.inter(color: Colors.grey.shade400, fontSize: 13.sp)),
         ],
       ),
     );
@@ -908,8 +910,8 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.error_outline, size: 60, color: Colors.red.shade200),
-          const SizedBox(height: 16),
-          Text(err, textAlign: TextAlign.center, style: GoogleFonts.inter(color: Colors.red, fontSize: 14)),
+          SizedBox(height: 16),
+          Text(err, textAlign: TextAlign.center, style: GoogleFonts.inter(color: Colors.red, fontSize: 14.sp)),
         ],
       ),
     );

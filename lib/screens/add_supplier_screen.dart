@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -117,7 +119,7 @@ class _AddSupplierScreenState extends State<AddSupplierScreen> {
           context.tr(_isEditing ? 'Edit Supplier' : 'Add Supplier'),
           style: GoogleFonts.inter(fontWeight: FontWeight.w700),
         ),
-        backgroundColor: const Color(0xFF000080),
+        backgroundColor: Color(0xFF000080),
         foregroundColor: Colors.white,
         elevation: 0,
       ),
@@ -175,9 +177,9 @@ class _AddSupplierScreenState extends State<AddSupplierScreen> {
                 icon: Icons.account_balance_wallet_outlined,
                 children: [
                   _supplierTypeRadio('cash', context.tr('Cash'), Icons.money),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   _supplierTypeRadio('credit', context.tr('Credit'), Icons.credit_score),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   _supplierTypeRadio('bill_to_bill', context.tr('Bill to Bill'), Icons.receipt_long),
 
                   // Credit fields
@@ -189,8 +191,8 @@ class _AddSupplierScreenState extends State<AddSupplierScreen> {
                       context.tr('Credit Details'),
                       style: GoogleFonts.inter(
                         fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                        color: const Color(0xFF000080),
+                        fontSize: 13.sp,
+                        color: Color(0xFF000080),
                       ),
                     ),
                     const SizedBox(height: 14),
@@ -251,15 +253,15 @@ class _AddSupplierScreenState extends State<AddSupplierScreen> {
                           strokeWidth: 2,
                         ),
                       )
-                    : const Icon(Icons.check_circle_outline),
+                    : Icon(Icons.check_circle_outline),
                 label: Text(
                   context.tr(_isEditing ? 'Update Supplier' : 'Add Supplier'),
-                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15),
+                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15.sp),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF000080),
+                  backgroundColor: Color(0xFF000080),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  padding: EdgeInsets.symmetric(vertical: 15),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
@@ -277,10 +279,10 @@ class _AddSupplierScreenState extends State<AddSupplierScreen> {
       onTap: () => setState(() => _supplierType = value),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: isSelected
-              ? const Color(0xFF000080).withValues(alpha: 0.07)
+              ? Color(0xFF000080).withValues(alpha: 0.07)
               : Colors.grey.shade50,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
@@ -296,25 +298,25 @@ class _AddSupplierScreenState extends State<AddSupplierScreen> {
               height: 20,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isSelected ? const Color(0xFF000080) : Colors.white,
+                color: isSelected ? Color(0xFF000080) : Colors.white,
                 border: Border.all(
-                  color: isSelected ? const Color(0xFF000080) : Colors.grey.shade400,
+                  color: isSelected ? Color(0xFF000080) : Colors.grey.shade400,
                   width: 2,
                 ),
               ),
               child: isSelected
-                  ? const Icon(Icons.circle, color: Colors.white, size: 10)
+                  ? Icon(Icons.circle, color: Colors.white, size: 10)
                   : null,
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Icon(icon, size: 18, color: isSelected ? const Color(0xFF000080) : Colors.grey.shade500),
             const SizedBox(width: 8),
             Text(
               label,
               style: GoogleFonts.inter(
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected ? const Color(0xFF000080) : Colors.black87,
-                fontSize: 14,
+                color: isSelected ? Color(0xFF000080) : Colors.black87,
+                fontSize: 14.sp,
               ),
             ),
           ],
@@ -336,7 +338,7 @@ class _AddSupplierScreenState extends State<AddSupplierScreen> {
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
-            offset: const Offset(0, 3),
+            offset: Offset(0, 3),
           ),
         ],
       ),
@@ -352,13 +354,13 @@ class _AddSupplierScreenState extends State<AddSupplierScreen> {
             child: Row(
               children: [
                 Icon(icon, color: Colors.white, size: 18),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Text(
                   title,
                   style: GoogleFonts.inter(
                     color: Colors.white,
                     fontWeight: FontWeight.w700,
-                    fontSize: 14,
+                    fontSize: 14.sp,
                   ),
                 ),
               ],
@@ -393,8 +395,8 @@ class _AddSupplierScreenState extends State<AddSupplierScreen> {
       style: GoogleFonts.inter(fontWeight: FontWeight.w500),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: GoogleFonts.inter(fontSize: 13, color: Colors.grey.shade600),
-        prefixIcon: Icon(icon, size: 18, color: const Color(0xFF000080)),
+        labelStyle: GoogleFonts.inter(fontSize: 13.sp, color: Colors.grey.shade600),
+        prefixIcon: Icon(icon, size: 18, color: Color(0xFF000080)),
         filled: true,
         fillColor: Colors.grey.shade50,
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
@@ -412,11 +414,11 @@ class _AddSupplierScreenState extends State<AddSupplierScreen> {
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Colors.red),
+          borderSide: BorderSide(color: Colors.red),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Colors.red, width: 1.5),
+          borderSide: BorderSide(color: Colors.red, width: 1.5),
         ),
       ),
       validator: validator,

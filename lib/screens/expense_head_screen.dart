@@ -146,12 +146,12 @@ class _ExpenseHeadScreenState extends State<ExpenseHeadScreen> {
                           }
                         },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF000080),
+                    backgroundColor: Color(0xFF000080),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   child: isCreating
-                      ? const SizedBox(
+                      ? SizedBox(
                           height: 18,
                           width: 18,
                           child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
@@ -251,12 +251,12 @@ class _ExpenseHeadScreenState extends State<ExpenseHeadScreen> {
                           }
                         },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF000080),
+                    backgroundColor: Color(0xFF000080),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   child: isSaving
-                      ? const SizedBox(
+                      ? SizedBox(
                           height: 18,
                           width: 18,
                           child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
@@ -298,7 +298,7 @@ class _ExpenseHeadScreenState extends State<ExpenseHeadScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text(context.tr('Delete'), style: const TextStyle(color: Colors.red)),
+            child: Text(context.tr('Delete'), style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -337,13 +337,13 @@ class _ExpenseHeadScreenState extends State<ExpenseHeadScreen> {
           context.tr('Expense Heads'),
           style: GoogleFonts.inter(fontWeight: FontWeight.w700),
         ),
-        backgroundColor: const Color(0xFF000080),
+        backgroundColor: Color(0xFF000080),
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
           IconButton(
             onPressed: _fetchExpenseHeads,
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh),
           )
         ],
       ),
@@ -356,7 +356,7 @@ class _ExpenseHeadScreenState extends State<ExpenseHeadScreen> {
               controller: _searchController,
               decoration: InputDecoration(
                 hintText: context.tr('Search expense heads...'),
-                prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                prefixIcon: Icon(Icons.search, color: Colors.grey),
                 filled: true,
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
@@ -383,11 +383,11 @@ class _ExpenseHeadScreenState extends State<ExpenseHeadScreen> {
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Text(errMsg, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
-                                    const SizedBox(height: 16),
+                                    Text(errMsg, style: TextStyle(color: Colors.red), textAlign: TextAlign.center),
+                                    SizedBox(height: 16),
                                     ElevatedButton(
                                       onPressed: _fetchExpenseHeads,
-                                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF000080), foregroundColor: Colors.white),
+                                      style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF000080), foregroundColor: Colors.white),
                                       child: Text(context.tr('Retry')),
                                     ),
                                   ],
@@ -395,30 +395,30 @@ class _ExpenseHeadScreenState extends State<ExpenseHeadScreen> {
                               ),
                             )
                           : filtered.isEmpty
-                              ? Center(child: Text(context.tr('No expense heads found'), style: GoogleFonts.inter(color: Colors.grey, fontSize: 15)))
+                              ? Center(child: Text(context.tr('No expense heads found'), style: GoogleFonts.inter(color: Colors.grey, fontSize: 15.sp)))
                               : ListView.builder(
-                                  padding: const EdgeInsets.all(16),
+                                  padding: EdgeInsets.all(16),
                                   itemCount: filtered.length,
                                   itemBuilder: (ctx, i) {
                                     final head = Map<String, dynamic>.from(filtered[i] as Map);
                                     final name = head['name'] ?? '';
                                     return Container(
-                                      margin: const EdgeInsets.only(bottom: 10),
+                                      margin: EdgeInsets.only(bottom: 10),
                                       decoration: BoxDecoration(
                                         color: Colors.white,
                                         borderRadius: BorderRadius.circular(12),
-                                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 6, offset: const Offset(0, 3))],
+                                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 6, offset: Offset(0, 3))],
                                       ),
                                       child: ListTile(
-                                        leading: const CircleAvatar(
+                                        leading: CircleAvatar(
                                           backgroundColor: Color(0xFFE0E0FF),
                                           foregroundColor: Color(0xFF000080),
                                           child: Icon(Icons.label_outline),
                                         ),
-                                        title: Text(name, style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black87)),
+                                        title: Text(name, style: GoogleFonts.inter(fontSize: 15.sp, fontWeight: FontWeight.w600, color: Colors.black87)),
                                         trailing: (head['is_deletable'] ?? true)
                                             ? PopupMenuButton<String>(
-                                                icon: const Icon(Icons.more_vert, color: Colors.grey),
+                                                icon: Icon(Icons.more_vert, color: Colors.grey),
                                                 onSelected: (value) {
                                                   if (value == 'edit') {
                                                     _editExpenseHead(head);
@@ -427,8 +427,8 @@ class _ExpenseHeadScreenState extends State<ExpenseHeadScreen> {
                                                   }
                                                 },
                                                 itemBuilder: (context) => [
-                                                  PopupMenuItem(value: 'edit', child: Row(children: [const Icon(Icons.edit, size: 18, color: Colors.blue), const SizedBox(width: 8), Text(context.tr('Edit'), style: GoogleFonts.inter())])),
-                                                  PopupMenuItem(value: 'delete', child: Row(children: [const Icon(Icons.delete, size: 18, color: Colors.red), const SizedBox(width: 8), Text(context.tr('Delete'), style: GoogleFonts.inter(color: Colors.red))])),
+                                                  PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit, size: 18, color: Colors.blue), SizedBox(width: 8), Text(context.tr('Edit'), style: GoogleFonts.inter())])),
+                                                  PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete, size: 18, color: Colors.red), SizedBox(width: 8), Text(context.tr('Delete'), style: GoogleFonts.inter(color: Colors.red))])),
                                                 ],
                                               )
                                             : null,
@@ -444,9 +444,9 @@ class _ExpenseHeadScreenState extends State<ExpenseHeadScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _addNewExpenseHead,
-        backgroundColor: const Color(0xFF000080),
+        backgroundColor: Color(0xFF000080),
         foregroundColor: Colors.white,
-        child: const Icon(Icons.add),
+        child: Icon(Icons.add),
       ),
     );
   }

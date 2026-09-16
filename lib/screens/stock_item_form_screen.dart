@@ -184,7 +184,7 @@ class _StockItemFormScreenState extends State<StockItemFormScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (ctx) {
@@ -215,7 +215,7 @@ class _StockItemFormScreenState extends State<StockItemFormScreen> {
                         style: GoogleFonts.inter(
                           fontSize: 15.sp,
                           fontWeight: FontWeight.bold,
-                          color: const Color(0xFF1E293B),
+                          color: Color(0xFF1E293B),
                         ),
                       ),
                       IconButton(
@@ -226,16 +226,16 @@ class _StockItemFormScreenState extends State<StockItemFormScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   TextField(
                     autofocus: true,
                     style: GoogleFonts.inter(fontSize: 13.sp),
                     decoration: InputDecoration(
                       hintText: context.tr('Search stock groups...'),
                       hintStyle: GoogleFonts.inter(fontSize: 12.5.sp, color: Colors.grey.shade400),
-                      prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF64748B)),
+                      prefixIcon: Icon(Icons.search, size: 18, color: Color(0xFF64748B)),
                       filled: true,
-                      fillColor: const Color(0xFFF8FAFC),
+                      fillColor: Color(0xFFF8FAFC),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -301,7 +301,7 @@ class _StockItemFormScreenState extends State<StockItemFormScreen> {
                                 style: GoogleFonts.inter(
                                   fontSize: 13.sp,
                                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                  color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF1E293B),
+                                  color: isSelected ? Color(0xFF2563EB) : Color(0xFF1E293B),
                                 ),
                               ),
                               trailing: isSelected
@@ -333,7 +333,7 @@ class _StockItemFormScreenState extends State<StockItemFormScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (ctx) {
@@ -364,7 +364,7 @@ class _StockItemFormScreenState extends State<StockItemFormScreen> {
                         style: GoogleFonts.inter(
                           fontSize: 15.sp,
                           fontWeight: FontWeight.bold,
-                          color: const Color(0xFF1E293B),
+                          color: Color(0xFF1E293B),
                         ),
                       ),
                       IconButton(
@@ -375,16 +375,16 @@ class _StockItemFormScreenState extends State<StockItemFormScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   TextField(
                     autofocus: true,
                     style: GoogleFonts.inter(fontSize: 13.sp),
                     decoration: InputDecoration(
                       hintText: context.tr('Search sub groups...'),
                       hintStyle: GoogleFonts.inter(fontSize: 12.5.sp, color: Colors.grey.shade400),
-                      prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF64748B)),
+                      prefixIcon: Icon(Icons.search, size: 18, color: Color(0xFF64748B)),
                       filled: true,
-                      fillColor: const Color(0xFFF8FAFC),
+                      fillColor: Color(0xFFF8FAFC),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -457,7 +457,7 @@ class _StockItemFormScreenState extends State<StockItemFormScreen> {
                                 style: GoogleFonts.inter(
                                   fontSize: 13.sp,
                                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                  color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF1E293B),
+                                  color: isSelected ? Color(0xFF2563EB) : Color(0xFF1E293B),
                                 ),
                               ),
                               trailing: isSelected
@@ -562,7 +562,7 @@ class _StockItemFormScreenState extends State<StockItemFormScreen> {
       fillColor: Colors.white,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+        borderSide: BorderSide(color: Color(0xFFCBD5E1)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
@@ -578,18 +578,18 @@ class _StockItemFormScreenState extends State<StockItemFormScreen> {
 
   Widget _buildFieldLabel(String label, {bool isRequired = false, String? optionalNote}) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4.0),
+      padding: EdgeInsets.only(bottom: 4.0),
       child: RichText(
         text: TextSpan(
-          style: GoogleFonts.inter(fontSize: 12.sp, color: const Color(0xFF1E293B), fontWeight: FontWeight.w600),
+          style: GoogleFonts.inter(fontSize: 12.sp, color: Color(0xFF1E293B), fontWeight: FontWeight.w600),
           children: [
             TextSpan(text: context.tr(label)),
             if (isRequired)
-              const TextSpan(text: ' *', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+              TextSpan(text: ' *', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
             if (optionalNote != null)
               TextSpan(
                 text: ' (${context.tr(optionalNote)})',
-                style: GoogleFonts.inter(fontSize: 10.5.sp, color: const Color(0xFF94A3B8), fontWeight: FontWeight.normal),
+                style: GoogleFonts.inter(fontSize: 10.5.sp, color: Color(0xFF94A3B8), fontWeight: FontWeight.normal),
               ),
           ],
         ),
@@ -606,7 +606,7 @@ class _StockItemFormScreenState extends State<StockItemFormScreen> {
           isEdit ? context.tr('Edit Stock Item') : context.tr('Create Stock Item'),
           style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16.sp),
         ),
-        backgroundColor: const Color(0xFF000080),
+        backgroundColor: Color(0xFF000080),
         foregroundColor: Colors.white,
         elevation: 0,
       ),
@@ -620,12 +620,12 @@ class _StockItemFormScreenState extends State<StockItemFormScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                    border: Border.all(color: Color(0xFFE2E8F0)),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.03),
                         blurRadius: 8,
-                        offset: const Offset(0, 3),
+                        offset: Offset(0, 3),
                       ),
                     ],
                   ),
@@ -639,11 +639,11 @@ class _StockItemFormScreenState extends State<StockItemFormScreen> {
                         onTap: _showStockGroupSelector,
                         borderRadius: BorderRadius.circular(8),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 11),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFFCBD5E1)),
+                            border: Border.all(color: Color(0xFFCBD5E1)),
                           ),
                           child: Row(
                             children: [
@@ -652,7 +652,7 @@ class _StockItemFormScreenState extends State<StockItemFormScreen> {
                                   _selectedGroupObj != null ? _selectedGroupObj!['name'] : context.tr('---------'),
                                   style: GoogleFonts.inter(
                                     fontSize: 13.sp,
-                                    color: _selectedGroupObj != null ? const Color(0xFF1E293B) : Colors.grey.shade500,
+                                    color: _selectedGroupObj != null ? Color(0xFF1E293B) : Colors.grey.shade500,
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -670,11 +670,11 @@ class _StockItemFormScreenState extends State<StockItemFormScreen> {
                         onTap: _showSubGroupSelector,
                         borderRadius: BorderRadius.circular(8),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 11),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFFCBD5E1)),
+                            border: Border.all(color: Color(0xFFCBD5E1)),
                           ),
                           child: Row(
                             children: [
@@ -683,7 +683,7 @@ class _StockItemFormScreenState extends State<StockItemFormScreen> {
                                   _selectedSubGroupObj != null ? _selectedSubGroupObj!['name'] : context.tr('---------'),
                                   style: GoogleFonts.inter(
                                     fontSize: 13.sp,
-                                    color: _selectedSubGroupObj != null ? const Color(0xFF1E293B) : Colors.grey.shade500,
+                                    color: _selectedSubGroupObj != null ? Color(0xFF1E293B) : Colors.grey.shade500,
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -716,7 +716,7 @@ class _StockItemFormScreenState extends State<StockItemFormScreen> {
                         value: _selectedUnit,
                         isExpanded: true,
                         decoration: _inputDecoration(hintText: 'Select Base Unit'),
-                        style: GoogleFonts.inter(fontSize: 13.sp, color: const Color(0xFF1E293B)),
+                        style: GoogleFonts.inter(fontSize: 13.sp, color: Color(0xFF1E293B)),
                         items: [
                           DropdownMenuItem<String>(
                             value: null,
@@ -742,7 +742,7 @@ class _StockItemFormScreenState extends State<StockItemFormScreen> {
                         decoration: _inputDecoration(hintText: 'Enter Brand name'),
                         style: GoogleFonts.inter(fontSize: 13.sp),
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
 
                       // 5. HSN Code
                       _buildFieldLabel('HSN Code', optionalNote: 'non mandatory'),
@@ -751,7 +751,7 @@ class _StockItemFormScreenState extends State<StockItemFormScreen> {
                         decoration: _inputDecoration(hintText: 'Enter Hsn code'),
                         style: GoogleFonts.inter(fontSize: 13.sp),
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
 
                       // 6. Barcode
                       _buildFieldLabel('Barcode', optionalNote: 'non mandatory'),
@@ -760,7 +760,7 @@ class _StockItemFormScreenState extends State<StockItemFormScreen> {
                         decoration: _inputDecoration(hintText: 'Enter Barcode'),
                         style: GoogleFonts.inter(fontSize: 13.sp),
                       ),
-                      const SizedBox(height: 14),
+                      SizedBox(height: 14),
 
                       // 7. Trading & Operational Checkboxes
                       Container(
@@ -792,7 +792,7 @@ class _StockItemFormScreenState extends State<StockItemFormScreen> {
                                     style: GoogleFonts.inter(
                                       fontSize: 12.5.sp,
                                       fontWeight: FontWeight.w600,
-                                      color: const Color(0xFF334155),
+                                      color: Color(0xFF334155),
                                     ),
                                   ),
                                 ],
@@ -813,7 +813,7 @@ class _StockItemFormScreenState extends State<StockItemFormScreen> {
                                     style: GoogleFonts.inter(
                                       fontSize: 12.5.sp,
                                       fontWeight: FontWeight.w600,
-                                      color: const Color(0xFF334155),
+                                      color: Color(0xFF334155),
                                     ),
                                   ),
                                 ],
@@ -845,7 +845,7 @@ class _StockItemFormScreenState extends State<StockItemFormScreen> {
                                   style: GoogleFonts.inter(
                                     fontSize: 13.sp,
                                     fontWeight: FontWeight.bold,
-                                    color: const Color(0xFF1E293B),
+                                    color: Color(0xFF1E293B),
                                   ),
                                 ),
                               ],
@@ -854,23 +854,23 @@ class _StockItemFormScreenState extends State<StockItemFormScreen> {
                             _buildFieldLabel('CGST (%)'),
                             TextFormField(
                               controller: _cgstController,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              keyboardType: TextInputType.numberWithOptions(decimal: true),
                               decoration: _inputDecoration(hintText: '0.0'),
                               style: GoogleFonts.inter(fontSize: 13.sp),
                             ),
-                            const SizedBox(height: 10),
+                            SizedBox(height: 10),
                             _buildFieldLabel('SGST / SCGT (%)'),
                             TextFormField(
                               controller: _sgstController,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              keyboardType: TextInputType.numberWithOptions(decimal: true),
                               decoration: _inputDecoration(hintText: '0.0'),
                               style: GoogleFonts.inter(fontSize: 13.sp),
                             ),
-                            const SizedBox(height: 10),
+                            SizedBox(height: 10),
                             _buildFieldLabel('IGST (%)'),
                             TextFormField(
                               controller: _igstController,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              keyboardType: TextInputType.numberWithOptions(decimal: true),
                               decoration: _inputDecoration(hintText: '0.0'),
                               style: GoogleFonts.inter(fontSize: 13.sp),
                             ),
@@ -883,21 +883,21 @@ class _StockItemFormScreenState extends State<StockItemFormScreen> {
                       _buildFieldLabel('Profit Margin (%)'),
                       TextFormField(
                         controller: _profitMarginController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: TextInputType.numberWithOptions(decimal: true),
                         decoration: _inputDecoration(hintText: '0.0'),
                         style: GoogleFonts.inter(fontSize: 13.sp),
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
 
                       // 10. Critical Level (non mandatory)
                       _buildFieldLabel('Critical Level', optionalNote: 'non mandatory'),
                       TextFormField(
                         controller: _criticalLevelController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: TextInputType.numberWithOptions(decimal: true),
                         decoration: _inputDecoration(hintText: '0.0'),
                         style: GoogleFonts.inter(fontSize: 13.sp),
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
 
                       // 11. Default Expense Head
                       _buildFieldLabel('Default Expense Head'),
@@ -905,7 +905,7 @@ class _StockItemFormScreenState extends State<StockItemFormScreen> {
                         value: _selectedExpenseHeadId,
                         isExpanded: true,
                         decoration: _inputDecoration(hintText: '---------'),
-                        style: GoogleFonts.inter(fontSize: 13.sp, color: const Color(0xFF1E293B)),
+                        style: GoogleFonts.inter(fontSize: 13.sp, color: Color(0xFF1E293B)),
                         items: [
                           DropdownMenuItem<String>(
                             value: null,
@@ -932,18 +932,18 @@ class _StockItemFormScreenState extends State<StockItemFormScreen> {
                         child: ElevatedButton.icon(
                           onPressed: _isSaving ? null : _saveStockItem,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF2563EB),
+                            backgroundColor: Color(0xFF2563EB),
                             foregroundColor: Colors.white,
                             elevation: 1,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
                           icon: _isSaving
-                              ? const SizedBox(
+                              ? SizedBox(
                                   height: 16,
                                   width: 16,
                                   child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                 )
-                              : const Icon(Icons.check_circle_outline, size: 18),
+                              : Icon(Icons.check_circle_outline, size: 18),
                           label: Text(
                             isEdit ? context.tr('Save Changes') : context.tr('Save Stock Item'),
                             style: GoogleFonts.inter(
@@ -953,7 +953,7 @@ class _StockItemFormScreenState extends State<StockItemFormScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      SizedBox(height: 10),
                       SizedBox(
                         width: double.infinity,
                         height: 40.h,
@@ -968,7 +968,7 @@ class _StockItemFormScreenState extends State<StockItemFormScreen> {
                             style: GoogleFonts.inter(
                               fontSize: 13.sp,
                               fontWeight: FontWeight.w600,
-                              color: const Color(0xFF475569),
+                              color: Color(0xFF475569),
                             ),
                           ),
                         ),

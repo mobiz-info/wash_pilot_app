@@ -191,15 +191,15 @@ class _AddSchemeScreenState extends State<AddSchemeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Color(0xFFF8FAFC),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF000080),
+        backgroundColor: Color(0xFF000080),
         foregroundColor: Colors.white,
         title: Text(
           context.tr('Add Scheme'),
           style: GoogleFonts.inter(
             fontWeight: FontWeight.w800,
-            fontSize: 18,
+            fontSize: 18.sp,
           ),
         ),
       ),
@@ -218,14 +218,14 @@ class _AddSchemeScreenState extends State<AddSchemeScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                    const SizedBox(height: 12),
+                    Icon(Icons.error_outline, size: 48, color: Colors.red),
+                    SizedBox(height: 12),
                     Text(
                       err,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.red),
+                      style: TextStyle(color: Colors.red),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     ElevatedButton(onPressed: _loadOptions, child: Text(context.tr('Retry'))),
                   ],
                 ),
@@ -344,7 +344,7 @@ class _AddSchemeScreenState extends State<AddSchemeScreen> {
               title: Text(voucher['voucher_number'] ?? ''),
               subtitle: Text(context.tr('Discount: ${voucher['discount']}')),
               trailing: IconButton(
-                icon: const Icon(Icons.delete_outline, color: Colors.red),
+                icon: Icon(Icons.delete_outline, color: Colors.red),
                 onPressed: () {
                   _vouchers.removeAt(entry.key);
                   _formNotifier.value++;
@@ -383,10 +383,10 @@ class _AddSchemeScreenState extends State<AddSchemeScreen> {
                         color: Colors.white,
                       ),
                     )
-                  : const Icon(Icons.save_outlined),
+                  : Icon(Icons.save_outlined),
               label: Text(isSaving ? 'Saving...' : 'Save Scheme'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF000080),
+                backgroundColor: Color(0xFF000080),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -443,7 +443,7 @@ class _AddSchemeScreenState extends State<AddSchemeScreen> {
       fillColor: Colors.white,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+        borderSide: BorderSide(color: Color(0xFFE2E8F0)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -457,11 +457,11 @@ class _AddSchemeScreenState extends State<AddSchemeScreen> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+          border: Border.all(color: Color(0xFFE2E8F0)),
         ),
         child: Row(
           children: [
@@ -478,14 +478,14 @@ class _AddSchemeScreenState extends State<AddSchemeScreen> {
                   Text(
                     label,
                     style: GoogleFonts.inter(
-                      fontSize: 11,
-                      color: const Color(0xFF64748B),
+                      fontSize: 11.sp,
+                      color: Color(0xFF64748B),
                     ),
                   ),
                   Text(
                     _displayDate(date),
                     style: GoogleFonts.inter(
-                      fontSize: 13,
+                      fontSize: 13.sp,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -510,7 +510,7 @@ class _AddSchemeScreenState extends State<AddSchemeScreen> {
           title,
           style: GoogleFonts.inter(
             fontWeight: FontWeight.w800,
-            color: const Color(0xFF1E293B),
+            color: Color(0xFF1E293B),
           ),
         ),
         const SizedBox(height: 8),
@@ -518,8 +518,8 @@ class _AddSchemeScreenState extends State<AddSchemeScreen> {
           Text(
             context.tr('All $title'),
             style: GoogleFonts.inter(
-              color: const Color(0xFF64748B),
-              fontSize: 13,
+              color: Color(0xFF64748B),
+              fontSize: 13.sp,
             ),
           )
         else

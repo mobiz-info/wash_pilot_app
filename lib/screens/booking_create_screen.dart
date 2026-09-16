@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
@@ -27,7 +29,7 @@ class _BookingCreateScreenState extends State<BookingCreateScreen> {
 
   // --- State ---
   late Map<String, dynamic> _selectedVehicle;
-  DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));
+  DateTime _selectedDate = DateTime.now();
   Map<String, dynamic>? _selectedService;
   final _notesController = TextEditingController();
 
@@ -110,7 +112,7 @@ class _BookingCreateScreenState extends State<BookingCreateScreen> {
       lastDate: DateTime.now().add(const Duration(days: 90)),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: const ColorScheme.light(
+          colorScheme: ColorScheme.light(
             primary: _primaryColor,
             onPrimary: Colors.white,
           ),
@@ -247,14 +249,14 @@ class _BookingCreateScreenState extends State<BookingCreateScreen> {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.15),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.person, color: Colors.white, size: 22),
+            child: Icon(Icons.person, color: Colors.white, size: 22),
           ),
-          const SizedBox(width: 14),
+          SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -264,14 +266,14 @@ class _BookingCreateScreenState extends State<BookingCreateScreen> {
                   style: GoogleFonts.inter(
                     color: Colors.white,
                     fontWeight: FontWeight.w700,
-                    fontSize: 16,
+                    fontSize: 16.sp,
                   ),
                 ),
                 Text(
                   widget.customer['phone'] ?? '',
                   style: GoogleFonts.inter(
                     color: Colors.white70,
-                    fontSize: 13,
+                    fontSize: 13.sp,
                   ),
                 ),
               ],
@@ -291,8 +293,8 @@ class _BookingCreateScreenState extends State<BookingCreateScreen> {
           label,
           style: GoogleFonts.inter(
             fontWeight: FontWeight.w700,
-            fontSize: 14,
-            color: const Color(0xFF1e293b),
+            fontSize: 14.sp,
+            color: Color(0xFF1e293b),
           ),
         ),
       ],
@@ -329,8 +331,8 @@ class _BookingCreateScreenState extends State<BookingCreateScreen> {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(14),
+        duration: Duration(milliseconds: 200),
+        padding: EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
@@ -348,7 +350,7 @@ class _BookingCreateScreenState extends State<BookingCreateScreen> {
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: isSelected ? _primaryColor.withOpacity(0.1) : Colors.grey.shade50,
                 borderRadius: BorderRadius.circular(10),
@@ -368,15 +370,15 @@ class _BookingCreateScreenState extends State<BookingCreateScreen> {
                     vehicleNo,
                     style: GoogleFonts.inter(
                       fontWeight: FontWeight.w800,
-                      fontSize: 16,
-                      color: const Color(0xFF1e293b),
+                      fontSize: 16.sp,
+                      color: Color(0xFF1e293b),
                       letterSpacing: 0.5,
                     ),
                   ),
                   if (vehicleType.isNotEmpty)
                     Text(
                       vehicleType,
-                      style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade500),
+                      style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade500),
                     ),
                 ],
               ),
@@ -388,7 +390,7 @@ class _BookingCreateScreenState extends State<BookingCreateScreen> {
                   color: _primaryColor,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.check, color: Colors.white, size: 14),
+                child: Icon(Icons.check, color: Colors.white, size: 14),
               ),
           ],
         ),
@@ -400,7 +402,7 @@ class _BookingCreateScreenState extends State<BookingCreateScreen> {
     return GestureDetector(
       onTap: _pickDate,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
@@ -410,12 +412,12 @@ class _BookingCreateScreenState extends State<BookingCreateScreen> {
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: _primaryColor.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.calendar_today, color: _primaryColor, size: 20),
+              child: Icon(Icons.calendar_today, color: _primaryColor, size: 20),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -424,15 +426,15 @@ class _BookingCreateScreenState extends State<BookingCreateScreen> {
                 children: [
                   Text(
                     context.tr('Booking Date'),
-                    style: GoogleFonts.inter(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.w600),
+                    style: GoogleFonts.inter(fontSize: 11.sp, color: Colors.grey.shade500, fontWeight: FontWeight.w600),
                   ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2),
                   Text(
                     _displayDate(_selectedDate),
                     style: GoogleFonts.inter(
                       fontWeight: FontWeight.w700,
-                      fontSize: 16,
-                      color: const Color(0xFF1e293b),
+                      fontSize: 16.sp,
+                      color: Color(0xFF1e293b),
                     ),
                   ),
                 ],
@@ -457,7 +459,7 @@ class _BookingCreateScreenState extends State<BookingCreateScreen> {
 
     if (_serviceError != null) {
       return Container(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.red.shade50,
           borderRadius: BorderRadius.circular(12),
@@ -466,11 +468,11 @@ class _BookingCreateScreenState extends State<BookingCreateScreen> {
         child: Row(
           children: [
             Icon(Icons.error_outline, color: Colors.red.shade400, size: 20),
-            const SizedBox(width: 10),
+            SizedBox(width: 10),
             Expanded(
               child: Text(
                 _serviceError!,
-                style: GoogleFonts.inter(color: Colors.red.shade700, fontSize: 13),
+                style: GoogleFonts.inter(color: Colors.red.shade700, fontSize: 13.sp),
               ),
             ),
             TextButton(
@@ -493,10 +495,10 @@ class _BookingCreateScreenState extends State<BookingCreateScreen> {
         child: Row(
           children: [
             Icon(Icons.info_outline, color: Colors.grey.shade400, size: 20),
-            const SizedBox(width: 10),
+            SizedBox(width: 10),
             Text(
               context.tr('No services available for this vehicle'),
-              style: GoogleFonts.inter(color: Colors.grey.shade600, fontSize: 13),
+              style: GoogleFonts.inter(color: Colors.grey.shade600, fontSize: 13.sp),
             ),
           ],
         ),
@@ -520,7 +522,7 @@ class _BookingCreateScreenState extends State<BookingCreateScreen> {
               child: Text(
                 entry.key,
                 style: GoogleFonts.inter(
-                  fontSize: 12,
+                  fontSize: 12.sp,
                   fontWeight: FontWeight.w700,
                   color: Colors.grey.shade500,
                   letterSpacing: 0.5,
@@ -543,8 +545,8 @@ class _BookingCreateScreenState extends State<BookingCreateScreen> {
       onTap: () => setState(() => _selectedService = svc),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
+        margin: EdgeInsets.only(bottom: 10),
+        padding: EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
@@ -562,7 +564,7 @@ class _BookingCreateScreenState extends State<BookingCreateScreen> {
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: isSelected ? _primaryColor.withOpacity(0.1) : Colors.grey.shade50,
                 borderRadius: BorderRadius.circular(8),
@@ -579,8 +581,8 @@ class _BookingCreateScreenState extends State<BookingCreateScreen> {
                 svc['name']?.toString() ?? '',
                 style: GoogleFonts.inter(
                   fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                  color: isSelected ? _primaryColor : const Color(0xFF1e293b),
+                  fontSize: 14.sp,
+                  color: isSelected ? _primaryColor : Color(0xFF1e293b),
                 ),
               ),
             ),
@@ -596,7 +598,7 @@ class _BookingCreateScreenState extends State<BookingCreateScreen> {
                   style: GoogleFonts.inter(
                     color: isSelected ? Colors.white : Colors.grey.shade700,
                     fontWeight: FontWeight.bold,
-                    fontSize: 13,
+                    fontSize: 13.sp,
                   ),
                 ),
               ),
@@ -608,7 +610,7 @@ class _BookingCreateScreenState extends State<BookingCreateScreen> {
                   color: _primaryColor,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.check, color: Colors.white, size: 12),
+                child: Icon(Icons.check, color: Colors.white, size: 12),
               ),
             ],
           ],
@@ -640,12 +642,12 @@ class _BookingCreateScreenState extends State<BookingCreateScreen> {
       child: TextField(
         controller: _notesController,
         maxLines: 3,
-        style: GoogleFonts.inter(fontSize: 14),
+        style: GoogleFonts.inter(fontSize: 14.sp),
         decoration: InputDecoration(
           hintText: context.tr('Add any special instructions...'),
-          hintStyle: GoogleFonts.inter(color: Colors.grey.shade400, fontSize: 13),
+          hintStyle: GoogleFonts.inter(color: Colors.grey.shade400, fontSize: 13.sp),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.all(16),
+          contentPadding: EdgeInsets.all(16),
         ),
       ),
     );
@@ -659,12 +661,12 @@ class _BookingCreateScreenState extends State<BookingCreateScreen> {
         style: ElevatedButton.styleFrom(
           backgroundColor: _primaryColor,
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           elevation: 0,
         ),
         child: _isSubmitting
-            ? const SizedBox(
+            ? SizedBox(
                 height: 20,
                 width: 20,
                 child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
@@ -673,10 +675,10 @@ class _BookingCreateScreenState extends State<BookingCreateScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Icon(Icons.calendar_month, size: 20),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10),
                   Text(
                     context.tr('Confirm Booking'),
-                    style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 16),
+                    style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 16.sp),
                   ),
                 ],
               ),

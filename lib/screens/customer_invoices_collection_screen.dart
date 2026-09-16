@@ -129,13 +129,13 @@ class CustomerInvoicesCollectionScreen extends StatelessWidget {
     _fetchCustomerInvoices(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFf8fafc),
+      backgroundColor: Color(0xFFf8fafc),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF000080),
+        backgroundColor: Color(0xFF000080),
         foregroundColor: Colors.white,
         title: Text(
           context.tr('Customer Invoices'),
-          style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 18),
+          style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 18.sp),
         ),
       ),
       body: Column(
@@ -146,7 +146,7 @@ class CustomerInvoicesCollectionScreen extends StatelessWidget {
             color: const Color(0xFF000080),
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
             child: Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(16),
@@ -157,12 +157,12 @@ class CustomerInvoicesCollectionScreen extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  const CircleAvatar(
+                  CircleAvatar(
                     radius: 24,
                     backgroundColor: Colors.white,
                     child: Icon(Icons.person, color: Color(0xFF000080)),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -171,15 +171,15 @@ class CustomerInvoicesCollectionScreen extends StatelessWidget {
                           customerName,
                           style: GoogleFonts.inter(
                             fontWeight: FontWeight.w800,
-                            fontSize: 16,
+                            fontSize: 16.sp,
                             color: Colors.white,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        SizedBox(height: 4),
                         Text(
                           customerPhone,
                           style: GoogleFonts.inter(
-                            fontSize: 13,
+                            fontSize: 13.sp,
                             color: Colors.white70,
                           ),
                         ),
@@ -192,7 +192,7 @@ class CustomerInvoicesCollectionScreen extends StatelessWidget {
                       Text(
                         context.tr('Total Due'),
                         style: GoogleFonts.inter(
-                          fontSize: 11,
+                          fontSize: 11.sp,
                           fontWeight: FontWeight.bold,
                           color: Colors.red.shade200,
                         ),
@@ -201,7 +201,7 @@ class CustomerInvoicesCollectionScreen extends StatelessWidget {
                         '$currencySymbol${totalOutstanding.toStringAsFixed(2)}',
                         style: GoogleFonts.inter(
                           fontWeight: FontWeight.w900,
-                          fontSize: 18,
+                          fontSize: 18.sp,
                           color: Colors.red.shade100,
                         ),
                       ),
@@ -232,7 +232,7 @@ class CustomerInvoicesCollectionScreen extends StatelessWidget {
                       return Center(
                         child: Text(
                           errorMsg,
-                          style: const TextStyle(color: Colors.red),
+                          style: TextStyle(color: Colors.red),
                         ),
                       );
                     }
@@ -269,8 +269,8 @@ class CustomerInvoicesCollectionScreen extends StatelessWidget {
                                 0;
 
                             return Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              padding: const EdgeInsets.all(16),
+                              margin: EdgeInsets.only(bottom: 12),
+                              padding: EdgeInsets.all(16),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(14),
@@ -282,7 +282,7 @@ class CustomerInvoicesCollectionScreen extends StatelessWidget {
                                   BoxShadow(
                                     color: Colors.black.withValues(alpha: 0.02),
                                     blurRadius: 6,
-                                    offset: const Offset(0, 2),
+                                    offset: Offset(0, 2),
                                   ),
                                 ],
                               ),
@@ -297,16 +297,16 @@ class CustomerInvoicesCollectionScreen extends StatelessWidget {
                                         'Invoice #${inv['invoice_number']}',
                                         style: GoogleFonts.inter(
                                           fontWeight: FontWeight.w800,
-                                          fontSize: 14,
-                                          color: const Color(0xFF1e293b),
+                                          fontSize: 14.sp,
+                                          color: Color(0xFF1e293b),
                                         ),
                                       ),
                                       Text(
                                         '$currencySymbol${outstanding.toStringAsFixed(2)}',
                                         style: GoogleFonts.inter(
                                           fontWeight: FontWeight.w900,
-                                          fontSize: 14,
-                                          color: const Color(0xFFdc2626),
+                                          fontSize: 14.sp,
+                                          color: Color(0xFFdc2626),
                                         ),
                                       ),
                                     ],
@@ -323,8 +323,8 @@ class CustomerInvoicesCollectionScreen extends StatelessWidget {
                                       Text(
                                         inv['vehicle']['number'] ?? '',
                                         style: GoogleFonts.inter(
-                                          fontSize: 12,
-                                          color: const Color(0xFF64748b),
+                                          fontSize: 12.sp,
+                                          color: Color(0xFF64748b),
                                         ),
                                       ),
                                       const SizedBox(width: 12),
@@ -337,13 +337,13 @@ class CustomerInvoicesCollectionScreen extends StatelessWidget {
                                       Text(
                                         inv['date'] ?? '',
                                         style: GoogleFonts.inter(
-                                          fontSize: 12,
-                                          color: const Color(0xFF64748b),
+                                          fontSize: 12.sp,
+                                          color: Color(0xFF64748b),
                                         ),
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 8),
+                                  SizedBox(height: 8),
                                   Row(
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceBetween,
@@ -352,8 +352,8 @@ class CustomerInvoicesCollectionScreen extends StatelessWidget {
                                         context.tr(
                                             'Collected: $currencySymbol${collected.toStringAsFixed(2)}'),
                                         style: GoogleFonts.inter(
-                                          fontSize: 11,
-                                          color: const Color(0xFF16a34a),
+                                          fontSize: 11.sp,
+                                          color: Color(0xFF16a34a),
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
@@ -361,8 +361,8 @@ class CustomerInvoicesCollectionScreen extends StatelessWidget {
                                         context.tr(
                                             'Total: $currencySymbol${total.toStringAsFixed(2)}'),
                                         style: GoogleFonts.inter(
-                                          fontSize: 11,
-                                          color: const Color(0xFF64748b),
+                                          fontSize: 11.sp,
+                                          color: Color(0xFF64748b),
                                         ),
                                       ),
                                     ],
@@ -382,16 +382,16 @@ class CustomerInvoicesCollectionScreen extends StatelessWidget {
 
           // Bottom payment entry panel
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(24)),
+                  BorderRadius.vertical(top: Radius.circular(24)),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.08),
                   blurRadius: 16,
-                  offset: const Offset(0, -4),
+                  offset: Offset(0, -4),
                 ),
               ],
             ),
@@ -409,9 +409,9 @@ class CustomerInvoicesCollectionScreen extends StatelessWidget {
                           Text(
                             context.tr('Amount to Collect'),
                             style: GoogleFonts.inter(
-                              fontSize: 12,
+                              fontSize: 12.sp,
                               fontWeight: FontWeight.w700,
-                              color: const Color(0xFF374151),
+                              color: Color(0xFF374151),
                             ),
                           ),
                           const SizedBox(height: 6),
@@ -421,7 +421,7 @@ class CustomerInvoicesCollectionScreen extends StatelessWidget {
                               decimal: true,
                             ),
                             style: GoogleFonts.inter(
-                              fontSize: 16,
+                              fontSize: 16.sp,
                               fontWeight: FontWeight.w800,
                             ),
                             decoration: InputDecoration(
@@ -459,9 +459,9 @@ class CustomerInvoicesCollectionScreen extends StatelessWidget {
                           Text(
                             context.tr('Payment Mode'),
                             style: GoogleFonts.inter(
-                              fontSize: 12,
+                              fontSize: 12.sp,
                               fontWeight: FontWeight.w700,
-                              color: const Color(0xFF374151),
+                              color: Color(0xFF374151),
                             ),
                           ),
                           const SizedBox(height: 6),
@@ -517,9 +517,9 @@ class CustomerInvoicesCollectionScreen extends StatelessWidget {
                     return ElevatedButton(
                       onPressed: isCollecting ? null : () => _collectPayment(context),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF000080),
+                        backgroundColor: Color(0xFF000080),
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding: EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -536,7 +536,7 @@ class CustomerInvoicesCollectionScreen extends StatelessWidget {
                           : Text(
                               context.tr('Collect Payment'),
                               style: GoogleFonts.inter(
-                                fontSize: 15,
+                                fontSize: 15.sp,
                                 fontWeight: FontWeight.w800,
                               ),
                             ),

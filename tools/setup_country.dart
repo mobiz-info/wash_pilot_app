@@ -25,6 +25,7 @@ class _Country {
   final String currencyCode;
   final String currencyName;
   final String localeTag;
+  final String languageCode;   // default app language for this country
 
   const _Country({
     required this.enumName,
@@ -36,6 +37,7 @@ class _Country {
     required this.currencyCode,
     required this.currencyName,
     required this.localeTag,
+    required this.languageCode,
   });
 }
 
@@ -50,6 +52,7 @@ const _countries = [
     currencyCode: 'SAR',
     currencyName: 'Saudi Riyal',
     localeTag: 'ar_SA',
+    languageCode: 'ar',
   ),
   _Country(
     enumName: 'india',
@@ -61,6 +64,7 @@ const _countries = [
     currencyCode: 'INR',
     currencyName: 'Indian Rupee',
     localeTag: 'en_IN',
+    languageCode: 'en',
   ),
   _Country(
     enumName: 'uae',
@@ -72,6 +76,7 @@ const _countries = [
     currencyCode: 'AED',
     currencyName: 'UAE Dirham',
     localeTag: 'ar_AE',
+    languageCode: 'ar',
   ),
   _Country(
     enumName: 'kuwait',
@@ -83,6 +88,7 @@ const _countries = [
     currencyCode: 'KWD',
     currencyName: 'Kuwaiti Dinar',
     localeTag: 'ar_KW',
+    languageCode: 'ar',
   ),
   _Country(
     enumName: 'qatar',
@@ -94,6 +100,7 @@ const _countries = [
     currencyCode: 'QAR',
     currencyName: 'Qatari Riyal',
     localeTag: 'ar_QA',
+    languageCode: 'ar',
   ),
   _Country(
     enumName: 'bahrain',
@@ -105,6 +112,7 @@ const _countries = [
     currencyCode: 'BHD',
     currencyName: 'Bahraini Dinar',
     localeTag: 'ar_BH',
+    languageCode: 'ar',
   ),
   _Country(
     enumName: 'oman',
@@ -116,6 +124,7 @@ const _countries = [
     currencyCode: 'OMR',
     currencyName: 'Omani Rial',
     localeTag: 'ar_OM',
+    languageCode: 'ar',
   ),
   _Country(
     enumName: 'usa',
@@ -127,6 +136,7 @@ const _countries = [
     currencyCode: 'USD',
     currencyName: 'US Dollar',
     localeTag: 'en_US',
+    languageCode: 'en',
   ),
   _Country(
     enumName: 'uk',
@@ -138,6 +148,7 @@ const _countries = [
     currencyCode: 'GBP',
     currencyName: 'British Pound',
     localeTag: 'en_GB',
+    languageCode: 'en',
   ),
   _Country(
     enumName: 'vietnam',
@@ -149,6 +160,7 @@ const _countries = [
     currencyCode: 'VND',
     currencyName: 'Vietnamese Dong',
     localeTag: 'vi_VN',
+    languageCode: 'vi',
   ),
   _Country(
     enumName: 'thailand',
@@ -160,6 +172,7 @@ const _countries = [
     currencyCode: 'THB',
     currencyName: 'Thai Baht',
     localeTag: 'th_TH',
+    languageCode: 'th',
   ),
   _Country(
     enumName: 'russia',
@@ -171,6 +184,7 @@ const _countries = [
     currencyCode: 'RUB',
     currencyName: 'Russian Ruble',
     localeTag: 'ru_RU',
+    languageCode: 'ru',
   ),
   _Country(
     enumName: 'china',
@@ -182,6 +196,43 @@ const _countries = [
     currencyCode: 'CNY',
     currencyName: 'Chinese Yuan',
     localeTag: 'zh_CN',
+    languageCode: 'zh',
+  ),
+  _Country(
+    enumName: 'ghana',
+    displayName: 'Ghana',
+    flag: '🇬🇭',
+    phoneDialCode: '+233',
+    phoneIsoCode: 'GH',
+    currencySymbol: 'GH₵',
+    currencyCode: 'GHS',
+    currencyName: 'Ghanaian Cedi',
+    localeTag: 'en_GH',
+    languageCode: 'fr',
+  ),
+  _Country(
+    enumName: 'benin',
+    displayName: 'Benin',
+    flag: '🇧🇯',
+    phoneDialCode: '+229',
+    phoneIsoCode: 'BJ',
+    currencySymbol: 'CFA',
+    currencyCode: 'XOF',
+    currencyName: 'West African CFA franc',
+    localeTag: 'fr_BJ',
+    languageCode: 'fr',
+  ),
+  _Country(
+    enumName: 'ivoryCoast',
+    displayName: 'Ivory Coast',
+    flag: '🇨🇮',
+    phoneDialCode: '+225',
+    phoneIsoCode: 'CI',
+    currencySymbol: 'CFA',
+    currencyCode: 'XOF',
+    currencyName: 'West African CFA franc',
+    localeTag: 'fr_CI',
+    languageCode: 'fr',
   ),
 ];
 
@@ -226,6 +277,7 @@ String _generateDartFile(_Country c, String version) {
 //   Phone ISO       : ${c.phoneIsoCode}
 //   Currency symbol : ${c.currencySymbol}
 //   Currency code   : ${c.currencyCode}
+//   Language        : ${c.languageCode}
 
 // ignore_for_file: constant_identifier_names
 
@@ -234,6 +286,10 @@ import 'country_config.dart';
 /// The default country compiled into this build.
 /// Change it by running:  dart tools/setup_country.dart
 const CountryCode kDefaultCountry = CountryCode.${c.enumName};
+
+/// Default app language for this country build.
+/// Used as fallback when no user language preference is saved.
+const String kDefaultLanguageCode = '${c.languageCode}';
 
 /// App Version name extracted from pubspec.yaml
 const String kAppVersion = '$version';
@@ -368,6 +424,7 @@ void main() async {
   print('  ${selected.flag}  App is now configured for ${selected.displayName} (V $version):');
   print('     Phone code  →  ${selected.phoneDialCode}  (${selected.phoneIsoCode})');
   print('     Currency    →  ${selected.currencySymbol}  (${selected.currencyCode} — ${selected.currencyName})');
+  print('     Language    →  ${selected.languageCode}');
   _printLine('─');
   print('');
   print('  🚀  Next steps:');

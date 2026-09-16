@@ -20,6 +20,12 @@ class LanguageScreen extends StatelessWidget {
         'flag': '🇬🇧',
       },
       {
+        'code': 'fr',
+        'name': 'French',
+        'nativeName': 'Français',
+        'flag': '🇫🇷',
+      },
+      {
         'code': 'hi',
         'name': 'Hindi',
         'nativeName': 'हिन्दी',
@@ -139,13 +145,13 @@ class LanguageScreen extends StatelessWidget {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16.r),
                   side: BorderSide(
-                    color: isSelected ? const Color(0xFF000080) : Colors.transparent,
+                    color: isSelected ? Color(0xFF000080) : Colors.transparent,
                     width: 2.w,
                   ),
                 ),
                 elevation: isSelected ? 4 : 1,
                 shadowColor: isSelected
-                    ? const Color(0xFF000080).withValues(alpha: 0.3)
+                    ? Color(0xFF000080).withValues(alpha: 0.3)
                     : Colors.black12,
                 child: InkWell(
                   onTap: languageProvider.isLoading
@@ -183,7 +189,7 @@ class LanguageScreen extends StatelessWidget {
                                 style: GoogleFonts.inter(
                                   fontSize: 16.sp,
                                   fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF1E293B),
+                                  color: Color(0xFF1E293B),
                                 ),
                               ),
                               SizedBox(height: 2.h),
@@ -192,7 +198,7 @@ class LanguageScreen extends StatelessWidget {
                                 style: GoogleFonts.inter(
                                   fontSize: 13.sp,
                                   fontWeight: FontWeight.w500,
-                                  color: const Color(0xFF64748B),
+                                  color: Color(0xFF64748B),
                                 ),
                               ),
                             ],
@@ -201,7 +207,7 @@ class LanguageScreen extends StatelessWidget {
                         if (isSelected)
                           Icon(
                             Icons.check_circle_rounded,
-                            color: const Color(0xFF000080),
+                            color: Color(0xFF000080),
                             size: 24.r,
                           ),
                       ],
@@ -232,7 +238,7 @@ class LanguageScreen extends StatelessWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const CircularProgressIndicator(
+                        CircularProgressIndicator(
                           valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF000080)),
                         ),
                         SizedBox(height: 16.h),
@@ -241,7 +247,7 @@ class LanguageScreen extends StatelessWidget {
                           style: GoogleFonts.inter(
                             fontWeight: FontWeight.w600,
                             fontSize: 14.sp,
-                            color: const Color(0xFF1E293B),
+                            color: Color(0xFF1E293B),
                           ),
                         ),
                       ],

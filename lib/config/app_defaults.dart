@@ -6,6 +6,7 @@
 //   Phone ISO       : IN
 //   Currency symbol : ₹
 //   Currency code   : INR
+//   Language        : en
 
 // ignore_for_file: constant_identifier_names
 
@@ -15,5 +16,9 @@ import 'country_config.dart';
 /// Change it by running:  dart tools/setup_country.dart
 const CountryCode kDefaultCountry = CountryCode.india;
 
+/// Default app language for this country build.
+/// Used as fallback when no user language preference is saved.
+const String kDefaultLanguageCode = 'en';
+
 /// App Version name extracted from pubspec.yaml
-const String kAppVersion = '1.4.9';
+const String kAppVersion = '1.5.8';

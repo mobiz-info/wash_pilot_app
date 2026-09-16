@@ -15,6 +15,7 @@ class _QuotationItemRow {
   final double warrantyYears;
   final double rate;
   final int freeTopup;
+  final double quantity;
 
   _QuotationItemRow({
     required this.service,
@@ -22,19 +23,30 @@ class _QuotationItemRow {
     required this.warrantyYears,
     required this.rate,
     required this.freeTopup,
+    this.quantity = 1.0,
   });
 
   String get serviceName => service['name']?.toString() ?? '';
   String get serviceId => service['id']?.toString() ?? '';
   String get stockItemName => stockItem?['item_name']?.toString() ?? 'N/A';
   String? get stockItemId => stockItem?['id']?.toString();
+  double get total => rate * quantity;
 }
 
 class _QuotationExtraRow {
   final String name;
   final double price;
+  final double quantity;
+  final String remarks;
 
-  _QuotationExtraRow({required this.name, required this.price});
+  _QuotationExtraRow({
+    required this.name,
+    required this.price,
+    this.quantity = 1.0,
+    this.remarks = '',
+  });
+
+  double get total => price * quantity;
 }
 
 class QuotationCreateScreen extends StatefulWidget {
@@ -80,6 +92,7 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
   final TextEditingController _warrantyController = TextEditingController(text: '1');
   final TextEditingController _rateController = TextEditingController(text: '0');
   final TextEditingController _freeTopupController = TextEditingController(text: '0');
+  final TextEditingController _stockQtyController = TextEditingController(text: '1');
 
   // Lists of added items and extras
   final List<_QuotationItemRow> _items = [];
@@ -88,6 +101,8 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
   // Extras input controllers
   final TextEditingController _extraNameController = TextEditingController();
   final TextEditingController _extraPriceController = TextEditingController();
+  final TextEditingController _extraQtyController = TextEditingController(text: '1');
+  final TextEditingController _extraRemarksController = TextEditingController();
 
   // Additional fields
   final TextEditingController _additionalServiceController = TextEditingController();
@@ -100,8 +115,8 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
   bool _isGrandTotal = true;
   final TextEditingController _discountController = TextEditingController(text: '0');
 
-  double get itemsSubtotal => _items.fold(0.0, (sum, item) => sum + item.rate);
-  double get extrasSubtotal => _extras.fold(0.0, (sum, extra) => sum + extra.price);
+  double get itemsSubtotal => _items.fold(0.0, (sum, item) => sum + item.total);
+  double get extrasSubtotal => _extras.fold(0.0, (sum, extra) => sum + extra.total);
   double get subtotal => itemsSubtotal + extrasSubtotal;
 
   double get discountAmount => double.tryParse(_discountController.text) ?? 0.0;
@@ -135,8 +150,11 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
     _warrantyController.dispose();
     _rateController.dispose();
     _freeTopupController.dispose();
+    _stockQtyController.dispose();
     _extraNameController.dispose();
     _extraPriceController.dispose();
+    _extraQtyController.dispose();
+    _extraRemarksController.dispose();
     _additionalServiceController.dispose();
     _additionalDaysController.dispose();
     _discountController.dispose();
@@ -160,18 +178,26 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
       final stockRes = await ApiService.getStockList(token);
 
       if (svcRes['success'] == true) {
+        if (svcRes['wheel_type'] != null && (widget.vehicle['wheel_type'] == null || widget.vehicle['wheel_type'].toString().isEmpty)) {
+          widget.vehicle['wheel_type'] = svcRes['wheel_type'];
+        }
         _allServices = svcRes['services'] ?? [];
         _filteredServices = List.from(_allServices);
-        _enabledCategories = (svcRes['enabled_categories'] as List<dynamic>? ?? []);
+        final rawEnabled = (svcRes['enabled_categories'] as List<dynamic>? ?? []);
+        _enabledCategories = rawEnabled.where((slug) {
+          return _allServices.any((s) => s['service_type_slug'] == slug && s['has_price'] == true);
+        }).toList();
+        if (_enabledCategories.isNotEmpty) {
+          _selectedCategoryFilter = _enabledCategories.first.toString();
+        }
 
         final rawTaxes = svcRes['taxes'] as List<dynamic>? ?? [];
         _availableTaxes = rawTaxes.map((t) => Map<String, dynamic>.from(t as Map)).toList();
         if (_availableTaxes.isEmpty) {
-          _availableTaxes = [
-            {'id': 'tax_vat_5', 'name': 'VAT', 'percent': 5.0}
-          ];
-        }
-        if (!isEditing && _availableTaxes.isNotEmpty) {
+          _applyGst = false;
+          _selectedTaxIds.clear();
+        } else if (!isEditing) {
+          _applyGst = true;
           _selectedTaxIds.addAll(_availableTaxes.map((t) => (t['id'] ?? '').toString()));
         }
       }
@@ -223,6 +249,7 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
             warrantyYears: (it['warranty_years'] as num?)?.toDouble() ?? 0.0,
             rate: (it['rate'] as num?)?.toDouble() ?? 0.0,
             freeTopup: int.tryParse(it['free_topup']?.toString() ?? '0') ?? 0,
+            quantity: (it['quantity'] as num?)?.toDouble() ?? (it['qty'] as num?)?.toDouble() ?? (it['stock_qty'] as num?)?.toDouble() ?? 1.0,
           ));
         }
 
@@ -231,6 +258,8 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
           _extras.add(_QuotationExtraRow(
             name: ex['name'] ?? '',
             price: (ex['price'] as num?)?.toDouble() ?? 0.0,
+            quantity: (ex['quantity'] as num?)?.toDouble() ?? (ex['qty'] as num?)?.toDouble() ?? 1.0,
+            remarks: (ex['remarks'] ?? ex['description'] ?? '').toString(),
           ));
         }
       }
@@ -244,22 +273,171 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
     }
   }
 
-  void _filterServicesByCategory(String slug) {
-    setState(() {
-      _selectedCategoryFilter = slug;
-      if (slug == 'all') {
-        _filteredServices = List.from(_allServices);
-      } else {
-        _filteredServices = _allServices.where((s) => s['service_type_slug'] == slug).toList();
-      }
-      _selectedService = null;
-    });
+  void _showWheelTypePickerModal() {
+    String selectedType = 'normal_wheel';
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.directions_car, color: Color(0xFF000080)),
+                      const SizedBox(width: 8),
+                      Text(
+                        context.tr('Select Vehicle Wheel Type'),
+                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16.sp, color: const Color(0xFF000080)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    "${context.tr('Vehicle')}: ${widget.vehicle['no']}",
+                    style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.grey.shade700),
+                  ),
+                  const SizedBox(height: 16),
+                  RadioListTile<String>(
+                    title: Text(context.tr('Alloy Wheel (Alignment Vehicle)'), style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14.sp)),
+                    value: 'alloy_wheel',
+                    groupValue: selectedType,
+                    activeColor: const Color(0xFF000080),
+                    onChanged: (val) {
+                      if (val != null) setModalState(() => selectedType = val);
+                    },
+                  ),
+                  RadioListTile<String>(
+                    title: Text(context.tr('Normal Wheel'), style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14.sp)),
+                    value: 'normal_wheel',
+                    groupValue: selectedType,
+                    activeColor: const Color(0xFF000080),
+                    onChanged: (val) {
+                      if (val != null) setModalState(() => selectedType = val);
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        Navigator.pop(ctx);
+                        widget.vehicle['wheel_type'] = selectedType;
+                        final token = context.read<AuthProvider>().token;
+                        if (token != null) {
+                          try {
+                            await ApiService.editCustomer({
+                              'customer_id': widget.customer['id'],
+                              'name': widget.customer['name'],
+                              'phone': widget.customer['phone'],
+                              'customer_type_id': widget.customer['customer_type_id'] ?? '',
+                              'updated_vehicles': [
+                                {
+                                  'id': widget.vehicle['id'],
+                                  'vehicle_number': widget.vehicle['no'],
+                                  'wheel_type': selectedType,
+                                }
+                              ],
+                            }, token);
+                          } catch (_) {}
+                        }
+                        _loadData();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF000080),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: Text(context.tr('Save Wheel Type'), style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14.sp)),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _getCategoryName(String slug) {
+    final matchingService = _allServices.firstWhere(
+      (s) => s['service_type_slug'] == slug,
+      orElse: () => null,
+    );
+    if (matchingService != null && matchingService['service_type'] != null) {
+      return matchingService['service_type'].toString();
+    }
+    if (slug == 'washing') return 'Washing';
+    if (slug == 'oil_change') return 'Oil Change';
+    if (slug == 'tyre_change') return 'Tyre Change';
+    if (slug == 'wheel_alignment') return 'Alignment';
+    return slug
+        .replaceAll('_', ' ')
+        .split(' ')
+        .map((word) => word.isNotEmpty ? '${word[0].toUpperCase()}${word.substring(1)}' : '')
+        .join(' ');
+  }
+
+  Widget _filterChip(String category, String label) {
+    final isSelected = _selectedCategoryFilter == category;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ChoiceChip(
+        label: Text(
+          context.tr(label),
+          style: GoogleFonts.inter(
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            color: isSelected ? Colors.white : const Color(0xFF1E293B),
+            fontSize: 12.sp,
+          ),
+        ),
+        selected: isSelected,
+        selectedColor: const Color(0xFF000080),
+        backgroundColor: const Color(0xFFF1F5F9),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        onSelected: (selected) {
+          if (selected) {
+            setState(() {
+              _selectedCategoryFilter = category;
+            });
+          }
+        },
+      ),
+    );
   }
 
   // ── Service Search Picker Bottom Sheet ────────────────────────────────────
   void _openServiceSearchPicker() {
+    final vehicleWheelType = (widget.vehicle['wheel_type'] ?? '').toString().toLowerCase().trim();
+    final allPriced = _allServices.where((svc) {
+      if (svc['has_price'] != true) return false;
+      final slug = (svc['service_type_slug'] ?? '').toString();
+      final name = (svc['name']?.toString() ?? '').toLowerCase();
+
+      if (slug == 'wheel_alignment' || name.contains('alignment') || name.contains('wheel balancing')) {
+        if (vehicleWheelType.isEmpty || vehicleWheelType == 'none') {
+          return false;
+        }
+        if (vehicleWheelType == 'alloy_wheel') {
+          return !name.contains('normal wheel') && !name.contains('alignment vehicle');
+        } else if (vehicleWheelType == 'normal_wheel') {
+          return !name.contains('alloy wheel') && !name.contains('alignment vehicle');
+        }
+      }
+      return true;
+    }).toList();
+
     final searchCtrl = TextEditingController();
-    List<dynamic> localList = List.from(_filteredServices);
+    List<dynamic> localList = List.from(allPriced);
 
     showModalBottomSheet(
       context: context,
@@ -308,9 +486,9 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
                       ),
                       onChanged: (query) {
                         setModalState(() {
-                          localList = _filteredServices.where((s) {
+                          localList = allPriced.where((s) {
                             final name = (s['name'] ?? '').toString().toLowerCase();
-                            final cat = (s['service_type_name'] ?? s['service_type_slug'] ?? '').toString().toLowerCase();
+                            final cat = (s['service_type'] ?? s['service_type_slug'] ?? '').toString().toLowerCase();
                             return name.contains(query.toLowerCase()) || cat.contains(query.toLowerCase());
                           }).toList();
                         });
@@ -326,7 +504,7 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
                               itemBuilder: (ctx, idx) {
                                 final svc = localList[idx];
                                 final rate = (svc['rate'] as num?)?.toDouble() ?? 0.0;
-                                final category = svc['service_type_name'] ?? svc['service_type_slug'] ?? '';
+                                final category = svc['service_type'] ?? svc['service_type_slug'] ?? '';
                                 return ListTile(
                                   leading: CircleAvatar(
                                     backgroundColor: const Color(0xFF000080).withValues(alpha: 0.1),
@@ -334,7 +512,7 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
                                   ),
                                   title: Text(svc['name'] ?? '', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
                                   subtitle: category.toString().isNotEmpty
-                                      ? Text(category.toString().replaceAll('_', ' ').toUpperCase(), style: GoogleFonts.inter(fontSize: 11.sp, color: Colors.grey.shade600))
+                                      ? Text(category.toString(), style: GoogleFonts.inter(fontSize: 11.sp, color: Colors.grey.shade600))
                                       : null,
                                   trailing: Text(
                                     '$currencySymbol${rate.toStringAsFixed(2)}',
@@ -372,7 +550,7 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) {
@@ -392,9 +570,9 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
                   children: [
                     Text(
                       context.tr('Select Stock Item'),
-                      style: GoogleFonts.inter(fontSize: 18.sp, fontWeight: FontWeight.bold, color: const Color(0xFF000080)),
+                      style: GoogleFonts.inter(fontSize: 18.sp, fontWeight: FontWeight.bold, color: Color(0xFF000080)),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     TextField(
                       controller: searchCtrl,
                       decoration: InputDecoration(
@@ -458,6 +636,7 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
     final warranty = double.tryParse(_warrantyController.text) ?? 0.0;
     final rate = double.tryParse(_rateController.text) ?? 0.0;
     final freeTopup = int.tryParse(_freeTopupController.text) ?? 0;
+    final qty = double.tryParse(_stockQtyController.text) ?? 1.0;
 
     setState(() {
       _items.add(_QuotationItemRow(
@@ -466,12 +645,14 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
         warrantyYears: warranty,
         rate: rate,
         freeTopup: freeTopup,
+        quantity: qty,
       ));
 
       _selectedStockItem = null;
       _rateController.text = '0';
       _warrantyController.text = '1';
       _freeTopupController.text = '0';
+      _stockQtyController.text = '1';
     });
   }
 
@@ -481,6 +662,7 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
       _rateController.text = '0';
       _warrantyController.text = '1';
       _freeTopupController.text = '0';
+      _stockQtyController.text = '1';
     });
   }
 
@@ -488,6 +670,8 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
   void _addExtra() {
     final name = _extraNameController.text.trim();
     final price = double.tryParse(_extraPriceController.text) ?? 0.0;
+    final qty = double.tryParse(_extraQtyController.text) ?? 1.0;
+    final remarks = _extraRemarksController.text.trim();
 
     if (name.isEmpty) {
       _snack(context.tr('Please enter extra item name'), isError: true);
@@ -497,11 +681,22 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
       _snack(context.tr('Price cannot be negative'), isError: true);
       return;
     }
+    if (qty <= 0) {
+      _snack(context.tr('Quantity must be greater than 0'), isError: true);
+      return;
+    }
 
     setState(() {
-      _extras.add(_QuotationExtraRow(name: name, price: price));
+      _extras.add(_QuotationExtraRow(
+        name: name,
+        price: price,
+        quantity: qty,
+        remarks: remarks,
+      ));
       _extraNameController.clear();
       _extraPriceController.clear();
+      _extraQtyController.text = '1';
+      _extraRemarksController.clear();
     });
   }
 
@@ -528,11 +723,16 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
           'stock_item_name': it.stockItemName,
           'warranty_years': it.warrantyYears,
           'rate': it.rate,
+          'quantity': it.quantity,
+          'stock_qty': it.quantity,
           'free_topup': it.freeTopup.toString(),
         }).toList(),
         'extras': _extras.map((ex) => {
           'name': ex.name,
           'price': ex.price,
+          'quantity': ex.quantity,
+          'qty': ex.quantity,
+          'remarks': ex.remarks,
         }).toList(),
         'additional_services': _additionalServiceController.text.trim(),
         'additional_days_needed': int.tryParse(_additionalDaysController.text) ?? 0,
@@ -589,16 +789,16 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
           isEditing ? context.tr('Edit Quotation') : context.tr('Create Quotation'),
           style: GoogleFonts.inter(fontWeight: FontWeight.w700),
         ),
-        backgroundColor: const Color(0xFF000080),
+        backgroundColor: Color(0xFF000080),
         foregroundColor: Colors.white,
         elevation: 0,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator())
           : _errorMessage.isNotEmpty
-              ? Center(child: Text(_errorMessage, style: const TextStyle(color: Colors.red)))
+              ? Center(child: Text(_errorMessage, style: TextStyle(color: Colors.red)))
               : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -626,7 +826,7 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
 
                       // Is Grand Total Checkbox Tile
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(16),
@@ -649,7 +849,7 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
                                 style: GoogleFonts.inter(
                                   fontSize: 15.sp,
                                   fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF000080),
+                                  color: Color(0xFF000080),
                                 ),
                               ),
                             ),
@@ -660,8 +860,10 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
 
                       if (_isGrandTotal) ...[
                         // Tax Selection Section
-                        _taxSelectionSection(),
-                        const SizedBox(height: 16),
+                        if (_availableTaxes.isNotEmpty) ...[
+                          _taxSelectionSection(),
+                          const SizedBox(height: 16),
+                        ],
 
                         // Quotation Summary
                         _buildSummaryCard(),
@@ -675,8 +877,8 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
                         child: ElevatedButton.icon(
                           onPressed: _isSaving ? null : _saveQuotation,
                           icon: _isSaving
-                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                              : const Icon(Icons.save, color: Colors.white),
+                              ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                              : Icon(Icons.save, color: Colors.white),
                           label: Text(
                             _isSaving
                                 ? (isEditing ? context.tr('Updating Quotation...') : context.tr('Saving Quotation...'))
@@ -684,7 +886,7 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
                             style: GoogleFonts.inter(fontSize: 16.sp, fontWeight: FontWeight.bold, color: Colors.white),
                           ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF000080),
+                            backgroundColor: Color(0xFF000080),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                           ),
                         ),
@@ -698,7 +900,7 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
 
   Widget _buildHeaderCard() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -708,17 +910,17 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
         children: [
           CircleAvatar(
             radius: 24,
-            backgroundColor: const Color(0xFF000080).withValues(alpha: 0.1),
-            child: const Icon(Icons.directions_car, color: Color(0xFF000080)),
+            backgroundColor: Color(0xFF000080).withValues(alpha: 0.1),
+            child: Icon(Icons.directions_car, color: Color(0xFF000080)),
           ),
-          const SizedBox(width: 14),
+          SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   widget.customer['name'] ?? '',
-                  style: GoogleFonts.inter(fontSize: 16.sp, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B)),
+                  style: GoogleFonts.inter(fontSize: 16.sp, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
                 ),
                 Text(
                   '${widget.customer['phone'] ?? ''}  •  ${widget.vehicle['no'] ?? ''}',
@@ -733,6 +935,35 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
   }
 
   Widget _buildServiceStockSection() {
+    final vehicleWheelType = (widget.vehicle['wheel_type'] ?? '').toString().toLowerCase().trim();
+
+    final allPriced = _allServices.where((svc) {
+      if (svc['has_price'] != true) return false;
+
+      final slug = (svc['service_type_slug'] ?? '').toString();
+      final name = (svc['name']?.toString() ?? '').toLowerCase();
+
+      if (slug == 'wheel_alignment' || name.contains('alignment') || name.contains('wheel balancing')) {
+        if (vehicleWheelType.isEmpty || vehicleWheelType == 'none') {
+          return false;
+        }
+        if (vehicleWheelType == 'alloy_wheel') {
+          return !name.contains('normal wheel') && !name.contains('alignment vehicle');
+        } else if (vehicleWheelType == 'normal_wheel') {
+          return !name.contains('alloy wheel') && !name.contains('alignment vehicle');
+        }
+      }
+      return true;
+    }).toList();
+
+    final pricedServices = allPriced.where((svc) {
+      if (_selectedCategoryFilter == 'all') return true;
+      return svc['service_type_slug'] == _selectedCategoryFilter;
+    }).toList();
+
+    final isWheelTypeMissing = _selectedCategoryFilter == 'wheel_alignment' &&
+        (vehicleWheelType.isEmpty || vehicleWheelType == 'none' || (vehicleWheelType != 'alloy_wheel' && vehicleWheelType != 'normal_wheel'));
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -744,81 +975,191 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            context.tr('Service Category under Services'),
+            context.tr('Select Service'),
             style: GoogleFonts.inter(fontSize: 15.sp, fontWeight: FontWeight.bold, color: const Color(0xFF000080)),
           ),
           const SizedBox(height: 10),
 
           // Category Pills Filter (Same as Create Invoice Page)
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                ChoiceChip(
-                  label: Text(context.tr('ALL')),
-                  selected: _selectedCategoryFilter == 'all',
-                  selectedColor: const Color(0xFF000080),
-                  labelStyle: TextStyle(color: _selectedCategoryFilter == 'all' ? Colors.white : Colors.black),
-                  onSelected: (selected) {
-                    if (selected) _filterServicesByCategory('all');
-                  },
-                ),
-                const SizedBox(width: 8),
-                ..._enabledCategories.map((slug) {
-                  final title = slug.toString().replaceAll('_', ' ').toUpperCase();
-                  final isSel = _selectedCategoryFilter == slug.toString();
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text(context.tr(title)),
-                      selected: isSel,
-                      selectedColor: const Color(0xFF000080),
-                      labelStyle: TextStyle(color: isSel ? Colors.white : Colors.black),
-                      onSelected: (selected) {
-                        if (selected) _filterServicesByCategory(slug.toString());
-                      },
-                    ),
-                  );
-                }),
-              ],
+          if (_enabledCategories.isNotEmpty) ...[
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: _enabledCategories.map((slug) {
+                  return _filterChip(slug.toString(), _getCategoryName(slug.toString()));
+                }).toList(),
+              ),
             ),
-          ),
-          const SizedBox(height: 14),
+            const SizedBox(height: 12),
+          ],
 
-          // Searchable Service Selector
+          if (isWheelTypeMissing)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.amber.shade300),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded, color: Colors.amber.shade900, size: 22),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          context.tr('Wheel Type Not Selected'),
+                          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14.sp, color: Colors.amber.shade900),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    context.tr('Wheel type (Alloy Wheel / Normal Wheel) is not set for this vehicle. Please update the wheel type in customer vehicle section to view wheel alignment services.'),
+                    style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.amber.shade900),
+                  ),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _showWheelTypePickerModal,
+                      icon: const Icon(Icons.edit, size: 16),
+                      label: Text(context.tr('Add / Select Wheel Type'), style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13.sp)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF000080),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else if (pricedServices.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: Text(
+                  context.tr('No services available'),
+                  style: GoogleFonts.inter(color: Colors.grey),
+                ),
+              ),
+            )
+          else ...[
+            // Services under selected category
+            Column(
+              children: pricedServices.map((svc) {
+                final id = svc['id']?.toString() ?? '';
+                final name = svc['name']?.toString() ?? '';
+                final rate = (svc['rate'] as num?)?.toDouble() ?? 0.0;
+                final isSelected = _selectedService != null && _selectedService!['id']?.toString() == id;
+
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      if (isSelected) {
+                        _selectedService = null;
+                        _selectedStockItem = null;
+                        _rateController.text = '0';
+                        _warrantyController.text = '1';
+                        _freeTopupController.text = '0';
+                      } else {
+                        _selectedService = svc as Map<String, dynamic>;
+                        _rateController.text = rate.toStringAsFixed(2);
+                      }
+                    });
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: isSelected ? const Color(0xFF000080).withValues(alpha: 0.05) : Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isSelected ? const Color(0xFF000080) : Colors.grey.shade200,
+                        width: isSelected ? 2 : 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          width: 22,
+                          height: 22,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isSelected ? const Color(0xFF000080) : Colors.white,
+                            border: Border.all(
+                              color: isSelected ? const Color(0xFF000080) : Colors.grey.shade400,
+                              width: 2,
+                            ),
+                          ),
+                          child: isSelected ? const Icon(Icons.check, color: Colors.white, size: 14) : null,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                context.tr(name),
+                                style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14.sp,
+                                  color: const Color(0xFF1E293B),
+                                ),
+                              ),
+                              if (svc['service_type'] != null)
+                                Text(
+                                  context.tr(svc['service_type'].toString()),
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11.sp,
+                                    color: Colors.grey.shade500,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          '$currencySymbol${rate.toStringAsFixed(2)}',
+                          style: GoogleFonts.inter(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15.sp,
+                            color: const Color(0xFF000080),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+          const SizedBox(height: 12),
+
+          // Search Button (if user wants to search across all services)
           InkWell(
             onTap: _openServiceSearchPicker,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(12),
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: Colors.grey.shade300),
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  const Icon(Icons.search, color: Color(0xFF000080), size: 18),
+                  const SizedBox(width: 8),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          context.tr('Select Service'),
-                          style: GoogleFonts.inter(fontSize: 11.sp, color: const Color(0xFF000080), fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _selectedService != null
-                              ? _selectedService!['name'] ?? ''
-                              : context.tr('Tap to search & select service...'),
-                          style: GoogleFonts.inter(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14.sp,
-                            color: _selectedService != null ? const Color(0xFF1E293B) : Colors.grey.shade500,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                    child: Text(
+                      context.tr('Search all services...'),
+                      style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade700, fontWeight: FontWeight.w500),
                     ),
                   ),
                   const Icon(Icons.arrow_drop_down, color: Color(0xFF000080)),
@@ -828,115 +1169,174 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
           ),
           const SizedBox(height: 14),
 
-          // Searchable Stock Item Dropdown
+          // Searchable Stock Item Dropdown & Item Config (Warranty, Rate, Free Topup, Add Item)
           if (_selectedService != null) ...[
-            InkWell(
-              onTap: _openStockSearchPicker,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade300),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        _selectedStockItem != null
-                            ? _selectedStockItem!['item_name'] ?? ''
-                            : context.tr('Select Stock Item (Searchable)'),
-                        style: GoogleFonts.inter(
-                          fontWeight: FontWeight.w600,
-                          color: _selectedStockItem != null ? Colors.black : Colors.grey.shade600,
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF000080).withValues(alpha: 0.03),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF000080).withValues(alpha: 0.2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.check_circle, color: Color(0xFF000080), size: 18),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          '${context.tr("Selected")}: ${_selectedService!['name']}',
+                          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13.sp, color: const Color(0xFF000080)),
                         ),
-                        overflow: TextOverflow.ellipsis,
+                      ),
+                      InkWell(
+                        onTap: () {
+                          setState(() {
+                            _selectedService = null;
+                            _selectedStockItem = null;
+                            _rateController.text = '0';
+                            _warrantyController.text = '1';
+                            _freeTopupController.text = '0';
+                          });
+                        },
+                        child: const Padding(
+                          padding: EdgeInsets.all(4.0),
+                          child: Icon(Icons.close, color: Colors.grey, size: 20),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  InkWell(
+                    onTap: _openStockSearchPicker,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _selectedStockItem != null
+                                  ? _selectedStockItem!['item_name'] ?? ''
+                                  : context.tr('Select Stock Item (Searchable)'),
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.w600,
+                                color: _selectedStockItem != null ? Colors.black : Colors.grey.shade600,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const Icon(Icons.arrow_drop_down, color: Color(0xFF000080)),
+                        ],
                       ),
                     ),
-                    const Icon(Icons.arrow_drop_down, color: Color(0xFF000080)),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _stockQtyController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: InputDecoration(
+                            labelText: context.tr('Qty / Stock Qty'),
+                            filled: true,
+                            fillColor: Colors.white,
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          controller: _rateController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: InputDecoration(
+                            labelText: context.tr('Rate ($currencySymbol)'),
+                            filled: true,
+                            fillColor: Colors.white,
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _warrantyController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: InputDecoration(
+                            labelText: context.tr('Warranty (Years)'),
+                            filled: true,
+                            fillColor: Colors.white,
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          controller: _freeTopupController,
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            labelText: context.tr('Free Top Up'),
+                            hintText: 'e.g. 1 or 2',
+                            filled: true,
+                            fillColor: Colors.white,
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _addItem,
+                          icon: const Icon(Icons.add, color: Colors.white, size: 18),
+                          label: Text(context.tr('Add Item'), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF000080),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _resetStockSelectionForAnother,
+                          icon: const Icon(Icons.refresh, size: 18),
+                          label: Text(context.tr('Add Another Stock'), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF000080),
+                            side: const BorderSide(color: Color(0xFF000080)),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 14),
-
-            // Warranty Years, Rate, Numeric Free Topup Inputs
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _warrantyController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: InputDecoration(
-                      labelText: context.tr('Warranty (Years)'),
-                      filled: true,
-                      fillColor: Colors.grey.shade50,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TextField(
-                    controller: _rateController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: InputDecoration(
-                      labelText: context.tr('Rate ($currencySymbol)'),
-                      filled: true,
-                      fillColor: Colors.grey.shade50,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-
-            // Numeric Free Top-up
-            TextField(
-              controller: _freeTopupController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: context.tr('Free Top Up'),
-                hintText: 'e.g. 1 or 2',
-                filled: true,
-                fillColor: Colors.grey.shade50,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _addItem,
-                    icon: const Icon(Icons.add, color: Colors.white, size: 18),
-                    label: Text(context.tr('Add Item'), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF000080),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _resetStockSelectionForAnother,
-                    icon: const Icon(Icons.refresh, size: 18),
-                    label: Text(context.tr('Add Another Stock'), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF000080),
-                      side: const BorderSide(color: Color(0xFF000080)),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                ),
-              ],
             ),
           ],
         ],
@@ -946,7 +1346,7 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
 
   Widget _buildItemsListCard() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -957,9 +1357,9 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
         children: [
           Text(
             context.tr('Added Items (${_items.length})'),
-            style: GoogleFonts.inter(fontSize: 15.sp, fontWeight: FontWeight.bold, color: const Color(0xFF000080)),
+            style: GoogleFonts.inter(fontSize: 15.sp, fontWeight: FontWeight.bold, color: Color(0xFF000080)),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -985,18 +1385,18 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
                               style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade700),
                             ),
                           Text(
-                            '${context.tr('Warranty')}: ${item.warrantyYears} yrs  •  ${context.tr('Free Topup')}: ${item.freeTopup}',
+                            '${context.tr('Qty')}: ${item.quantity.toStringAsFixed(item.quantity.truncateToDouble() == item.quantity ? 0 : 1)}  •  ${context.tr('Warranty')}: ${item.warrantyYears} yrs  •  ${context.tr('Free Topup')}: ${item.freeTopup}',
                             style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade600),
                           ),
                         ],
                       ),
                     ),
                     Text(
-                      '$currencySymbol${item.rate.toStringAsFixed(2)}',
-                      style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14.sp, color: const Color(0xFF000080)),
+                      '$currencySymbol${item.total.toStringAsFixed(2)}',
+                      style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14.sp, color: Color(0xFF000080)),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.delete_outline, color: Colors.red),
+                      icon: Icon(Icons.delete_outline, color: Colors.red),
                       onPressed: () {
                         setState(() {
                           _items.removeAt(index);
@@ -1015,7 +1415,7 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
 
   Widget _buildExtrasSection() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -1027,10 +1427,10 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
           Row(
             children: [
               const Icon(Icons.more_horiz, color: Color(0xFF000080), size: 20),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Text(
                 context.tr('Extras'),
-                style: GoogleFonts.inter(fontSize: 15.sp, fontWeight: FontWeight.bold, color: const Color(0xFF000080)),
+                style: GoogleFonts.inter(fontSize: 15.sp, fontWeight: FontWeight.bold, color: Color(0xFF000080)),
               ),
             ],
           ),
@@ -1052,6 +1452,20 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
               ),
               const SizedBox(width: 8),
               Expanded(
+                flex: 1,
+                child: TextField(
+                  controller: _extraQtyController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    labelText: context.tr('Qty'),
+                    filled: true,
+                    fillColor: Colors.grey.shade50,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
                 flex: 2,
                 child: TextField(
                   controller: _extraPriceController,
@@ -1064,22 +1478,41 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              ElevatedButton(
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _extraRemarksController,
+                  decoration: InputDecoration(
+                    labelText: context.tr('Remarks / Notes'),
+                    hintText: context.tr('Optional remarks...'),
+                    filled: true,
+                    fillColor: Colors.grey.shade50,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              ElevatedButton.icon(
                 onPressed: _addExtra,
+                icon: const Icon(Icons.add, color: Colors.white, size: 18),
+                label: Text(context.tr('Add'), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF000080),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                child: Text(context.tr('Add')),
               ),
             ],
           ),
 
           if (_extras.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -1087,15 +1520,34 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
               separatorBuilder: (_, __) => const Divider(height: 1),
               itemBuilder: (context, index) {
                 final ex = _extras[index];
+                final String qtyStr = ex.quantity.truncateToDouble() == ex.quantity
+                    ? ex.quantity.toInt().toString()
+                    : ex.quantity.toStringAsFixed(1);
                 return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6.0),
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(ex.name, style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14.sp)),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(ex.name, style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14.sp)),
+                            if (ex.remarks.isNotEmpty)
+                              Text(
+                                '${context.tr("Remarks")}: ${ex.remarks}',
+                                style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade600),
+                              ),
+                            Text(
+                              '${context.tr("Qty")}: $qtyStr  •  Rate: $currencySymbol${ex.price.toStringAsFixed(2)}',
+                              style: GoogleFonts.inter(fontSize: 11.sp, color: Colors.grey.shade500),
+                            ),
+                          ],
+                        ),
+                      ),
                       Row(
                         children: [
-                          Text('$currencySymbol${ex.price.toStringAsFixed(2)}', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                          Text('$currencySymbol${ex.total.toStringAsFixed(2)}', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14.sp, color: const Color(0xFF000080))),
                           IconButton(
                             icon: const Icon(Icons.close, color: Colors.red, size: 18),
                             onPressed: () {
@@ -1119,7 +1571,7 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
 
   Widget _buildAdditionalFieldsCard() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -1130,9 +1582,9 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
         children: [
           Text(
             context.tr('Additional Information'),
-            style: GoogleFonts.inter(fontSize: 15.sp, fontWeight: FontWeight.bold, color: const Color(0xFF000080)),
+            style: GoogleFonts.inter(fontSize: 15.sp, fontWeight: FontWeight.bold, color: Color(0xFF000080)),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           TextField(
             controller: _additionalServiceController,
             maxLines: 2,
@@ -1163,7 +1615,7 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
 
   Widget _buildSummaryCard() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -1174,11 +1626,11 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
         children: [
           Text(
             context.tr('Quotation Summary'),
-            style: GoogleFonts.inter(fontSize: 15.sp, fontWeight: FontWeight.bold, color: const Color(0xFF000080)),
+            style: GoogleFonts.inter(fontSize: 15.sp, fontWeight: FontWeight.bold, color: Color(0xFF000080)),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _summaryRow(context.tr('Subtotal'), '$currencySymbol${subtotal.toStringAsFixed(2)}'),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
 
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1199,7 +1651,7 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
 
           if (_applyGst && _selectedTaxIds.isNotEmpty) ...[
             ..._availableTaxes.where((tax) => _selectedTaxIds.contains((tax['id'] ?? '').toString())).map((tax) {
@@ -1213,13 +1665,13 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
             }),
           ],
 
-          const Divider(),
-          const SizedBox(height: 6),
+          Divider(),
+          SizedBox(height: 6),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(context.tr('Grand Total'), style: GoogleFonts.inter(fontSize: 17.sp, fontWeight: FontWeight.bold, color: const Color(0xFF000080))),
-              Text('$currencySymbol${grandTotal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 20.sp, fontWeight: FontWeight.w800, color: const Color(0xFF000080))),
+              Text(context.tr('Grand Total'), style: GoogleFonts.inter(fontSize: 17.sp, fontWeight: FontWeight.bold, color: Color(0xFF000080))),
+              Text('$currencySymbol${grandTotal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 20.sp, fontWeight: FontWeight.w800, color: Color(0xFF000080))),
             ],
           ),
         ],
@@ -1231,7 +1683,7 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
   Widget _taxSelectionSection() {
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -1257,7 +1709,7 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
                   style: GoogleFonts.inter(
                     fontSize: 14.sp,
                     fontWeight: FontWeight.bold,
-                    color: const Color(0xFF1E293B),
+                    color: Color(0xFF1E293B),
                   ),
                 ),
               ),
@@ -1295,7 +1747,7 @@ class _QuotationCreateScreenState extends State<QuotationCreateScreen> {
                       style: GoogleFonts.inter(
                         fontSize: 13.sp,
                         fontWeight: FontWeight.w600,
-                        color: const Color(0xFF1E293B),
+                        color: Color(0xFF1E293B),
                       ),
                     ),
                   ),

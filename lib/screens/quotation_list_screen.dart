@@ -158,10 +158,10 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
+      backgroundColor: Color(0xFFF1F5F9),
       appBar: AppBar(
         title: Text(context.tr('Quotations'), style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
-        backgroundColor: const Color(0xFF000080),
+        backgroundColor: Color(0xFF000080),
         foregroundColor: Colors.white,
         elevation: 0,
       ),
@@ -175,8 +175,8 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
             _loadQuotations();
           }
         },
-        backgroundColor: const Color(0xFF000080),
-        icon: const Icon(Icons.add, color: Colors.white),
+        backgroundColor: Color(0xFF000080),
+        icon: Icon(Icons.add, color: Colors.white),
         label: Text(
           context.tr('Create Quotation'),
           style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white),
@@ -186,7 +186,7 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
         children: [
           // Search Header Card
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16),
             color: Colors.white,
             child: Row(
               children: [
@@ -206,9 +206,9 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
                 IconButton(
-                  icon: const Icon(Icons.refresh, color: Color(0xFF000080)),
+                  icon: Icon(Icons.refresh, color: Color(0xFF000080)),
                   onPressed: _loadQuotations,
                 ),
               ],
@@ -218,21 +218,21 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
           // Quotation List Content
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? Center(child: CircularProgressIndicator())
                 : _errorMessage.isNotEmpty
-                    ? Center(child: Text(_errorMessage, style: const TextStyle(color: Colors.red)))
+                    ? Center(child: Text(_errorMessage, style: TextStyle(color: Colors.red)))
                     : _filteredQuotations.isEmpty
                         ? Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(Icons.request_quote_outlined, size: 72, color: Colors.grey.shade300),
-                                const SizedBox(height: 16),
+                                SizedBox(height: 16),
                                 Text(
                                   context.tr('No quotations found'),
-                                  style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+                                  style: TextStyle(color: Colors.grey.shade600, fontSize: 16.sp),
                                 ),
-                                const SizedBox(height: 16),
+                                SizedBox(height: 16),
                                 ElevatedButton.icon(
                                   onPressed: () {
                                     Navigator.push(
@@ -243,7 +243,7 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
                                   icon: const Icon(Icons.add),
                                   label: Text(context.tr('Create First Quotation')),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF000080),
+                                    backgroundColor: Color(0xFF000080),
                                     foregroundColor: Colors.white,
                                   ),
                                 ),
@@ -276,7 +276,7 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
 
   Widget _buildQuotationCard(Map<String, dynamic> q) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -285,7 +285,7 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
-            offset: const Offset(0, 3),
+            offset: Offset(0, 3),
           ),
         ],
       ),
@@ -297,19 +297,19 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF000080).withValues(alpha: 0.1),
+                  color: Color(0xFF000080).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   q['quotation_number'] ?? '',
-                  style: GoogleFonts.inter(fontWeight: FontWeight.w800, color: const Color(0xFF000080), fontSize: 14.sp),
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w800, color: Color(0xFF000080), fontSize: 14.sp),
                 ),
               ),
               Text(
                 '$currencySymbol${_parseDouble(q['grand_total']).toStringAsFixed(2)}',
-                style: GoogleFonts.inter(fontWeight: FontWeight.w900, color: const Color(0xFF000080), fontSize: 18.sp),
+                style: GoogleFonts.inter(fontWeight: FontWeight.w900, color: Color(0xFF000080), fontSize: 18.sp),
               ),
             ],
           ),
@@ -319,12 +319,12 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
           Row(
             children: [
               const Icon(Icons.person_outline, size: 16, color: Colors.grey),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               Text(
                 q['customer_name'] ?? '',
-                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15.sp, color: const Color(0xFF1E293B)),
+                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15.sp, color: Color(0xFF1E293B)),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Text(
                 '(${q['customer_phone'] ?? ''})',
                 style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.grey.shade600),
@@ -337,10 +337,10 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
           Row(
             children: [
               const Icon(Icons.directions_car_outlined, size: 16, color: Colors.grey),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               Text(
                 q['vehicle_number'] ?? '',
-                style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13.sp, color: const Color(0xFF334155)),
+                style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13.sp, color: Color(0xFF334155)),
               ),
               if (q['branch_name'] != null && q['branch_name'].toString().isNotEmpty) ...[
                 Text(' · ', style: TextStyle(color: Colors.grey.shade400)),
@@ -357,7 +357,7 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
             '${context.tr("Date")}: ${q['created_at'] ?? ''}',
             style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade500),
           ),
-          const Divider(height: 20),
+          Divider(height: 20),
 
           // Action Buttons: View & Edit
           Row(
@@ -372,24 +372,24 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
                     ),
                   );
                 },
-                icon: const Icon(Icons.visibility_outlined, size: 16, color: Color(0xFF000080)),
+                icon: Icon(Icons.visibility_outlined, size: 16, color: Color(0xFF000080)),
                 label: Text(context.tr('View'), style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13.sp)),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF000080),
-                  side: const BorderSide(color: Color(0xFF000080)),
+                  foregroundColor: Color(0xFF000080),
+                  side: BorderSide(color: Color(0xFF000080)),
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               ElevatedButton.icon(
                 onPressed: () => _openEditQuotation(q['id']),
-                icon: const Icon(Icons.edit_outlined, size: 16, color: Colors.white),
+                icon: Icon(Icons.edit_outlined, size: 16, color: Colors.white),
                 label: Text(context.tr('Edit'), style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13.sp)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF000080),
+                  backgroundColor: Color(0xFF000080),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
               ),

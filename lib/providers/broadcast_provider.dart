@@ -194,7 +194,14 @@ class BroadcastProvider extends ChangeNotifier {
         planDetails: planDetails,
       );
       if (res['success'] == true || action == 'mark_sent') {
-        _reminderPlans.removeWhere((p) => planIds.contains(p['id']));
+        // Mark sent reminders as sent instead of removing them
+        for (var i = 0; i < _reminderPlans.length; i++) {
+          final planId = _reminderPlans[i]['id']?.toString();
+          if (planId != null && planIds.contains(planId)) {
+            _reminderPlans[i] = Map<String, dynamic>.from(_reminderPlans[i])
+              ..['is_sent'] = true;
+          }
+        }
         for (var id in planIds) {
           _selectedReminderIds.remove(id);
         }

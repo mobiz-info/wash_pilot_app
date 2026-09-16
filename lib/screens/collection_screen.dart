@@ -76,7 +76,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
       lastDate: DateTime(2030),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: const ColorScheme.light(
+          colorScheme: ColorScheme.light(
             primary: Color(0xFF000080),
             onPrimary: Colors.white,
           ),
@@ -169,9 +169,9 @@ class _CollectionScreenState extends State<CollectionScreen> {
                 final currencySymbol = context.watch<AuthProvider>().currencySymbol;
 
                 return Scaffold(
-                  backgroundColor: const Color(0xFFf8fafc),
+                  backgroundColor: Color(0xFFf8fafc),
                   appBar: AppBar(
-                    backgroundColor: const Color(0xFF000080),
+                    backgroundColor: Color(0xFF000080),
                     foregroundColor: Colors.white,
                     title: Text(
                       context.tr('Outstanding'),
@@ -226,7 +226,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                                     ),
                                     child: Icon(
                                       Icons.search,
-                                      color: const Color(0xFF000080),
+                                      color: Color(0xFF000080),
                                       size: 22.r,
                                     ),
                                   ),
@@ -253,15 +253,15 @@ class _CollectionScreenState extends State<CollectionScreen> {
                             hintText: context.tr('Search by customer, phone or invoice #'),
                             hintStyle: TextStyle(
                               fontSize: 13.sp,
-                              color: const Color(0xFF94a3b8),
+                              color: Color(0xFF94a3b8),
                             ),
                             prefixIcon: Icon(
                               Icons.search,
                               size: 20.r,
-                              color: const Color(0xFF94a3b8),
+                              color: Color(0xFF94a3b8),
                             ),
                             filled: true,
-                            fillColor: const Color(0xFFf1f5f9),
+                            fillColor: Color(0xFFf1f5f9),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10.r),
                               borderSide: BorderSide.none,
@@ -322,7 +322,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                                   style: TextStyle(
                                     fontSize: 16.sp,
                                     fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF64748b),
+                                    color: Color(0xFF64748b),
                                   ),
                                 ),
                               ],
@@ -376,7 +376,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                                                     style: TextStyle(
                                                       fontWeight: FontWeight.w700,
                                                       fontSize: 15.sp,
-                                                      color: const Color(0xFF1e293b),
+                                                      color: Color(0xFF1e293b),
                                                     ),
                                                   ),
                                                   SizedBox(height: 2.h),
@@ -384,7 +384,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                                                     inv['customer']['phone'] ?? '',
                                                     style: TextStyle(
                                                       fontSize: 12.sp,
-                                                      color: const Color(0xFF94a3b8),
+                                                      color: Color(0xFF94a3b8),
                                                     ),
                                                   ),
                                                 ],
@@ -396,10 +396,10 @@ class _CollectionScreenState extends State<CollectionScreen> {
                                                 vertical: 4,
                                               ),
                                               decoration: BoxDecoration(
-                                                color: const Color(0xFFfef2f2),
+                                                color: Color(0xFFfef2f2),
                                                 borderRadius: BorderRadius.circular(20.r),
                                                 border: Border.all(
-                                                  color: const Color(0xFFfecaca),
+                                                  color: Color(0xFFfecaca),
                                                 ),
                                               ),
                                               child: Text(
@@ -407,7 +407,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                                                 style: TextStyle(
                                                   fontWeight: FontWeight.w900,
                                                   fontSize: 15.sp,
-                                                  color: const Color(0xFFdc2626),
+                                                  color: Color(0xFFdc2626),
                                                 ),
                                               ),
                                             ),
@@ -456,7 +456,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                                                   context.tr('Collected: $currencySymbol${collected.toStringAsFixed(2)}'),
                                                   style: TextStyle(
                                                     fontSize: 11.sp,
-                                                    color: const Color(0xFF16a34a),
+                                                    color: Color(0xFF16a34a),
                                                     fontWeight: FontWeight.w600,
                                                   ),
                                                 ),
@@ -464,7 +464,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                                                   context.tr('Total: $currencySymbol${total.toStringAsFixed(2)}'),
                                                   style: TextStyle(
                                                     fontSize: 11.sp,
-                                                    color: const Color(0xFF64748b),
+                                                    color: Color(0xFF64748b),
                                                   ),
                                                 ),
                                               ],
@@ -475,8 +475,8 @@ class _CollectionScreenState extends State<CollectionScreen> {
                                               child: LinearProgressIndicator(
                                                 value: progress.clamp(0.0, 1.0),
                                                 minHeight: 6.h,
-                                                backgroundColor: const Color(0xFFe2e8f0),
-                                                valueColor: const AlwaysStoppedAnimation(
+                                                backgroundColor: Color(0xFFe2e8f0),
+                                                valueColor: AlwaysStoppedAnimation(
                                                   Color(0xFF16a34a),
                                                 ),
                                               ),
@@ -503,7 +503,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                                 context.tr('Total Outstanding'),
                                 style: TextStyle(
                                   fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF64748b),
+                                  color: Color(0xFF64748b),
                                   fontSize: 14.sp,
                                 ),
                               ),
@@ -511,7 +511,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                                 context.tr('$currencySymbol${totalOutstandingVal.toStringAsFixed(2)}'),
                                 style: TextStyle(
                                   fontWeight: FontWeight.w900,
-                                  color: const Color(0xFFdc2626),
+                                  color: Color(0xFFdc2626),
                                   fontSize: 18.sp,
                                 ),
                               ),
@@ -585,7 +585,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
             Icon(
               Icons.calendar_today,
               size: 16.r,
-              color: const Color(0xFF000080),
+              color: Color(0xFF000080),
             ),
             SizedBox(width: 8.w),
             Expanded(
@@ -605,7 +605,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                     style: TextStyle(
                       fontSize: 13.sp,
                       fontWeight: FontWeight.w700,
-                      color: const Color(0xFF1e293b),
+                      color: Color(0xFF1e293b),
                     ),
                   ),
                 ],
@@ -621,11 +621,11 @@ class _CollectionScreenState extends State<CollectionScreen> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 13.r, color: const Color(0xFF94a3b8)),
+        Icon(icon, size: 13.r, color: Color(0xFF94a3b8)),
         SizedBox(width: 3.w),
         Text(
           label,
-          style: TextStyle(fontSize: 12.sp, color: const Color(0xFF64748b)),
+          style: TextStyle(fontSize: 12.sp, color: Color(0xFF64748b)),
         ),
       ],
     );
