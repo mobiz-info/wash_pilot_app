@@ -293,7 +293,7 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
           final name = customer['name'] ?? 'Customer';
           final vehicleNumber = booking['vehicle']?['number'] ?? 'your vehicle';
           final String branchName = context.read<AuthProvider>().branchName ?? '';
-          final String branchStr = branchName.isNotEmpty ? branchName : 'Our';
+          final String branchStr = (branchName.isNotEmpty && branchName != 'Our') ? branchName : 'our branch';
           final message = "Hi $name Great news! Your vehicle $vehicleNumber is ready for pickup. Please collect at your earliest convenience.\n$branchStr Support team.";
           
           String phone = (customer['whatsapp_number']?.toString().isNotEmpty == true)

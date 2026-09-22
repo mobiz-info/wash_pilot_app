@@ -423,7 +423,7 @@ class LanguageProvider extends ChangeNotifier {
       'sales_summary': 'Sales Summary',
       'search_by_vehicle_number': 'Search by Vehicle Number',
       'vehicle_details': 'Vehicle Details',
-      'msg_welcome': 'Hi {customer} Welcome to {branch}.Your vehicle {vehicle} has arrived safely and is in expert hands.We will keep you posted!',
+      'msg_welcome': 'Hi {customer} Welcome to Our {branch}.Your vehicle {vehicle} has arrived safely and is in expert hands.We will keep you posted!',
       'msg_ready_alert': 'Hi {customer} Great news! Your vehicle {vehicle} is ready for pickup. Please collect at your earliest convenience.\n{branch} Support team.',
       'msg_thanks': 'Dear {customer} 🙏 Thank you for trusting us with your vehicle {vehicle}. We hope you had a great experience. Looking forward to seeing you again!\n{branch} support team.',
     },

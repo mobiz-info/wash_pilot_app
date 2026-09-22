@@ -342,6 +342,8 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
   final _branches = ValueNotifier<List<dynamic>>([]);
   final _selectedBranchId = ValueNotifier<String?>(null);
   final _selectedPaymentMode = ValueNotifier<String?>(null);
+  final _categories = ValueNotifier<List<dynamic>>([]);
+  final _selectedCategory = ValueNotifier<String?>(null);
 
   @override
   void initState() {
@@ -361,6 +363,8 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
     _branches.dispose();
     _selectedBranchId.dispose();
     _selectedPaymentMode.dispose();
+    _categories.dispose();
+    _selectedCategory.dispose();
     super.dispose();
   }
 
@@ -391,6 +395,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               _fromStr,
               _toStr,
               branchId: _selectedBranchId.value,
+              category: _selectedCategory.value,
             );
             break;
           case 'scheme':
@@ -472,6 +477,9 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
       }
 
       if (res['success'] == true) {
+        if (res.containsKey('categories') && res['categories'] is List) {
+          _categories.value = res['categories'] as List<dynamic>;
+        }
         _data.value = res;
         _isLoading.value = false;
       } else {
@@ -1050,6 +1058,10 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                                 SizedBox(height: 12),
                                 _branchDropdown(),
                               ],
+                              if (widget.reportType == 'job') ...[
+                                SizedBox(height: 12),
+                                _categoryDropdown(),
+                              ],
                               if (widget.reportType == 'collection') ...[
                                 SizedBox(height: 12),
                                 _paymentModeDropdown(),
@@ -1200,6 +1212,73 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
         _selectedPaymentMode.value = value == null || value.isEmpty ? null : value;
         _load();
       },
+    );
+  }
+
+  Widget _categoryDropdown() {
+    return ValueListenableBuilder<List<dynamic>>(
+      valueListenable: _categories,
+      builder: (context, categoryList, _) => ValueListenableBuilder<String?>(
+        valueListenable: _selectedCategory,
+        builder: (context, selectedCat, _) {
+          final validSelectedCat = categoryList.any((c) {
+            final item = Map<String, dynamic>.from(c as Map);
+            final val = item['slug']?.toString().isNotEmpty == true
+                ? item['slug']?.toString()
+                : item['id']?.toString();
+            return val == selectedCat;
+          })
+              ? selectedCat
+              : null;
+
+          return DropdownButtonFormField<String>(
+            value: validSelectedCat,
+            isExpanded: true,
+            menuMaxHeight: 350,
+            decoration: InputDecoration(
+              labelText: context.tr('Category'),
+              filled: true,
+              fillColor: const Color(0xFFF8FAFF),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 12,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(
+                  color: const Color(0xFF000080).withOpacity(0.2),
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(
+                  color: const Color(0xFF000080).withOpacity(0.2),
+                ),
+              ),
+            ),
+            items: [
+              DropdownMenuItem<String>(
+                value: null,
+                child: Text(context.tr('All Enabled Categories')),
+              ),
+              ...categoryList.map((cat) {
+                final item = Map<String, dynamic>.from(cat as Map);
+                final val = item['slug']?.toString().isNotEmpty == true
+                    ? item['slug']?.toString()
+                    : item['id']?.toString();
+                return DropdownMenuItem<String>(
+                  value: val,
+                  child: Text(item['name']?.toString() ?? ''),
+                );
+              }),
+            ],
+            onChanged: (value) {
+              _selectedCategory.value = value;
+              _load();
+            },
+          );
+        },
+      ),
     );
   }
 

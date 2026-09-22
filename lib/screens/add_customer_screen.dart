@@ -42,6 +42,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   List<dynamic> _brandModels = [];       // all brand models
   List<dynamic> _colors = [];
   List<dynamic> _emissionStandards = [];
+  List<dynamic> _fuelTypes = [];
 
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -134,6 +135,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
         final brandModels = res['brand_models'] as List<dynamic>? ?? [];
         final colors = res['colors'] as List<dynamic>? ?? [];
         final emissionStandards = res['emission_standards'] as List<dynamic>? ?? [];
+        final fuelTypes = res['fuel_types'] as List<dynamic>? ?? [];
         final branches = res['branches'] as List<dynamic>? ?? [];
 
         final validVehicleTypeIds = vehicleTypeModels.map((m) => m['vehicle_type_id']?.toString()).where((id) => id != null && id.isNotEmpty).toSet();
@@ -146,6 +148,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
         _brandModels = brandModels;
         _colors = colors;
         _emissionStandards = emissionStandards;
+        _fuelTypes = fuelTypes;
         _branches = branches;
         if (types.isNotEmpty) _selectedCustomerType.value = types.first;
         if (branches.isNotEmpty) {
@@ -187,6 +190,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       'brand_model': null,
       'color': null,
       'emission_standard': null,
+      'fuel_type': null,
       'wheel_type': 'normal_wheel',
     });
     _vehicleRowsNotifier.value++;
@@ -200,24 +204,39 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   }
 
   List<dynamic> _segmentsForType(String? vehicleTypeId) {
-    if (vehicleTypeId == null) return [];
-    return _vehicleTypeModels.where((m) => m['vehicle_type_id'] == vehicleTypeId).toList();
+    if (vehicleTypeId == null || vehicleTypeId.isEmpty) return _vehicleTypeModels;
+    return _vehicleTypeModels.where((m) => m['vehicle_type_id']?.toString() == vehicleTypeId).toList();
   }
 
-  List<dynamic> _makesForSegment(String? segmentId) {
-    if (segmentId == null) return [];
-    final brandModelsInSegment = _brandModels.where((b) => b['vehicle_type_model_id'] == segmentId);
-    final makeIds = brandModelsInSegment.map((b) => b['make_id']?.toString()).where((id) => id != null && id!.isNotEmpty).toSet();
-    return _makes.where((m) => makeIds.contains(m['id'].toString())).toList();
+  List<dynamic> _makesForTypeAndSegment(String? vehicleTypeId, String? segmentId) {
+    Iterable<dynamic> list = _brandModels;
+    if (segmentId != null && segmentId.isNotEmpty) {
+      list = list.where((b) => b['vehicle_type_model_id']?.toString() == segmentId.toString());
+    } else if (vehicleTypeId != null && vehicleTypeId.isNotEmpty) {
+      final validSegmentIds = _vehicleTypeModels
+          .where((s) => s['vehicle_type_id']?.toString() == vehicleTypeId.toString())
+          .map((s) => s['id']?.toString())
+          .toSet();
+      list = list.where((b) => validSegmentIds.contains(b['vehicle_type_model_id']?.toString()));
+    } else {
+      return _makes;
+    }
+    final makeIds = list
+        .map((b) => b['make_id']?.toString())
+        .where((id) => id != null && id.isNotEmpty)
+        .toSet();
+    return _makes.where((m) => makeIds.contains(m['id']?.toString())).toList();
   }
 
   List<dynamic> _brandModelsForSegmentAndMake(String? segmentId, String? makeId) {
-    if (segmentId == null) return [];
-    final brandModelsInSegment = _brandModels.where((b) => b['vehicle_type_model_id'] == segmentId);
-    if (makeId != null && makeId.isNotEmpty) {
-      return brandModelsInSegment.where((b) => b['make_id']?.toString() == makeId).toList();
+    Iterable<dynamic> list = _brandModels;
+    if (segmentId != null && segmentId.isNotEmpty) {
+      list = list.where((b) => b['vehicle_type_model_id']?.toString() == segmentId);
     }
-    return brandModelsInSegment.toList();
+    if (makeId != null && makeId.isNotEmpty) {
+      list = list.where((b) => b['make_id']?.toString() == makeId);
+    }
+    return list.toList();
   }
 
   void _showError(String msg) {
@@ -264,6 +283,11 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
 
       final emissionStandard = row['emission_standard'] as Map<String, dynamic>?;
       if (emissionStandard != null) vehicleData['emission_standard_id'] = emissionStandard['id'];
+
+      final fuelType = row['fuel_type'] as Map<String, dynamic>?;
+      if (fuelType != null && fuelType['id'] != null && fuelType['id'].toString().isNotEmpty) {
+        vehicleData['fuel_type'] = fuelType['id'];
+      }
 
       vehicles.add(vehicleData);
     }
@@ -603,6 +627,147 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     );
   }
 
+  Widget _buildSearchableDropdown<T>({
+    required String label,
+    required String title,
+    required T? value,
+    required List<T> items,
+    required String Function(T) labelBuilder,
+    required void Function(T?)? onChanged,
+    String? hint,
+  }) {
+    String displayLabel = hint ?? 'Select $title...';
+    bool hasValue = false;
+    if (value != null && items.isNotEmpty) {
+      if (value is Map && value.containsKey('id')) {
+        final valId = value['id']?.toString();
+        for (final item in items) {
+          if (item is Map && item['id']?.toString() == valId) {
+            displayLabel = labelBuilder(item);
+            hasValue = true;
+            break;
+          }
+        }
+      } else {
+        displayLabel = labelBuilder(value);
+        hasValue = true;
+      }
+    } else if (value != null) {
+      displayLabel = labelBuilder(value);
+      hasValue = true;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+        const SizedBox(height: 6),
+        InkWell(
+          onTap: (items.isEmpty || onChanged == null)
+              ? null
+              : () => _showSearchableModal<T>(title, items, labelBuilder, onChanged),
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    displayLabel,
+                    style: GoogleFonts.inter(
+                      fontSize: 14.sp,
+                      color: hasValue ? Colors.black87 : Colors.grey.shade500,
+                      fontWeight: hasValue ? FontWeight.w500 : FontWeight.normal,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Icon(Icons.search, size: 18, color: Colors.grey.shade500),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showSearchableModal<T>(
+    String title,
+    List<T> items,
+    String Function(T) labelBuilder,
+    void Function(T?) onChanged,
+  ) {
+    final searchNotifier = ValueNotifier<String>('');
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Container(
+        height: MediaQuery.of(ctx).size.height * 0.7,
+        padding: EdgeInsets.only(
+          top: 20, left: 20, right: 20,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Select $title', style: GoogleFonts.inter(fontSize: 17.sp, fontWeight: FontWeight.bold, color: const Color(0xFF000080))),
+                IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
+              ],
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: 'Search $title...',
+                prefixIcon: const Icon(Icons.search),
+                filled: true,
+                fillColor: Colors.grey.shade100,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+              onChanged: (v) => searchNotifier.value = v.toLowerCase().trim(),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: ValueListenableBuilder<String>(
+                valueListenable: searchNotifier,
+                builder: (_, query, __) {
+                  final filtered = items.where((item) => labelBuilder(item).toLowerCase().contains(query)).toList();
+                  if (filtered.isEmpty) {
+                    return Center(child: Text('No results found', style: GoogleFonts.inter(color: Colors.grey)));
+                  }
+                  return ListView.builder(
+                    itemCount: filtered.length,
+                    itemBuilder: (_, i) {
+                      final item = filtered[i];
+                      return ListTile(
+                        title: Text(labelBuilder(item), style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
+                        trailing: const Icon(Icons.chevron_right, size: 18),
+                        onTap: () {
+                          onChanged(item);
+                          Navigator.pop(ctx);
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildVehicleRowWidget(int index) {
     final row = _vehicleRows[index];
     final selectedType = row['vehicle_type'] as Map<String, dynamic>?;
@@ -611,10 +776,11 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     final selectedBrand = row['brand_model'] as Map<String, dynamic>?;
     final selectedColor = row['color'] as Map<String, dynamic>?;
     final selectedEmission = row['emission_standard'] as Map<String, dynamic>?;
+    final selectedFuelType = row['fuel_type'] as Map<String, dynamic>?;
 
-    final segments = _segmentsForType(selectedType?['id']);
-    final makes = _makesForSegment(selectedSegment?['id']);
-    final brands = _brandModelsForSegmentAndMake(selectedSegment?['id'], selectedMake?['id']);
+    final segments = _segmentsForType(selectedType?['id']?.toString());
+    final makes = _makesForTypeAndSegment(selectedType?['id']?.toString(), selectedSegment?['id']?.toString());
+    final brands = _brandModelsForSegmentAndMake(selectedSegment?['id']?.toString(), selectedMake?['id']?.toString());
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -644,7 +810,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
             ),
             const SizedBox(height: 14),
 
-            // Level 1 — Vehicle Type
+            // 1. Vehicle Type
             _buildDropdown<Map<String, dynamic>>(
               label: 'Vehicle Type *',
               value: selectedType,
@@ -653,16 +819,82 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
               hint: 'Select vehicle type',
               onChanged: (val) {
                 row['vehicle_type'] = val;
-                row['vehicle_type_model'] = null;
-                row['make'] = null;
+                final validMakes = _makesForTypeAndSegment(val?['id']?.toString(), row['vehicle_type_model']?['id']?.toString());
+                if (row['make'] != null && !validMakes.any((m) => m['id']?.toString() == row['make']?['id']?.toString())) {
+                  row['make'] = null;
+                  row['brand_model'] = null;
+                }
+                _vehicleRowsNotifier.value++;
+              },
+            ),
+            const SizedBox(height: 12),
+
+            // 2. Make (Searchable Dropdown)
+            _buildSearchableDropdown<Map<String, dynamic>>(
+              label: 'Vehicle Make',
+              title: 'Make',
+              value: selectedMake,
+              items: makes.cast<Map<String, dynamic>>(),
+              labelBuilder: (b) => b['name']?.toString() ?? '',
+              hint: makes.isEmpty ? 'No makes available' : 'Select Make (e.g. Maruti, Hyundai)...',
+              onChanged: makes.isEmpty ? null : (val) {
+                row['make'] = val;
                 row['brand_model'] = null;
                 _vehicleRowsNotifier.value++;
               },
             ),
             const SizedBox(height: 12),
 
-            // Level 2 — Segment
-            if (selectedType != null && segments.isNotEmpty) ...[
+            // 3. Brand / Model (Searchable Dropdown)
+            _buildSearchableDropdown<Map<String, dynamic>>(
+              label: 'Brand / Model',
+              title: 'Brand Model',
+              value: selectedBrand,
+              items: brands.cast<Map<String, dynamic>>(),
+              labelBuilder: (b) => b['name']?.toString() ?? '',
+              hint: brands.isEmpty ? 'No models available' : 'Select Model (e.g. Swift, Creta)...',
+              onChanged: brands.isEmpty ? null : (val) {
+                row['brand_model'] = val;
+                if (val != null) {
+                  // Auto-populate Make if missing
+                  final makeId = val['make_id']?.toString();
+                  if (makeId != null && makeId.isNotEmpty) {
+                    final matchedMake = _makes.firstWhere(
+                      (mk) => mk['id']?.toString() == makeId,
+                      orElse: () => null,
+                    );
+                    if (matchedMake != null) row['make'] = matchedMake;
+                  }
+
+                  // Auto-populate Segment (vehicle_type_model)
+                  final vtmId = val['vehicle_type_model_id']?.toString();
+                  if (vtmId != null && vtmId.isNotEmpty) {
+                    final matchedSegment = _vehicleTypeModels.firstWhere(
+                      (vm) => vm['id']?.toString() == vtmId,
+                      orElse: () => null,
+                    );
+                    if (matchedSegment != null) {
+                      row['vehicle_type_model'] = matchedSegment;
+
+                      // Auto-populate Vehicle Type
+                      final vtId = matchedSegment['vehicle_type_id']?.toString();
+                      if (vtId != null && vtId.isNotEmpty) {
+                        final matchedVt = _vehicleTypes.firstWhere(
+                          (vt) => vt['id']?.toString() == vtId,
+                          orElse: () => null,
+                        );
+                        if (matchedVt != null) row['vehicle_type'] = matchedVt;
+                      }
+                    }
+                  }
+                }
+                _vehicleRowsNotifier.value++;
+              },
+            ),
+            const SizedBox(height: 12),
+
+            // 4. Segment (Auto-populated or manually selected)
+            if (segments.isNotEmpty) ...[
               _buildDropdown<Map<String, dynamic>>(
                 label: 'Segment *',
                 value: selectedSegment,
@@ -671,41 +903,6 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                 hint: segments.isEmpty ? 'No segments available' : 'Select segment',
                 onChanged: segments.isEmpty ? null : (val) {
                   row['vehicle_type_model'] = val;
-                  row['make'] = null;
-                  row['brand_model'] = null;
-                  _vehicleRowsNotifier.value++;
-                },
-              ),
-              const SizedBox(height: 12),
-            ],
-
-            // Level 3 — Make (Optional)
-            if (selectedSegment != null) ...[
-              _buildDropdown<Map<String, dynamic>>(
-                label: 'Vehicle Make',
-                value: selectedMake,
-                items: makes.cast<Map<String, dynamic>>(),
-                labelBuilder: (b) => b['name'],
-                hint: makes.isEmpty ? 'No makes available' : 'Select make',
-                onChanged: makes.isEmpty ? null : (val) {
-                  row['make'] = val;
-                  row['brand_model'] = null;
-                  _vehicleRowsNotifier.value++;
-                },
-              ),
-              const SizedBox(height: 12),
-            ],
-
-            // Level 4 — Brand Model (Optional, only show after Make is selected)
-            if (selectedSegment != null && selectedMake != null) ...[
-              _buildDropdown<Map<String, dynamic>>(
-                label: 'Brand',
-                value: selectedBrand,
-                items: brands.cast<Map<String, dynamic>>(),
-                labelBuilder: (b) => b['name'],
-                hint: brands.isEmpty ? 'No brands available' : 'Select brand',
-                onChanged: brands.isEmpty ? null : (val) {
-                  row['brand_model'] = val;
                   _vehicleRowsNotifier.value++;
                 },
               ),
@@ -738,6 +935,22 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                 hint: 'Select emission standard',
                 onChanged: (val) {
                   row['emission_standard'] = (val?['id'] == '') ? null : val;
+                  _vehicleRowsNotifier.value++;
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            // Fuel Type (optional)
+            if (_fuelTypes.isNotEmpty) ...[
+              _buildDropdown<Map<String, dynamic>>(
+                label: 'Fuel Type (Optional)',
+                value: selectedFuelType,
+                items: [{'id': '', 'name': 'None'}, ..._fuelTypes.cast<Map<String, dynamic>>()],
+                labelBuilder: (f) => f['name']?.toString() ?? '',
+                hint: 'Select fuel type',
+                onChanged: (val) {
+                  row['fuel_type'] = (val?['id'] == '') ? null : val;
                   _vehicleRowsNotifier.value++;
                 },
               ),

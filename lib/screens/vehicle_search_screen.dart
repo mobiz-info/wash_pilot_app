@@ -202,8 +202,8 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
             SnackBar(content: Text(context.tr('✅ WhatsApp Ready Alert sent successfully!')), backgroundColor: Colors.green),
           );
         } else {
-          final branchName = context.read<AuthProvider>().branchName ?? '';
-          final branchStr = branchName.isNotEmpty ? branchName : 'Our';
+          final String branchName = context.read<AuthProvider>().branchName ?? '';
+          final String branchStr = (branchName.isNotEmpty && branchName != 'Our') ? branchName : 'our branch';
           final message = (res['message_text'] != null && res['message_text'].toString().isNotEmpty)
               ? res['message_text'].toString()
               : "Hi $customerName Great news! Your vehicle $vehicleNumber is ready for pickup. Please collect at your earliest convenience.\n$branchStr Support team.";
@@ -570,6 +570,7 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
                       'no': vehicle['number'],
                       'type': vehicle['model'],
                       'vehicle_type': vehicle['vehicle_type'],
+                      'emission_standard': vehicle['emission_standard'] ?? vehicle['emission_standard_name'],
                     },
                   ),
                 ),

@@ -1022,21 +1022,15 @@ class NewJobScreen extends StatelessWidget {
         );
       } else {
         final String branchName = context.read<AuthProvider>().branchName ?? '';
-        final String effectiveBranch = branchName.isNotEmpty ? branchName : 'Our';
+        final String effectiveBranch = (branchName.isNotEmpty && branchName != 'Our') ? branchName : 'our branch';
 
         String messageText = (res['message_text'] != null && res['message_text'].toString().isNotEmpty)
             ? res['message_text'].toString()
             : '';
 
-        final bool isOldOrDefault = messageText.isEmpty ||
-            messageText.contains("ready for pickup! Thank you for choosing our service.") ||
-            messageText.contains("thank you for choosing") ||
-            messageText.contains("Welcome to our service center") ||
-            messageText.contains("arrived safely and is in expert hands");
-
-        if (isOldOrDefault) {
+        if (messageText.isEmpty) {
           if (type == 'welcome') {
-            messageText = "Hi $customerName Welcome to $effectiveBranch.Your vehicle $vehicleNumber has arrived safely and is in expert hands.We will keep you posted!";
+            messageText = "Hi $customerName Welcome to Our $effectiveBranch.Your vehicle $vehicleNumber has arrived safely and is in expert hands.We will keep you posted!";
           } else if (type == 'ready') {
             messageText = "Hi $customerName Great news! Your vehicle $vehicleNumber is ready for pickup. Please collect at your earliest convenience.\n$effectiveBranch Support team.";
           } else {
@@ -1136,20 +1130,35 @@ class _AddVehicleDialog extends StatelessWidget {
     return _vehicleTypeModelsNotifier.value.where((m) => m['vehicle_type_id'] == vehicleTypeId).toList();
   }
 
-  List<dynamic> _makesForSegment(String? segmentId) {
-    if (segmentId == null) return [];
-    final brandModelsInSegment = _brandModelsNotifier.value.where((b) => b['vehicle_type_model_id'] == segmentId);
-    final makeIds = brandModelsInSegment.map((b) => b['make_id']?.toString()).where((id) => id != null && id!.isNotEmpty).toSet();
-    return _makesNotifier.value.where((m) => makeIds.contains(m['id'].toString())).toList();
+  List<dynamic> _makesForTypeAndSegment(String? vehicleTypeId, String? segmentId) {
+    Iterable<dynamic> list = _brandModelsNotifier.value;
+    if (segmentId != null && segmentId.isNotEmpty) {
+      list = list.where((b) => b['vehicle_type_model_id']?.toString() == segmentId.toString());
+    } else if (vehicleTypeId != null && vehicleTypeId.isNotEmpty) {
+      final validSegmentIds = _vehicleTypeModelsNotifier.value
+          .where((s) => s['vehicle_type_id']?.toString() == vehicleTypeId.toString())
+          .map((s) => s['id']?.toString())
+          .toSet();
+      list = list.where((b) => validSegmentIds.contains(b['vehicle_type_model_id']?.toString()));
+    } else {
+      return _makesNotifier.value;
+    }
+    final makeIds = list
+        .map((b) => b['make_id']?.toString())
+        .where((id) => id != null && id.isNotEmpty)
+        .toSet();
+    return _makesNotifier.value.where((m) => makeIds.contains(m['id']?.toString())).toList();
   }
 
   List<dynamic> _brandModelsForSegmentAndMake(String? segmentId, String? makeId) {
-    if (segmentId == null) return [];
-    final brandModelsInSegment = _brandModelsNotifier.value.where((b) => b['vehicle_type_model_id'] == segmentId);
-    if (makeId != null && makeId.isNotEmpty) {
-      return brandModelsInSegment.where((b) => b['make_id']?.toString() == makeId).toList();
+    Iterable<dynamic> list = _brandModelsNotifier.value;
+    if (segmentId != null && segmentId.isNotEmpty) {
+      list = list.where((b) => b['vehicle_type_model_id']?.toString() == segmentId);
     }
-    return brandModelsInSegment.toList();
+    if (makeId != null && makeId.isNotEmpty) {
+      list = list.where((b) => b['make_id']?.toString() == makeId);
+    }
+    return list.toList();
   }
 
   Future<void> _save(BuildContext context) async {
@@ -1203,6 +1212,148 @@ class _AddVehicleDialog extends StatelessWidget {
       _errorMessageNotifier.value = e.toString();
       _isSavingNotifier.value = false;
     }
+  }
+
+  Widget _buildSearchableDropdown<T>(
+    BuildContext context, {
+    required String label,
+    required String title,
+    required T? value,
+    required List<T> items,
+    required String Function(T) labelBuilder,
+    required void Function(T?)? onChanged,
+    String? hint,
+  }) {
+    String displayLabel = hint ?? context.tr('Select $title...');
+    bool hasValue = false;
+    if (value != null && items.isNotEmpty) {
+      if (value is Map && value.containsKey('id')) {
+        final valId = value['id']?.toString();
+        for (final item in items) {
+          if (item is Map && item['id']?.toString() == valId) {
+            displayLabel = labelBuilder(item);
+            hasValue = true;
+            break;
+          }
+        }
+      } else {
+        displayLabel = labelBuilder(value);
+        hasValue = true;
+      }
+    } else if (value != null) {
+      displayLabel = labelBuilder(value);
+      hasValue = true;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+        const SizedBox(height: 6),
+        InkWell(
+          onTap: (items.isEmpty || onChanged == null)
+              ? null
+              : () => _showSearchableModal<T>(context, title, items, labelBuilder, onChanged),
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    displayLabel,
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      color: hasValue ? Colors.black87 : Colors.grey.shade500,
+                      fontWeight: hasValue ? FontWeight.w500 : FontWeight.normal,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Icon(Icons.search, size: 18, color: Colors.grey.shade500),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showSearchableModal<T>(
+    BuildContext context,
+    String title,
+    List<T> items,
+    String Function(T) labelBuilder,
+    void Function(T?) onChanged,
+  ) {
+    final searchNotifier = ValueNotifier<String>('');
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Container(
+        height: MediaQuery.of(ctx).size.height * 0.7,
+        padding: EdgeInsets.only(
+          top: 20, left: 20, right: 20,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(context.tr('Select $title'), style: TextStyle(fontSize: 17.sp, fontWeight: FontWeight.bold, color: const Color(0xFF000080))),
+                IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
+              ],
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: context.tr('Search $title...'),
+                prefixIcon: const Icon(Icons.search),
+                filled: true,
+                fillColor: Colors.grey.shade100,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+              onChanged: (v) => searchNotifier.value = v.toLowerCase().trim(),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: ValueListenableBuilder<String>(
+                valueListenable: searchNotifier,
+                builder: (_, query, __) {
+                  final filtered = items.where((item) => labelBuilder(item).toLowerCase().contains(query)).toList();
+                  if (filtered.isEmpty) {
+                    return Center(child: Text(context.tr('No results found'), style: TextStyle(color: Colors.grey)));
+                  }
+                  return ListView.builder(
+                    itemCount: filtered.length,
+                    itemBuilder: (_, i) {
+                      final item = filtered[i];
+                      return ListTile(
+                        title: Text(labelBuilder(item), style: TextStyle(fontWeight: FontWeight.w500)),
+                        onTap: () {
+                          onChanged(item);
+                          Navigator.pop(ctx);
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildDropdown<T>({
@@ -1322,7 +1473,7 @@ class _AddVehicleDialog extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
 
-                // Type selection
+                // 1. Vehicle Type
                 ValueListenableBuilder<List<dynamic>>(
                   valueListenable: _vehicleTypesNotifier,
                   builder: (context, vehicleTypes, child) {
@@ -1336,9 +1487,11 @@ class _AddVehicleDialog extends StatelessWidget {
                           labelBuilder: (item) => context.tr(item['name'] ?? ''),
                           onChanged: (val) {
                             _selectedTypeNotifier.value = val;
-                            _selectedSegmentNotifier.value = null;
-                            _selectedMakeNotifier.value = null;
-                            _selectedBrandNotifier.value = null;
+                            final validMakes = _makesForTypeAndSegment(val?['id']?.toString(), _selectedSegmentNotifier.value?['id']?.toString());
+                            if (_selectedMakeNotifier.value != null && !validMakes.any((m) => m['id']?.toString() == _selectedMakeNotifier.value?['id']?.toString())) {
+                              _selectedMakeNotifier.value = null;
+                              _selectedBrandNotifier.value = null;
+                            }
                           },
                         );
                       },
@@ -1347,23 +1500,33 @@ class _AddVehicleDialog extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
 
-                // Segment selection
+                // 2. Make (Searchable Dropdown)
                 ValueListenableBuilder<Map<String, dynamic>?>(
                   valueListenable: _selectedTypeNotifier,
                   builder: (context, selectedType, child) {
-                    final segments = _segmentsForType(selectedType?['id']?.toString());
                     return ValueListenableBuilder<Map<String, dynamic>?>(
                       valueListenable: _selectedSegmentNotifier,
                       builder: (context, selectedSegment, child) {
-                        return _buildDropdown<dynamic>(
-                          label: context.tr('Vehicle Model (Segment) *'),
-                          value: selectedSegment,
-                          items: segments,
-                          labelBuilder: (item) => item['name'] ?? '',
-                          onChanged: (val) {
-                            _selectedSegmentNotifier.value = val;
-                            _selectedMakeNotifier.value = null;
-                            _selectedBrandNotifier.value = null;
+                        final makes = _makesForTypeAndSegment(
+                          selectedType?['id']?.toString(),
+                          selectedSegment?['id']?.toString(),
+                        );
+                        return ValueListenableBuilder<Map<String, dynamic>?>(
+                          valueListenable: _selectedMakeNotifier,
+                          builder: (context, selectedMake, child) {
+                            return _buildSearchableDropdown<dynamic>(
+                              context,
+                              label: context.tr('Vehicle Make'),
+                              title: context.tr('Make'),
+                              value: selectedMake,
+                              items: makes,
+                              labelBuilder: (item) => item['name'] ?? '',
+                              hint: makes.isEmpty ? context.tr('No makes available') : context.tr('Select Make (e.g. Maruti, Hyundai)...'),
+                              onChanged: makes.isEmpty ? null : (val) {
+                                _selectedMakeNotifier.value = val;
+                                _selectedBrandNotifier.value = null;
+                              },
+                            );
                           },
                         );
                       },
@@ -1372,32 +1535,7 @@ class _AddVehicleDialog extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
 
-                // Make selection
-                ValueListenableBuilder<Map<String, dynamic>?>(
-                  valueListenable: _selectedSegmentNotifier,
-                  builder: (context, selectedSegment, child) {
-                    final makes = _makesForSegment(selectedSegment?['id']?.toString());
-                    return ValueListenableBuilder<Map<String, dynamic>?>(
-                      valueListenable: _selectedMakeNotifier,
-                      builder: (context, selectedMake, child) {
-                        return _buildDropdown<dynamic>(
-                          label: context.tr('Vehicle Brand / Make'),
-                          value: selectedMake,
-                          items: makes,
-                          labelBuilder: (item) => item['name'] ?? '',
-                          hint: context.tr('Select Brand...'),
-                          onChanged: (val) {
-                            _selectedMakeNotifier.value = val;
-                            _selectedBrandNotifier.value = null;
-                          },
-                        );
-                      },
-                    );
-                  },
-                ),
-                const SizedBox(height: 14),
-
-                // Brand selection
+                // 3. Brand / Model (Searchable Dropdown)
                 ValueListenableBuilder<Map<String, dynamic>?>(
                   valueListenable: _selectedSegmentNotifier,
                   builder: (context, selectedSegment, child) {
@@ -1411,16 +1549,71 @@ class _AddVehicleDialog extends StatelessWidget {
                         return ValueListenableBuilder<Map<String, dynamic>?>(
                           valueListenable: _selectedBrandNotifier,
                           builder: (context, selectedBrand, child) {
-                            return _buildDropdown<dynamic>(
-                              label: context.tr('Brand Model'),
+                            return _buildSearchableDropdown<dynamic>(
+                              context,
+                              label: context.tr('Brand / Model'),
+                              title: context.tr('Brand Model'),
                               value: selectedBrand,
                               items: brands,
                               labelBuilder: (item) => item['name'] ?? '',
-                              hint: context.tr('Select Model...'),
-                              onChanged: (val) {
+                              hint: brands.isEmpty ? context.tr('No models available') : context.tr('Select Model (e.g. Swift, Creta)...'),
+                              onChanged: brands.isEmpty ? null : (val) {
                                 _selectedBrandNotifier.value = val;
+                                if (val != null) {
+                                  final makeId = val['make_id']?.toString();
+                                  if (makeId != null && makeId.isNotEmpty) {
+                                    final matchedMake = _makesNotifier.value.firstWhere(
+                                      (mk) => mk['id']?.toString() == makeId,
+                                      orElse: () => null,
+                                    );
+                                    if (matchedMake != null) _selectedMakeNotifier.value = matchedMake;
+                                  }
+
+                                  final vtmId = val['vehicle_type_model_id']?.toString();
+                                  if (vtmId != null && vtmId.isNotEmpty) {
+                                    final matchedSegment = _vehicleTypeModelsNotifier.value.firstWhere(
+                                      (vm) => vm['id']?.toString() == vtmId,
+                                      orElse: () => null,
+                                    );
+                                    if (matchedSegment != null) {
+                                      _selectedSegmentNotifier.value = matchedSegment;
+                                      final vtId = matchedSegment['vehicle_type_id']?.toString();
+                                      if (vtId != null && vtId.isNotEmpty) {
+                                        final matchedVt = _vehicleTypesNotifier.value.firstWhere(
+                                          (vt) => vt['id']?.toString() == vtId,
+                                          orElse: () => null,
+                                        );
+                                        if (matchedVt != null) _selectedTypeNotifier.value = matchedVt;
+                                      }
+                                    }
+                                  }
+                                }
                               },
                             );
+                          },
+                        );
+                      },
+                    );
+                  },
+                ),
+                const SizedBox(height: 14),
+
+                // 4. Segment (Auto-populated or manually selected)
+                ValueListenableBuilder<Map<String, dynamic>?>(
+                  valueListenable: _selectedTypeNotifier,
+                  builder: (context, selectedType, child) {
+                    final segments = _segmentsForType(selectedType?['id']?.toString());
+                    if (segments.isEmpty) return const SizedBox.shrink();
+                    return ValueListenableBuilder<Map<String, dynamic>?>(
+                      valueListenable: _selectedSegmentNotifier,
+                      builder: (context, selectedSegment, child) {
+                        return _buildDropdown<dynamic>(
+                          label: context.tr('Vehicle Model (Segment) *'),
+                          value: selectedSegment,
+                          items: segments,
+                          labelBuilder: (item) => item['name'] ?? '',
+                          onChanged: (val) {
+                            _selectedSegmentNotifier.value = val;
                           },
                         );
                       },

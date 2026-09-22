@@ -107,8 +107,6 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
     final q = _quotation!;
     final companyName = context.read<AuthProvider>().companyName ?? ApiService.appName;
     final branchName = q['branch_name'] ?? context.read<AuthProvider>().branchName ?? '';
-    final branchLogoUrl = q['branch_logo'] ?? '';
-    final companyLogoUrl = q['company_logo'] ?? '';
 
     pw.Font? notoFont;
     try {
@@ -122,7 +120,10 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
 
     pw.MemoryImage? logoImage;
     try {
-      final logoUrl = branchLogoUrl.isNotEmpty ? branchLogoUrl : companyLogoUrl;
+      final branchLogo = (q['branch_logo'] ?? '').toString();
+      final compLogo = (q['company_logo'] ?? '').toString();
+      final authCompLogo = (context.read<AuthProvider>().companyLogo ?? '').toString();
+      final logoUrl = branchLogo.isNotEmpty ? branchLogo : (compLogo.isNotEmpty ? compLogo : authCompLogo);
       if (logoUrl.isNotEmpty) {
         final res = await http.get(Uri.parse(logoUrl));
         if (res.statusCode == 200) {
@@ -822,6 +823,11 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
     final items = (q['items'] as List<dynamic>? ?? []);
     final extras = (q['extras'] as List<dynamic>? ?? []);
 
+    final branchLogoUrl = (q['branch_logo'] ?? '').toString();
+    final companyLogoUrl = (q['company_logo'] ?? '').toString();
+    final authCompanyLogo = (context.watch<AuthProvider>().companyLogo ?? '').toString();
+    final logoUrl = branchLogoUrl.isNotEmpty ? branchLogoUrl : (companyLogoUrl.isNotEmpty ? companyLogoUrl : authCompanyLogo);
+
     return Container(
       padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -840,18 +846,33 @@ class _QuotationViewScreenState extends State<QuotationViewScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Column(
+              Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    ApiService.appName,
-                    style: GoogleFonts.inter(fontSize: 20.sp, fontWeight: FontWeight.w800, color: Color(0xFF000080)),
-                  ),
-                  if (q['branch_name'] != null && q['branch_name'].toString().isNotEmpty)
-                    Text(
-                      q['branch_name'] ?? '',
-                      style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade600),
+                  if (logoUrl.isNotEmpty) ...[
+                    Image.network(
+                      logoUrl,
+                      height: 40,
+                      width: 40,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                     ),
+                    const SizedBox(width: 10),
+                  ],
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        context.read<AuthProvider>().companyName ?? ApiService.appName,
+                        style: GoogleFonts.inter(fontSize: 18.sp, fontWeight: FontWeight.w800, color: Color(0xFF000080)),
+                      ),
+                      if (q['branch_name'] != null && q['branch_name'].toString().isNotEmpty)
+                        Text(
+                          q['branch_name'] ?? '',
+                          style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade600),
+                        ),
+                    ],
+                  ),
                 ],
               ),
               Container(

@@ -21,7 +21,11 @@ class ExpenseProvider extends ChangeNotifier {
     try {
       final res = await ApiService.getExpenseHeads(token);
       if (res['success'] == true) {
-        _expenseHeads = res['expense_heads'] ?? [];
+        final rawList = (res['expense_heads'] as List? ?? []);
+        _expenseHeads = rawList.where((h) {
+          final name = (h['name'] ?? '').toString().trim().toLowerCase();
+          return name != 'purchase';
+        }).toList();
       }
     } catch (e) {
       debugPrint('Error fetching expense heads: $e');

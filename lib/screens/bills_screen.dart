@@ -289,7 +289,7 @@ class _BillsScreenState extends State<BillsScreen> {
               pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.end,
                 children: [
-                  pw.Text('INVOICE',
+                  pw.Text('PROFORMA INVOICE',
                       style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
                   pw.SizedBox(height: 4),
                   pw.Text(inv['invoice_number'],

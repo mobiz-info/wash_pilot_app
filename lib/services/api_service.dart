@@ -1154,6 +1154,7 @@ class ApiService {
     String toDate, {
     String? branchId,
     String? paymentMode,
+    String? category,
   }) async {
     final params = <String, String>{'from_date': fromDate, 'to_date': toDate};
     if (branchId != null && branchId.isNotEmpty) {
@@ -1161,6 +1162,9 @@ class ApiService {
     }
     if (paymentMode != null && paymentMode.isNotEmpty) {
       params['payment_mode'] = paymentMode;
+    }
+    if (category != null && category.isNotEmpty) {
+      params['category'] = category;
     }
     final response = await http.get(
       Uri.parse('$baseUrl/$path').replace(queryParameters: params),
@@ -1180,8 +1184,9 @@ class ApiService {
     String fromDate,
     String toDate, {
     String? branchId,
+    String? category,
   }) =>
-      _reportGet('reports/jobs/', token, fromDate, toDate, branchId: branchId);
+      _reportGet('reports/jobs/', token, fromDate, toDate, branchId: branchId, category: category);
 
   static Future<Map<String, dynamic>> getSchemeBeneficiaryReport(
     String token,

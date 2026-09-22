@@ -47,7 +47,11 @@ class _ExpenseHeadScreenState extends State<ExpenseHeadScreen> {
     try {
       final res = await ApiService.getExpenseHeads(token);
       if (res['success'] == true) {
-        _expenseHeads.value = res['expense_heads'] ?? [];
+        final rawList = (res['expense_heads'] as List? ?? []);
+        _expenseHeads.value = rawList.where((h) {
+          final name = (h['name'] ?? '').toString().trim().toLowerCase();
+          return name != 'purchase';
+        }).toList();
         _filteredHeads.value = List.from(_expenseHeads.value);
         _isLoading.value = false;
       } else {
