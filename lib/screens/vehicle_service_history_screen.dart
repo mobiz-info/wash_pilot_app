@@ -48,7 +48,19 @@ class _VehicleServiceHistoryScreenState extends State<VehicleServiceHistoryScree
     try {
       final res = await ApiService.getVehicleServiceHistory(widget.vehicleId, token);
       if (res['success'] == true) {
-        _history.value = res['history'] ?? [];
+        final List<dynamic> list = List.from(res['history'] ?? []);
+        list.sort((a, b) {
+          final dateA = a['date']?.toString() ?? '';
+          final dateB = b['date']?.toString() ?? '';
+          final invA = a['invoice_number']?.toString() ?? '';
+          final invB = b['invoice_number']?.toString() ?? '';
+          final comp = dateB.compareTo(dateA);
+          if (comp == 0) {
+            return invB.compareTo(invA);
+          }
+          return comp;
+        });
+        _history.value = list;
         _nextService.value = res['next_service'] ?? {};
         _isLoading.value = false;
       } else {

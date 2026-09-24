@@ -16,6 +16,7 @@ import '../providers/auth_provider.dart';
 import '../providers/invoice_provider.dart';
 import '../config/country_config.dart';
 import '../services/api_service.dart';
+import 'invoice_create_screen.dart';
 import 'package:http/http.dart' as http;
 
 class BillsScreen extends StatefulWidget {
@@ -231,6 +232,17 @@ class _BillsScreenState extends State<BillsScreen> {
       } catch (_) {}
     }
 
+    pw.ImageProvider? sealImage;
+    try {
+      final sealUrl = (inv['company_seal'] ?? inv['company_seal_url']) as String? ?? '';
+      if (sealUrl.isNotEmpty) {
+        final response = await http.get(Uri.parse(sealUrl));
+        if (response.statusCode == 200) {
+          sealImage = pw.MemoryImage(response.bodyBytes);
+        }
+      }
+    } catch (_) {}
+
     final String invBranch = inv['branch']?.toString() ?? '';
     final String authBranch = context.read<AuthProvider>().branchName ?? '';
     final String branchName = invBranch.isNotEmpty
@@ -361,16 +373,33 @@ class _BillsScreenState extends State<BillsScreen> {
             ]),
           ),
           pw.Spacer(),
-          pw.Center(
-            child: pw.Column(
-              children: [
-                pw.Text('Thank you for choosing $branchName',
-                    style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
-                pw.SizedBox(height: 4),
-                pw.Text('Powered by Mobiz Technologies',
-                    style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey500)),
-              ],
-            ),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: pw.CrossAxisAlignment.end,
+            children: [
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text('Thank you for choosing $branchName',
+                      style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
+                  pw.SizedBox(height: 4),
+                  pw.Text('Powered by Mobiz Technologies',
+                      style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey500)),
+                ],
+              ),
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
+                children: [
+                  if (sealImage != null) ...[
+                    pw.Image(sealImage, width: 65, height: 65, fit: pw.BoxFit.contain),
+                    pw.SizedBox(height: 4),
+                  ],
+                  pw.Container(width: 100, height: 1, color: PdfColors.grey400),
+                  pw.SizedBox(height: 2),
+                  pw.Text('Authorized Signatory', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600)),
+                ],
+              ),
+            ],
           ),
         ],
       ),
@@ -975,21 +1004,54 @@ class _BillsScreenState extends State<BillsScreen> {
                   ],
                 ),
                 const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () => _deleteInvoice(context, inv),
-                    icon: Icon(Icons.delete_outline, size: 16),
-                    label: Text(context.tr('Delete Invoice'), style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 11.sp)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red.shade50,
-                      foregroundColor: Colors.red.shade700,
-                      side: BorderSide(color: Colors.red.shade300),
-                      padding: EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      elevation: 0,
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => InvoiceCreateScreen(
+                                customer: inv['customer'],
+                                vehicle: inv['vehicle'],
+                                invoiceToEdit: inv,
+                              ),
+                            ),
+                          );
+                          if (result == true && mounted) {
+                            _fetchInvoices(context);
+                          }
+                        },
+                        icon: Icon(Icons.edit_note, size: 16),
+                        label: Text(context.tr('Edit Invoice'), style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 11.sp)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(0xFF000080).withValues(alpha: 0.1),
+                          foregroundColor: Color(0xFF000080),
+                          side: BorderSide(color: Color(0xFF000080).withValues(alpha: 0.3)),
+                          padding: EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          elevation: 0,
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _deleteInvoice(context, inv),
+                        icon: Icon(Icons.delete_outline, size: 16),
+                        label: Text(context.tr('Delete Invoice'), style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 11.sp)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red.shade50,
+                          foregroundColor: Colors.red.shade700,
+                          side: BorderSide(color: Colors.red.shade300),
+                          padding: EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          elevation: 0,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

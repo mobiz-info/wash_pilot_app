@@ -18,14 +18,7 @@ class ReportsScreen extends StatelessWidget {
   const ReportsScreen({super.key});
 
   static const _reports = [
-    {
-      'title': 'Staff Income Report',
-      'subtitle': 'Revenue generated per staff member',
-      'icon': Icons.badge_outlined,
-      'color': Color(0xFF000080),
-      'bg': Color(0xFFEFF6FF),
-      'type': 'staff_income',
-    },
+    
 
     {
       'title': 'Job Report',
@@ -99,6 +92,14 @@ class ReportsScreen extends StatelessWidget {
       'color': Color(0xFF475569),
       'bg': Color(0xFFF1F5F9),
       'type': 'cancellation',
+    },
+    {
+      'title': 'Staff Income Report',
+      'subtitle': 'Revenue generated per staff member',
+      'icon': Icons.badge_outlined,
+      'color': Color(0xFF000080),
+      'bg': Color(0xFFEFF6FF),
+      'type': 'staff_income',
     },
    
     {

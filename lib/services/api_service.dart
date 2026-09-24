@@ -158,13 +158,15 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> getInvoiceServices(
-    String customerId,
-    String vehicleId,
+    dynamic customerId,
+    dynamic vehicleId,
     String token,
   ) async {
+    final cId = customerId?.toString() ?? '';
+    final vId = vehicleId?.toString() ?? '';
     final response = await http.get(
       Uri.parse(
-        '$baseUrl/invoice/services/?customer_id=$customerId&vehicle_id=$vehicleId',
+        '$baseUrl/invoice/services/?customer_id=$cId&vehicle_id=$vId',
       ),
       headers: {
         'Content-Type': 'application/json',
@@ -192,6 +194,37 @@ class ApiService {
         'Authorization': 'Bearer $token',
       },
       body: jsonEncode(invoiceData),
+    );
+
+    try {
+      final res = jsonDecode(response.body);
+      if (res is Map<String, dynamic>) {
+        return res;
+      }
+    } catch (_) {}
+
+    if (response.statusCode == 200 ||
+        response.statusCode == 400 ||
+        response.statusCode == 401) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to connect to the server (${response.statusCode}).');
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateInvoice(
+    String invoiceId,
+    Map<String, dynamic> invoiceData,
+    String token,
+  ) async {
+    final payload = {'invoice_id': invoiceId, ...invoiceData};
+    final response = await http.post(
+      Uri.parse('$baseUrl/invoice/update/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(payload),
     );
 
     try {
@@ -840,17 +873,20 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> getAvailableSchemes(
-    String customerId,
-    String vehicleId,
-    String serviceId,
+    dynamic customerId,
+    dynamic vehicleId,
+    dynamic serviceId,
     String token,
   ) async {
+    final cId = customerId?.toString() ?? '';
+    final vId = vehicleId?.toString() ?? '';
+    final sId = serviceId?.toString() ?? '';
     final response = await http.get(
       Uri.parse('$baseUrl/schemes/available/').replace(
         queryParameters: {
-          'customer_id': customerId,
-          'vehicle_id': vehicleId,
-          'service_id': serviceId,
+          'customer_id': cId,
+          'vehicle_id': vId,
+          'service_id': sId,
         },
       ),
       headers: {

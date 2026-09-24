@@ -9,7 +9,7 @@ import '../config/country_config.dart';
 import '../services/api_service.dart';
 import 'invoice_view_screen.dart';
 
-// ── Oil itemized row for oil / fluid replacement ─────────────────────────────
+
 class _OilItemRow {
   String? selectedOilCategory;
   String? selectedOilProductId;
@@ -28,7 +28,7 @@ class _OilItemRow {
   }
 }
 
-// ── Tyre itemized row for tyre replacement ───────────────────────────────────
+
 class _TyreItemRow {
   String? selectedBrandId;
   String? selectedTyreId;
@@ -197,6 +197,7 @@ class _ServiceRow {
 
   // Smoke Test Renewal Period (6 or 12 months)
   int smokeTestPeriodMonths = 6;
+  bool isSmokeTestPeriodInitialized = false;
 
   // Car Detailing Warranty & Price Edit
   final TextEditingController warrantyValueController = TextEditingController(text: '6');
@@ -321,8 +322,8 @@ class _ServiceRow {
   double get total => (subtotal - effectiveDiscount).clamp(0.0, double.infinity);
   double get lineTotal => total;
 
-  String get serviceId => service['id'] as String;
-  String get serviceName => service['name'] as String;
+  String get serviceId => service['id']?.toString() ?? '';
+  String get serviceName => service['name']?.toString() ?? '';
 
   void dispose() {
     customRateController.dispose();
@@ -350,12 +351,14 @@ class InvoiceCreateScreen extends StatefulWidget {
   final Map<String, dynamic> customer;
   final Map<String, dynamic> vehicle;
   final String? bookingId;
+  final Map<String, dynamic>? invoiceToEdit;
 
   const InvoiceCreateScreen({
     super.key,
     required this.customer,
     required this.vehicle,
     this.bookingId,
+    this.invoiceToEdit,
   });
 
   @override
@@ -490,7 +493,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
     if (!_applyGst) return 0.0;
     double t = 0.0;
     for (final tax in _availableTaxes) {
-      if (_selectedTaxIds.contains(tax['id'] as String)) {
+      if (_selectedTaxIds.contains(tax['id']?.toString() ?? '')) {
         final pct = (tax['percent'] as num).toDouble();
         t += taxableValue * (pct / 100.0);
       }
@@ -504,7 +507,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
   List<Map<String, dynamic>> get selectedTaxes {
     if (!_applyGst) return [];
     return _availableTaxes
-        .where((t) => _selectedTaxIds.contains(t['id'] as String))
+        .where((t) => _selectedTaxIds.contains(t['id']?.toString() ?? ''))
         .map((t) {
           final pct = (t['percent'] as num).toDouble();
           final itemTaxAmount = taxableValue * (pct / 100.0);
@@ -523,7 +526,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
     for (final row in _rows) {
       if (row.selectedScheme != null &&
           row.selectedScheme!['scheme_type'] == 'Quantity') {
-        return row.selectedScheme!['id'] as String;
+        return row.selectedScheme!['id']?.toString() ?? '';
       }
     }
     return null;
@@ -585,8 +588,8 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
     if (token == null) return;
     try {
       final svcRes = await ApiService.getInvoiceServices(
-        widget.customer['id'],
-        widget.vehicle['id'],
+        widget.customer['id']?.toString() ?? '',
+        widget.vehicle['id']?.toString() ?? '',
         token,
       );
       final extRes = await ApiService.getExtrasList(token);
@@ -621,7 +624,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
         _availableTaxes =
             rawTaxes.map((t) => Map<String, dynamic>.from(t as Map)).toList();
         _selectedTaxIds =
-            _availableTaxes.map((t) => t['id'] as String).toSet();
+            _availableTaxes.map((t) => t['id']?.toString() ?? '').toSet();
         // Auto-enable tax if branch has taxes configured
         if (_availableTaxes.isNotEmpty) {
           _applyGst = true;
@@ -659,8 +662,134 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           _availableStockItems = formRes['stock_items'] ?? [];
         }
       } catch (_) {}
+
+      if (widget.invoiceToEdit != null) {
+        final editInv = widget.invoiceToEdit!;
+        if (editInv['date'] != null) {
+          try {
+            _selectedInvoiceDate = DateTime.parse(editInv['date'].toString());
+          } catch (_) {}
+        }
+        if (editInv['discount'] != null) {
+          _additionalDiscountController.text = (double.tryParse(editInv['discount'].toString()) ?? 0.0).toStringAsFixed(2);
+        }
+        if (editInv['amount_collected'] != null) {
+          _amountCollectedController.text = (double.tryParse(editInv['amount_collected'].toString()) ?? 0.0).toStringAsFixed(0);
+        }
+        if (editInv['invoice_type'] == 'creditinvoice') {
+          _selectedSalesType = 'credit';
+        } else {
+          _selectedSalesType = 'cash';
+        }
+        if (editInv['remarks'] != null && editInv['remarks'].toString().trim().isNotEmpty) {
+          _addRemarks = true;
+          _remarksController.text = editInv['remarks'].toString();
+        }
+        final existingServices = editInv['services'] as List<dynamic>? ?? editInv['items'] as List<dynamic>? ?? [];
+        for (final item in existingServices) {
+          final svcName = (item['name'] ?? item['service_name'] ?? '').toString();
+          // service_id is the actual FK id from the service table; id may be invoice_item.id
+          final svcFkId = item['service_id']?.toString() ?? item['id']?.toString();
+          final itemRate = double.tryParse(item['rate']?.toString() ?? '') ?? 0.0;
+          final itemDisc = double.tryParse(item['discount']?.toString() ?? '') ?? 0.0;
+
+          Map<String, dynamic> matchedSvc = {};
+          // Try matching by service FK id first, then fall back to name match
+          if (svcFkId != null && svcFkId.isNotEmpty) {
+            matchedSvc = _allServices.firstWhere(
+              (s) => s['id'].toString() == svcFkId,
+              orElse: () => <String, dynamic>{},
+            );
+          }
+          if (matchedSvc.isEmpty) {
+            matchedSvc = _allServices.firstWhere(
+              (s) => s['name'].toString().toLowerCase() == svcName.toLowerCase(),
+              orElse: () => <String, dynamic>{},
+            );
+          }
+          // If still not found, build a placeholder so the service still shows
+          if (matchedSvc.isEmpty) {
+            matchedSvc = {
+              'id': svcFkId ?? 'custom_${DateTime.now().millisecondsSinceEpoch}',
+              'name': svcName,
+              'rate': itemRate,
+              'has_price': itemRate > 0,
+              'service_type_slug': item['service_category'] ?? 'car_wash',
+            };
+          }
+
+          final row = _ServiceRow(service: matchedSvc);
+          final detailMap = item['service_detail'] as Map<String, dynamic>? ?? {};
+          final savedPeriod = detailMap['smoke_test_period_months'] ?? item['smoke_test_period_months'];
+          if (savedPeriod != null) {
+            final p = int.tryParse(savedPeriod.toString());
+            if (p != null) {
+              row.smokeTestPeriodMonths = p;
+              row.isSmokeTestPeriodInitialized = true;
+            }
+          }
+          // Always set the actual rate from the saved invoice
+          row.customRateController.text = itemRate.toStringAsFixed(2);
+          if (itemDisc > 0) {
+            row.discountController.text = itemDisc.toStringAsFixed(2);
+          }
+          row.discountController.addListener(() {
+            _syncAmountCollected();
+            _updateUi();
+          });
+          row.customRateController.addListener(() {
+            _syncAmountCollected();
+            _updateUi();
+          });
+          _rows.add(row);
+        }
+
+        final existingTrading = editInv['trading_items'] as List<dynamic>? ?? [];
+        if (existingTrading.isNotEmpty) {
+          _addTradingItems = true;
+          for (final t in existingTrading) {
+            final tRow = _TradingItemRow();
+            tRow.rateController.text = double.tryParse(t['rate']?.toString() ?? '')?.toStringAsFixed(2) ?? '0.00';
+            tRow.qtyController.text = (t['qty'] ?? 1).toString();
+            tRow.discountController.text = double.tryParse(t['discount']?.toString() ?? '')?.toStringAsFixed(2) ?? '0.00';
+            tRow.isOperational = (t['is_operational'] == true);
+            if (t['id'] != null) {
+              final stockMatch = _availableStockItems.firstWhere(
+                (st) => st['id'].toString() == t['id'].toString(),
+                orElse: () => null,
+              );
+              if (stockMatch != null) {
+                tRow.selectedStockItem = stockMatch;
+              }
+            }
+            _tradingRows.add(tRow);
+          }
+        }
+
+        final existingStaffs = editInv['assigned_staffs'] as List<dynamic>? ?? editInv['staffs'] as List<dynamic>? ?? [];
+        if (existingStaffs.isNotEmpty) {
+          _addStaffs = true;
+          for (final st in existingStaffs) {
+            final stId = st['id']?.toString();
+            if (stId != null) {
+              final match = _availableStaffs.firstWhere(
+                (s) => s['id'].toString() == stId,
+                orElse: () => <String, dynamic>{},
+              );
+              if (match.isNotEmpty && !_selectedStaffs.any((s) => s['id'] == match['id'])) {
+                _selectedStaffs.add(match);
+              }
+            }
+          }
+        }
+      }
+
       _isLoading = false;
-      _syncAmountCollected();
+      if (widget.invoiceToEdit != null && widget.invoiceToEdit!['amount_collected'] != null) {
+        _amountCollectedController.text = (double.tryParse(widget.invoiceToEdit!['amount_collected'].toString()) ?? 0.0).toStringAsFixed(0);
+      } else {
+        _syncAmountCollected();
+      }
       _updateUi();
     } catch (e) {
       _errorMessage = e.toString();
@@ -671,6 +800,8 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
 
 
   void _syncAmountCollected() {
+    // When editing an existing invoice, don't auto-overwrite the saved collected amount
+    if (widget.invoiceToEdit != null) return;
     _amountCollectedController.text = total.round().toString();
   }
 
@@ -719,8 +850,8 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
 
     try {
       final res = await ApiService.getAvailableSchemes(
-        widget.customer['id'],
-        widget.vehicle['id'],
+        widget.customer['id']?.toString() ?? '',
+        widget.vehicle['id']?.toString() ?? '',
         row.serviceId,
         token,
       );
@@ -1099,10 +1230,24 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
         if (primaryVoucherId != null) 'voucher_id': primaryVoucherId,
       };
 
-      final response = await ApiService.createInvoice(invoiceData, token);
+      final response = widget.invoiceToEdit != null
+          ? await ApiService.updateInvoice(
+              widget.invoiceToEdit!['id'] ?? widget.invoiceToEdit!['invoice_id'],
+              invoiceData,
+              token,
+            )
+          : await ApiService.createInvoice(invoiceData, token);
       if (!mounted) return;
 
       if (response['success'] == true) {
+        if (widget.invoiceToEdit != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(context.tr('Invoice updated successfully')),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -1117,6 +1262,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 'total': total.toStringAsFixed(2),
                 'taxes': selectedTaxes,
                 'company_logo': response['company_logo'] ?? '',
+                'company_seal': response['company_seal'] ?? '',
                 'branch_logo': response['branch_logo'] ?? '',
                 'branch': response['branch'] ?? '',
               },
@@ -1174,7 +1320,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                   ),
                   SizedBox(height: 6),
                   Text(
-                    "${context.tr('Vehicle')}: ${widget.vehicle['no']}",
+                    "${context.tr('Vehicle')}: ${widget.vehicle['no'] ?? widget.vehicle['number'] ?? ''}",
                     style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.grey.shade700),
                   ),
                   SizedBox(height: 16),
@@ -1214,7 +1360,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                               'updated_vehicles': [
                                 {
                                   'id': widget.vehicle['id'],
-                                  'vehicle_number': widget.vehicle['no'],
+                                  'vehicle_number': widget.vehicle['no'] ?? widget.vehicle['number'] ?? '',
                                   'wheel_type': selectedType,
                                 }
                               ],
@@ -1251,7 +1397,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           backgroundColor: const Color(0xFFF1F5F9),
           appBar: AppBar(
             title: Text(
-              context.tr('Create Invoice'),
+              widget.invoiceToEdit != null
+                  ? context.tr('Edit Invoice')
+                  : context.tr('Create Invoice'),
               style: GoogleFonts.inter(fontWeight: FontWeight.w700),
             ),
             backgroundColor: Color(0xFF000080),
@@ -1378,8 +1526,8 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                   builder: (context) {
                     final emission = (widget.vehicle['emission_standard'] ?? widget.vehicle['emission_standard_name'] ?? '').toString().trim();
                     final vehicleInfo = (widget.vehicle['vehicle_type'] != null && widget.vehicle['vehicle_type'].toString().isNotEmpty)
-                        ? "${widget.vehicle['no']} · ${widget.vehicle['vehicle_type']} - ${widget.vehicle['type']}"
-                        : "${widget.vehicle['no']} · ${widget.vehicle['type']}";
+                        ? "${widget.vehicle['no'] ?? widget.vehicle['number'] ?? ''} · ${widget.vehicle['vehicle_type']} - ${widget.vehicle['type']}"
+                        : "${widget.vehicle['no'] ?? widget.vehicle['number'] ?? ''} · ${widget.vehicle['type']}";
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1647,7 +1795,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           else
             Column(
                   children: pricedServices.map((svc) {
-                    final id = svc['id'] as String;
+                    final id = svc['id']?.toString() ?? '';
                     final name = svc['name'] as String;
                     final rate = (svc['rate'] as num).toDouble();
                     final isSelected = _isServiceSelected(id);
@@ -2137,7 +2285,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                                   ),
                                   ..._tyreBrands.map<DropdownMenuItem<String>>((b) {
                                     return DropdownMenuItem<String>(
-                                      value: b['id'] as String,
+                                      value: b['id']?.toString(),
                                       child: Text(b['brand'] as String, style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold)),
                                     );
                                   }),
@@ -2175,7 +2323,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                                     final label = '$sizeStr ($currencySymbol${priceVal.toStringAsFixed(0)} · $stockVal in stock)';
 
                                     return DropdownMenuItem<String>(
-                                      value: t['id'] as String,
+                                      value: t['id']?.toString(),
                                       child: Text(
                                         label,
                                         style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600),
@@ -2427,10 +2575,12 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
       final combined = '$modelName $emission';
       
       final bs3Keywords = ['BS-1', 'BS-2', 'BS-3', 'BS 1', 'BS 2', 'BS 3', 'BS1', 'BS2', 'BS3', 'BS -1', 'BS -2', 'BS -3'];
-      final validityMonths = bs3Keywords.any((k) => combined.contains(k)) ? 6 : 12;
-      row.smokeTestPeriodMonths = validityMonths;
-      final validityLabel = validityMonths == 6 ? context.tr('6 Months') : context.tr('1 Year');
-      final stdLabel = validityMonths == 6 ? context.tr('BS-3 or Older Standard') : context.tr('BS-4 / BS-6 / EV Standard');
+      if (!row.isSmokeTestPeriodInitialized) {
+        final defaultValidity = bs3Keywords.any((k) => combined.contains(k)) ? 6 : 12;
+        row.smokeTestPeriodMonths = defaultValidity;
+        row.isSmokeTestPeriodInitialized = true;
+      }
+      final validityMonths = row.smokeTestPeriodMonths;
 
       final nextDate = DateTime.now().add(Duration(days: validityMonths == 6 ? 180 : 365));
       final nextDateStr = "${nextDate.day.toString().padLeft(2, '0')}-${nextDate.month.toString().padLeft(2, '0')}-${nextDate.year}";
@@ -2493,19 +2643,40 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                         context.tr('Smoke Test Renewal Validity'),
                         style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13.sp, color: Colors.purple.shade900),
                       ),
-                      
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                   decoration: BoxDecoration(
                     color: Colors.purple.shade800,
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text(
-                    validityLabel,
-                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13.sp, color: Colors.white),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<int>(
+                      value: row.smokeTestPeriodMonths == 6 ? 6 : 12,
+                      dropdownColor: Colors.purple.shade900,
+                      icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
+                      style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13.sp, color: Colors.white),
+                      items: [
+                        DropdownMenuItem<int>(
+                          value: 6,
+                          child: Text(context.tr('6 Months'), style: const TextStyle(color: Colors.white)),
+                        ),
+                        DropdownMenuItem<int>(
+                          value: 12,
+                          child: Text(context.tr('1 Year'), style: const TextStyle(color: Colors.white)),
+                        ),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() {
+                            row.smokeTestPeriodMonths = val;
+                            row.isSmokeTestPeriodInitialized = true;
+                          });
+                        }
+                      },
+                    ),
                   ),
                 ),
               ],
@@ -3112,8 +3283,8 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                   ),
                 const SizedBox(width: 8),
                 Radio<String>(
-                  value: scheme['id'] as String,
-                  groupValue: row.selectedScheme?['id'] as String?,
+                  value: scheme['id']?.toString() ?? '',
+                  groupValue: row.selectedScheme?['id']?.toString(),
                   activeColor: const Color(0xFF000080),
                   onChanged: canSelect
                       ? (v) => isSelected
@@ -3348,7 +3519,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               child: Divider(),
             ),
             ..._availableTaxes.map((tax) {
-              final id = tax['id'] as String;
+              final id = tax['id']?.toString() ?? '';
               final name = tax['name'] as String;
               final percent = (tax['percent'] as num).toDouble();
               final isSelected = _selectedTaxIds.contains(id);

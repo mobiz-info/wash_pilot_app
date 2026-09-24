@@ -371,7 +371,7 @@ class InvoiceViewScreen extends StatelessWidget {
                               fontWeight: pw.FontWeight.bold,
                               letterSpacing: 0.5)),
                       pw.SizedBox(height: 4),
-                      pw.Text(vehicle['no'],
+                      pw.Text(vehicle['no'] ?? vehicle['number'] ?? '',
                           style: pw.TextStyle(
                               fontSize: 13,
                               fontWeight: pw.FontWeight.bold)),
@@ -617,7 +617,7 @@ class InvoiceViewScreen extends StatelessWidget {
           "${context.tr('Dear')} ${customer['name']},\n\n"
           "${context.tr('Your invoice')} *$invoiceNumber* ${context.tr('has been generated successfully at')} $companyName.\n\n"
           "*${context.tr('Invoice Details')}:*\n"
-          "${context.tr('Vehicle')}: ${vehicle['no']}\n"
+          "${context.tr('Vehicle')}: ${vehicle['no'] ?? vehicle['number'] ?? ''}\n"
           "${context.tr('Services')}:\n$servicesStr\n"
           "${context.tr('Total')}: $currencySymbol$total\n"
           "${context.tr('Paid')}: $currencySymbol$collected\n"
@@ -685,7 +685,7 @@ class InvoiceViewScreen extends StatelessWidget {
           "${context.tr('Dear')} ${customer['name']},\n\n"
           "${context.tr('Your invoice')} *$invoiceNumber* ${context.tr('has been generated successfully at')} $companyName.\n\n"
           "*${context.tr('Invoice Details')}:*\n"
-          "${context.tr('Vehicle')}: ${vehicle['no']}\n"
+          "${context.tr('Vehicle')}: ${vehicle['no'] ?? vehicle['number'] ?? ''}\n"
           "${context.tr('Services')}:\n$servicesStr\n"
           "${context.tr('Total')}: $currencySymbol$total\n"
           "${context.tr('Paid')}: $currencySymbol$collected\n"
@@ -916,7 +916,7 @@ class InvoiceViewScreen extends StatelessWidget {
                               color: Colors.grey.shade500,
                               letterSpacing: 0.5)),
                       SizedBox(height: 6),
-                       Text(vehicle['no'],
+                       Text(vehicle['no'] ?? vehicle['number'] ?? '',
                           style: GoogleFonts.inter(
                               fontWeight: FontWeight.w700, fontSize: 15.sp)),
                       SizedBox(height: 2),

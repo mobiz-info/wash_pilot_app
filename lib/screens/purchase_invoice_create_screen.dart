@@ -1404,7 +1404,7 @@ class _PurchaseInvoiceCreateScreenState
           onChanged: onChanged,
           style: GoogleFonts.inter(fontSize: 14.sp),
           decoration: InputDecoration(
-            prefixIcon: Icon(icon, size: 16, color: Colors.grey.shade500),
+            
             filled: true,
             fillColor: const Color(0xFFFAFAFA),
             isDense: true,
