@@ -430,6 +430,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
   // Checkbox section flags
   bool _addExtras = false;
   bool _addRemarks = false;
+  bool _showWarrantyInPdf = false;
   final TextEditingController _remarksController = TextEditingController();
   bool _addReminders = false;
   bool _addCustomReminders = false;
@@ -684,6 +685,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
         if (editInv['remarks'] != null && editInv['remarks'].toString().trim().isNotEmpty) {
           _addRemarks = true;
           _remarksController.text = editInv['remarks'].toString();
+        }
+        if (editInv['show_warranty_in_pdf'] == true) {
+          _showWarrantyInPdf = true;
         }
         final existingServices = editInv['services'] as List<dynamic>? ?? editInv['items'] as List<dynamic>? ?? [];
         for (final item in existingServices) {
@@ -1213,6 +1217,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
         'sales_type': _selectedSalesType,
         'services': services,
         'trading_items': tradingItemsPayload,
+        'show_warranty_in_pdf': _hasDetailingService && _showWarrantyInPdf,
         if (_addRemarks && _remarksController.text.trim().isNotEmpty)
           'remarks': _remarksController.text.trim(),
         if (_addStaffs && _selectedStaffs.isNotEmpty)
@@ -1440,6 +1445,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                         const SizedBox(height: 16),
                       ],
                       _remarksCard(),
+                      if (_hasDetailingService) ...[
+                        const SizedBox(height: 16),
+                        _warrantyPdfCheckboxCard(),
+                      ],
                       const SizedBox(height: 16),
                       _customRemindersCard(),
                       const SizedBox(height: 16),
@@ -5181,6 +5190,46 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 ),
               ],
             ),
+    );
+  }
+
+
+  Widget _warrantyPdfCheckboxCard() {
+    return _card(
+      title: 'Warranty & PDF Settings',
+      titleWidget: Row(
+        children: [
+          Checkbox(
+            value: _showWarrantyInPdf,
+            activeColor: const Color(0xFF000080),
+            onChanged: (val) {
+              setState(() {
+                _showWarrantyInPdf = val ?? false;
+              });
+            },
+          ),
+          Expanded(
+            child: Text(
+              context.tr('Include Warranty & Free Top-Up Details in Invoice PDF'),
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.w800,
+                fontSize: 12.sp,
+                color: const Color(0xFF000080),
+              ),
+            ),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(left: 4, right: 4, bottom: 4),
+        child: Text(
+          context.tr('Check this box to print detailing warranty terms and scheduled free top-up inspection dates on the PDF invoice.'),
+          style: GoogleFonts.inter(
+            fontSize: 11.sp,
+            color: Colors.grey.shade600,
+          ),
+        ),
+      ),
     );
   }
 
