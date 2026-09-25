@@ -2723,12 +2723,11 @@ class ApiService {
       },
       body: jsonEncode(data),
     );
-    if (response.statusCode == 200 ||
-        response.statusCode == 400 ||
-        response.statusCode == 401) {
-      return jsonDecode(response.body);
-    }
-    throw Exception('Failed to create lead.');
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) return decoded;
+    } catch (_) {}
+    throw Exception('Failed to create lead (Status ${response.statusCode}).');
   }
 
   static Future<Map<String, dynamic>> editLead(
@@ -2744,13 +2743,11 @@ class ApiService {
       },
       body: jsonEncode(data),
     );
-    if (response.statusCode == 200 ||
-        response.statusCode == 400 ||
-        response.statusCode == 401 ||
-        response.statusCode == 404) {
-      return jsonDecode(response.body);
-    }
-    throw Exception('Failed to update lead.');
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) return decoded;
+    } catch (_) {}
+    throw Exception('Failed to update lead (Status ${response.statusCode}).');
   }
 
   static Future<Map<String, dynamic>> deleteLead(
