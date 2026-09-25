@@ -506,11 +506,9 @@ class _LeadsRemindersTabState extends State<_LeadsRemindersTab>
     final branchName =
         context.read<AuthProvider>().branchName ?? 'Mobiz Auto Care Pro';
 
-    String msg = 'Dear $name';
-    if (vehicle.isNotEmpty) msg += ', your vehicle $vehicle';
-    msg += ' is due for renewal';
-    if (renewalDisplay.isNotEmpty) msg += ' on $renewalDisplay';
-    msg += '. Visit $branchName for more details.';
+    final vehicleInfo = vehicle.isNotEmpty ? ' vehicle ($vehicle)' : ' vehicle';
+    final dateInfo = renewalDisplay.isNotEmpty ? ' on $renewalDisplay' : '';
+    final msg = 'Dear $name, your$vehicleInfo service renewal is due$dateInfo. Thank you, $branchName.';
 
     final cleanedPhone = CountryConfig.formatPhoneForWhatsapp(phone);
     if (cleanedPhone.isEmpty) {
