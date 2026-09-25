@@ -501,10 +501,25 @@ class _LeadsRemindersTabState extends State<_LeadsRemindersTab>
     final leadId = (lead['id'] ?? '').toString();
     final phone = (lead['whatsapp_number'] ?? lead['phone_number'] ?? '').toString();
     final name = (lead['customer_name'] ?? 'Customer').toString();
-    final vehicle = (lead['vehicle_details'] ?? '').toString();
-    final renewalDisplay = (lead['renewal_date_display'] ?? '').toString();
-    final branchName =
-        context.read<AuthProvider>().branchName ?? 'Mobiz Auto Care Pro';
+    
+    final rawVehicle = lead['vehicle_details'] ??
+        lead['vehicle_display'] ??
+        lead['vehicle_number'] ??
+        '';
+    final vehicle = rawVehicle.toString().trim();
+    final renewalDisplay = (lead['renewal_date_display'] ?? '').toString().trim();
+
+    final authProvider = context.read<AuthProvider>();
+    final String bName = (authProvider.branchName ?? '').trim();
+    final String cName = (authProvider.companyName ?? '').trim();
+    final String dName = (authProvider.displayName ?? '').trim();
+    final String branchName = bName.isNotEmpty
+        ? bName
+        : cName.isNotEmpty
+            ? cName
+            : dName.isNotEmpty
+                ? dName
+                : 'Mobiz Auto Care Pro';
 
     final vehicleInfo = vehicle.isNotEmpty ? ' vehicle ($vehicle)' : ' vehicle';
     final dateInfo = renewalDisplay.isNotEmpty ? ' on $renewalDisplay' : '';
