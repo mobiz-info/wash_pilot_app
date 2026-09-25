@@ -2687,7 +2687,116 @@ class ApiService {
     }
     throw Exception('Failed to load purchase invoices.');
   }
+
+  // ── Leads APIs ──────────────────────────────────────────────────────────────
+
+  static Future<Map<String, dynamic>> listLeads(
+    String token, {
+    String? search,
+  }) async {
+    String url = '$baseUrl/leads/list/';
+    if (search != null && search.isNotEmpty) {
+      url += '?search=${Uri.encodeComponent(search)}';
+    }
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200 || response.statusCode == 401) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to load leads.');
+  }
+
+  static Future<Map<String, dynamic>> createLead(
+    String token,
+    Map<String, dynamic> data,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/leads/create/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(data),
+    );
+    if (response.statusCode == 200 ||
+        response.statusCode == 400 ||
+        response.statusCode == 401) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to create lead.');
+  }
+
+  static Future<Map<String, dynamic>> editLead(
+    String token,
+    String leadId,
+    Map<String, dynamic> data,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/leads/edit/$leadId/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(data),
+    );
+    if (response.statusCode == 200 ||
+        response.statusCode == 400 ||
+        response.statusCode == 401 ||
+        response.statusCode == 404) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to update lead.');
+  }
+
+  static Future<Map<String, dynamic>> deleteLead(
+    String token,
+    String leadId,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/leads/delete/$leadId/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200 ||
+        response.statusCode == 404 ||
+        response.statusCode == 401) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to delete lead.');
+  }
+
+  static Future<Map<String, dynamic>> getLeadsReminders(
+    String token, {
+    bool showAll = false,
+    int daysAhead = 30,
+    String? search,
+  }) async {
+    String url = '$baseUrl/leads/reminders/?days=$daysAhead';
+    if (showAll) url += '&show_all=true';
+    if (search != null && search.isNotEmpty) {
+      url += '&search=${Uri.encodeComponent(search)}';
+    }
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200 || response.statusCode == 401) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to load leads reminders.');
+  }
 }
+
 
 
 

@@ -5220,16 +5220,13 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.only(left: 4, right: 4, bottom: 4),
-        child: Text(
-          context.tr('Check this box to print detailing warranty terms and scheduled free top-up inspection dates on the PDF invoice.'),
+      child: Text(
+          context.tr(''),
           style: GoogleFonts.inter(
             fontSize: 11.sp,
             color: Colors.grey.shade600,
           ),
         ),
-      ),
     );
   }
 

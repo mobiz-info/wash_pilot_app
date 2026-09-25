@@ -38,6 +38,7 @@ import 'stock_item_screen.dart';
 import 'quotation_list_screen.dart';
 import 'supplier_payables_screen.dart';
 import 'purchase_invoice_create_screen.dart';
+import 'leads_screen.dart';
 
 
 
@@ -146,6 +147,11 @@ class _MenuScreenState extends State<MenuScreen> {
       'title': 'Complaints',
       'icon': Icons.assignment_late_outlined,
       'color': Color(0xFFF43F5E),
+    },
+    {
+      'title': 'Leads',
+      'icon': Icons.leaderboard_outlined,
+      'color': Color(0xFF7C3AED),
     },
     {
       'title': 'Stock Items',
@@ -278,6 +284,11 @@ class _MenuScreenState extends State<MenuScreen> {
       'color': Color(0xFFF43F5E),
     },
     {
+      'title': 'Leads',
+      'icon': Icons.leaderboard_outlined,
+      'color': Color(0xFF7C3AED),
+    },
+    {
       'title': 'Booking Settings',
       'icon': Icons.settings_applications,
       'color': Color(0xFF000080),
@@ -334,6 +345,7 @@ class _MenuScreenState extends State<MenuScreen> {
       'Oil Stock': const StockManagementScreen(initialCategory: 'OIL'),
       'Extras': const ExtrasScreen(),
       'Booking Settings': const BookingSettingsScreen(),
+      'Leads': const LeadsScreen(),
     };
 
     final screen = routes[title];
@@ -596,6 +608,19 @@ class _MenuScreenState extends State<MenuScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (_) => const ComplaintsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _drawerItem(
+                      Icons.leaderboard_outlined,
+                      'Leads',
+                      () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const LeadsScreen(),
                           ),
                         );
                       },
