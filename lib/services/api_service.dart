@@ -323,7 +323,7 @@ class ApiService {
   }) async {
     String url = '$baseUrl/customer/list/';
     if (search != null && search.isNotEmpty) {
-      url += '?search=${Uri.encodeComponent(search)}';
+      url += '?q=${Uri.encodeComponent(search)}';
     }
     final response = await http.get(
       Uri.parse(url),
@@ -2696,7 +2696,7 @@ class ApiService {
   }) async {
     String url = '$baseUrl/leads/list/';
     if (search != null && search.isNotEmpty) {
-      url += '?search=${Uri.encodeComponent(search)}';
+      url += '?q=${Uri.encodeComponent(search)}';
     }
     final response = await http.get(
       Uri.parse(url),
@@ -2792,9 +2792,71 @@ class ApiService {
     }
     throw Exception('Failed to load leads reminders.');
   }
+
+  // ─── Insurance Module APIs ───────────────────────────────────────────────
+
+  static Future<Map<String, dynamic>> insuranceCustomerSearch(
+    String token, {
+    String? search,
+  }) async {
+    String url = '\$baseUrl/insurance/customer-search/';
+    if (search != null && search.isNotEmpty) {
+      url += '?search=\${Uri.encodeComponent(search)}';
+    }
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer \$token',
+      },
+    );
+    if (response.statusCode == 200 || response.statusCode == 401) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to search customers.');
+  }
+
+  static Future<Map<String, dynamic>> insuranceServices(
+    String token,
+  ) async {
+    final response = await http.get(
+      Uri.parse('\$baseUrl/insurance/services/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer \$token',
+      },
+    );
+    if (response.statusCode == 200 || response.statusCode == 401) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to load insurance services.');
+  }
+
+  static Future<Map<String, dynamic>> insuranceReminders(
+    String token, {
+    String? date,
+    bool showAll = false,
+    String? search,
+  }) async {
+    String url = '\$baseUrl/insurance/reminders/';
+    final params = <String, String>{};
+    if (date != null && date.isNotEmpty) params['date'] = date;
+    if (showAll) params['show_all'] = 'true';
+    if (search != null && search.isNotEmpty) params['search'] = search;
+    if (params.isNotEmpty) {
+      url += '?' + params.entries.map((e) => '\${e.key}=\${Uri.encodeComponent(e.value)}').join('&');
+    }
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer \$token',
+      },
+    );
+    if (response.statusCode == 200 || response.statusCode == 401) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to load insurance reminders.');
+  }
+
 }
-
-
-
-
-

@@ -39,6 +39,7 @@ import 'quotation_list_screen.dart';
 import 'supplier_payables_screen.dart';
 import 'purchase_invoice_create_screen.dart';
 import 'leads_screen.dart';
+import 'insurance_screen.dart';
 
 
 
@@ -152,6 +153,11 @@ class _MenuScreenState extends State<MenuScreen> {
       'title': 'Leads',
       'icon': Icons.leaderboard_outlined,
       'color': Color(0xFF7C3AED),
+    },
+    {
+      'title': 'Insurance',
+      'icon': Icons.shield_outlined,
+      'color': Color(0xFF059669),
     },
     {
       'title': 'Stock Items',
@@ -289,6 +295,11 @@ class _MenuScreenState extends State<MenuScreen> {
       'color': Color(0xFF7C3AED),
     },
     {
+      'title': 'Insurance',
+      'icon': Icons.shield_outlined,
+      'color': Color(0xFF059669),
+    },
+    {
       'title': 'Booking Settings',
       'icon': Icons.settings_applications,
       'color': Color(0xFF000080),
@@ -346,6 +357,7 @@ class _MenuScreenState extends State<MenuScreen> {
       'Extras': const ExtrasScreen(),
       'Booking Settings': const BookingSettingsScreen(),
       'Leads': const LeadsScreen(),
+      'Insurance': const InsuranceScreen(),
     };
 
     final screen = routes[title];
@@ -625,6 +637,20 @@ class _MenuScreenState extends State<MenuScreen> {
                         );
                       },
                     ),
+                    if (auth.hasInsuranceModule)
+                      _drawerItem(
+                        Icons.shield_outlined,
+                        'Insurance',
+                        () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const InsuranceScreen(),
+                            ),
+                          );
+                        },
+                      ),
                     _drawerItem(
                       Icons.language_outlined,
                       'Language',
@@ -909,7 +935,9 @@ class _MenuScreenState extends State<MenuScreen> {
           return const SizedBox.shrink();
         }
         final isBroadcast = title == 'Notifications';
-        final isEnabled = !isBroadcast || auth.canBroadcast;
+        final isInsurance = title == 'Insurance';
+        final isEnabled = (!isBroadcast || auth.canBroadcast) &&
+            (!isInsurance || auth.hasInsuranceModule);
         final color = isEnabled ? (item['color'] as Color) : Colors.grey;
         
         return InkWell(

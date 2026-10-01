@@ -17,6 +17,7 @@ class AuthProvider with ChangeNotifier {
   bool _subscriptionActive = true;
   int _subscriptionDaysLeft = 999;
   String? _subscriptionEndDate;
+  bool _hasInsuranceModule = false;
 
   bool get isLoading => _isLoading;
   bool get isAuthenticated => _token != null;
@@ -44,6 +45,7 @@ class AuthProvider with ChangeNotifier {
   bool get subscriptionActive => _subscriptionActive;
   int get subscriptionDaysLeft => _subscriptionDaysLeft;
   String? get subscriptionEndDate => _subscriptionEndDate;
+  bool get hasInsuranceModule => _hasInsuranceModule;
 
   Future<void> checkAuthStatus() async {
     final prefs = await SharedPreferences.getInstance();
@@ -69,6 +71,7 @@ class AuthProvider with ChangeNotifier {
     _subscriptionActive = prefs.getBool('subscription_active') ?? true;
     _subscriptionDaysLeft = prefs.getInt('subscription_days_left') ?? 999;
     _subscriptionEndDate = prefs.getString('subscription_end_date');
+    _hasInsuranceModule = prefs.getBool('has_insurance_module') ?? false;
     notifyListeners();
   }
 
@@ -90,6 +93,7 @@ class AuthProvider with ChangeNotifier {
         _subscriptionActive = data['subscription_active'] ?? true;
         _subscriptionDaysLeft = data['subscription_days_left'] ?? 999;
         _subscriptionEndDate = data['subscription_end_date'];
+        _hasInsuranceModule = data['has_insurance_module'] == true;
 
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('auth_token', _token!);
@@ -102,6 +106,7 @@ class AuthProvider with ChangeNotifier {
         // Currency symbol is NOT saved to prefs — driven by CountryConfig at build time
         await prefs.setBool('subscription_active', _subscriptionActive);
         await prefs.setInt('subscription_days_left', _subscriptionDaysLeft);
+        await prefs.setBool('has_insurance_module', _hasInsuranceModule);
         if (_subscriptionEndDate != null) {
           await prefs.setString('subscription_end_date', _subscriptionEndDate!);
         } else {
@@ -154,6 +159,7 @@ class AuthProvider with ChangeNotifier {
     _subscriptionActive = true;
     _subscriptionDaysLeft = 999;
     _subscriptionEndDate = null;
+    _hasInsuranceModule = false;
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
     notifyListeners();

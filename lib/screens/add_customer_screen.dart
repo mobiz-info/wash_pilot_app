@@ -63,6 +63,11 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   final List<Map<String, dynamic>> _vehicleRows = [];
   final _vehicleRowsNotifier = ValueNotifier<int>(0);
 
+  // Insurance: customer category (motor / non-motor)
+  final _customerCategory = ValueNotifier<String>('motor'); // 'motor' or 'non_motor'
+  final _aadhaarController = TextEditingController();
+  final _dobController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -118,6 +123,9 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     _phoneIso.dispose();
     _whatsappIso.dispose();
     _vehicleRowsNotifier.dispose();
+    _customerCategory.dispose();
+    _aadhaarController.dispose();
+    _dobController.dispose();
     super.dispose();
   }
 
@@ -292,7 +300,9 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       vehicles.add(vehicleData);
     }
 
-    if (vehicles.isEmpty) {
+    final isMotor = _customerCategory.value == 'motor';
+
+    if (isMotor && vehicles.isEmpty) {
       _showError('Please add at least one vehicle with type and segment selected.');
       return;
     }
@@ -303,6 +313,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     if (token == null) return;
 
     try {
+      final isMotorSave = _customerCategory.value == 'motor';
       final res = await ApiService.addCustomer({
         'name': name,
         'phone': phone,
@@ -311,7 +322,12 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
         'address': _addressController.text.trim(),
         'customer_type_id': _selectedCustomerType.value!['id'],
         if (_selectedBranch.value != null) 'branch_id': _selectedBranch.value!['id'],
-        'vehicles': vehicles,
+        'vehicles': isMotorSave ? vehicles : [],
+        'customer_category': _customerCategory.value,
+        if (!isMotorSave && _aadhaarController.text.trim().isNotEmpty)
+          'aadhaar_number': _aadhaarController.text.trim(),
+        if (!isMotorSave && _dobController.text.trim().isNotEmpty)
+          'date_of_birth': _dobController.text.trim(),
       }, token);
 
       if (!mounted) return;
@@ -359,6 +375,84 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
+                              // ── Motor / Non-Motor toggle ─────────────────
+                              ValueListenableBuilder<String>(
+                                valueListenable: _customerCategory,
+                                builder: (ctx0, category, _) => _buildCard(
+                                  title: 'Customer Category',
+                                  icon: Icons.category_outlined,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: GestureDetector(
+                                            onTap: () {
+                                              _customerCategory.value = 'motor';
+                                              setState(() {});
+                                            },
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(vertical: 14),
+                                              decoration: BoxDecoration(
+                                                color: category == 'motor' ? const Color(0xFF000080) : Colors.white,
+                                                borderRadius: BorderRadius.circular(10),
+                                                border: Border.all(
+                                                  color: category == 'motor' ? const Color(0xFF000080) : Colors.grey.shade300,
+                                                ),
+                                              ),
+                                              child: Row(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  Icon(Icons.directions_car, size: 18,
+                                                    color: category == 'motor' ? Colors.white : Colors.grey.shade600),
+                                                  const SizedBox(width: 6),
+                                                  Text('Motor',
+                                                    style: GoogleFonts.inter(
+                                                      fontWeight: FontWeight.w700,
+                                                      color: category == 'motor' ? Colors.white : Colors.grey.shade700,
+                                                    )),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: GestureDetector(
+                                            onTap: () {
+                                              _customerCategory.value = 'non_motor';
+                                              setState(() {});
+                                            },
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(vertical: 14),
+                                              decoration: BoxDecoration(
+                                                color: category == 'non_motor' ? const Color(0xFF000080) : Colors.white,
+                                                borderRadius: BorderRadius.circular(10),
+                                                border: Border.all(
+                                                  color: category == 'non_motor' ? const Color(0xFF000080) : Colors.grey.shade300,
+                                                ),
+                                              ),
+                                              child: Row(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  Icon(Icons.person_outline, size: 18,
+                                                    color: category == 'non_motor' ? Colors.white : Colors.grey.shade600),
+                                                  const SizedBox(width: 6),
+                                                  Text('Non-Motor',
+                                                    style: GoogleFonts.inter(
+                                                      fontWeight: FontWeight.w700,
+                                                      color: category == 'non_motor' ? Colors.white : Colors.grey.shade700,
+                                                    )),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 16),
                               _buildCard(
                                 title: 'Customer Info',
                                 icon: Icons.person,
@@ -427,30 +521,106 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                                 ],
                               ),
                               SizedBox(height: 16),
-                              _buildCard(
-                                title: 'Vehicles',
-                                icon: Icons.directions_car,
-                                children: [
-                                  ValueListenableBuilder<int>(
-                                    valueListenable: _vehicleRowsNotifier,
-                                    builder: (context, _, __) => Column(
-                                      children: [
-                                        for (int i = 0; i < _vehicleRows.length; i++)
-                                          _buildVehicleRowWidget(i),
-                                        OutlinedButton.icon(
-                                          onPressed: _addVehicleRow,
-                                          icon: Icon(Icons.add, color: Color(0xFF000080)),
-                                          label: Text('Add Another Vehicle', style: GoogleFonts.inter(color: Color(0xFF000080), fontWeight: FontWeight.w600)),
-                                          style: OutlinedButton.styleFrom(
-                                            side: BorderSide(color: Color(0xFF000080)),
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                            padding: const EdgeInsets.symmetric(vertical: 15,horizontal:13),
+                              // ── Non-motor: Aadhaar + DOB ─────────────────
+                              ValueListenableBuilder<String>(
+                                valueListenable: _customerCategory,
+                                builder: (ctx2, cat, _) {
+                                  if (cat != 'non_motor') return const SizedBox.shrink();
+                                  return Column(
+                                    children: [
+                                      _buildCard(
+                                        title: 'Additional Info',
+                                        icon: Icons.badge_outlined,
+                                        children: [
+                                          _buildTextField(_aadhaarController, 'Aadhaar Number', Icons.credit_card,
+                                              keyboardType: TextInputType.number),
+                                          const SizedBox(height: 14),
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text('Date of Birth',
+                                                style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600,
+                                                  color: Colors.grey.shade700)),
+                                              const SizedBox(height: 6),
+                                              InkWell(
+                                                onTap: () async {
+                                                  final picked = await showDatePicker(
+                                                    context: context,
+                                                    initialDate: DateTime(1990),
+                                                    firstDate: DateTime(1900),
+                                                    lastDate: DateTime.now(),
+                                                  );
+                                                  if (picked != null) {
+                                                    _dobController.text =
+                                                      '${picked.year.toString().padLeft(4, '0')}-'
+                                                      '${picked.month.toString().padLeft(2, '0')}-'
+                                                      '${picked.day.toString().padLeft(2, '0')}';
+                                                    setState(() {});
+                                                  }
+                                                },
+                                                child: Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(0xFFFAFAFA),
+                                                    borderRadius: BorderRadius.circular(10),
+                                                    border: Border.all(color: Colors.grey.shade300),
+                                                  ),
+                                                  child: Row(
+                                                    children: [
+                                                      Icon(Icons.calendar_today_outlined, size: 20, color: Colors.grey.shade500),
+                                                      const SizedBox(width: 10),
+                                                      Text(
+                                                        _dobController.text.isNotEmpty
+                                                          ? _dobController.text : 'Select Date of Birth',
+                                                        style: GoogleFonts.inter(
+                                                          color: _dobController.text.isNotEmpty
+                                                            ? Colors.black87 : Colors.grey.shade500,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 16),
+                                    ],
+                                  );
+                                },
+                              ),
+                              // ── Motor: Vehicle Section ───────────────────
+                              ValueListenableBuilder<String>(
+                                valueListenable: _customerCategory,
+                                builder: (ctx3, cat, _) {
+                                  if (cat == 'non_motor') return const SizedBox.shrink();
+                                  return _buildCard(
+                                    title: 'Vehicles',
+                                    icon: Icons.directions_car,
+                                    children: [
+                                      ValueListenableBuilder<int>(
+                                        valueListenable: _vehicleRowsNotifier,
+                                        builder: (context, _, __) => Column(
+                                          children: [
+                                            for (int i = 0; i < _vehicleRows.length; i++)
+                                              _buildVehicleRowWidget(i),
+                                            OutlinedButton.icon(
+                                              onPressed: _addVehicleRow,
+                                              icon: Icon(Icons.add, color: Color(0xFF000080)),
+                                              label: Text('Add Another Vehicle', style: GoogleFonts.inter(color: Color(0xFF000080), fontWeight: FontWeight.w600)),
+                                              style: OutlinedButton.styleFrom(
+                                                side: BorderSide(color: Color(0xFF000080)),
+                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                                padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 13),
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
+                                      ),
+                                    ],
+                                  );
+                                },
                               ),
                               const SizedBox(height: 24),
                               ElevatedButton(
