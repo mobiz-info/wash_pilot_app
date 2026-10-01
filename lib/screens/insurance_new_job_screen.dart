@@ -9,7 +9,6 @@ import '../config/country_config.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import 'add_customer_screen.dart';
-import 'add_vehicle_screen.dart';
 import 'invoice_create_screen.dart';
 
 class InsuranceNewJobScreen extends StatefulWidget {
@@ -26,13 +25,13 @@ class _InsuranceNewJobScreenState extends State<InsuranceNewJobScreen> {
   final ValueNotifier<String> _selectedCountryIsoNotifier =
       ValueNotifier(CountryConfig.phoneIsoCode);
 
-  // Suggestions (while typing < 10 digits)
+  // Suggestions (while typing)
   final ValueNotifier<List<dynamic>> _suggestionsNotifier =
       ValueNotifier([]);
   final ValueNotifier<bool> _isSearchingSuggestionsNotifier =
       ValueNotifier(false);
 
-  // Found customer (shown when 10 digits entered or suggestion selected or search tapped)
+  // Found customer
   final ValueNotifier<Map<String, dynamic>?> _customerNotifier =
       ValueNotifier(null);
   final ValueNotifier<bool> _isLoadingCustomerNotifier =
@@ -77,7 +76,7 @@ class _InsuranceNewJobScreenState extends State<InsuranceNewJobScreen> {
       return;
     }
 
-    // If 10 or more digits, automatically fetch the full customer!
+    // If 10 or more digits, automatically fetch the customer!
     final digits = text.replaceAll(RegExp(r'\D'), '');
     if (digits.length >= 10) {
       if (_lastSearchedText == text && _customerNotifier.value != null) {
@@ -173,7 +172,8 @@ class _InsuranceNewJobScreenState extends State<InsuranceNewJobScreen> {
       }
 
       if (list.isNotEmpty) {
-        _customerNotifier.value = list.first as Map<String, dynamic>;
+        final customer = list.first as Map<String, dynamic>;
+        _customerNotifier.value = customer;
         _notFoundMessageNotifier.value = '';
       } else {
         _customerNotifier.value = null;
@@ -187,7 +187,33 @@ class _InsuranceNewJobScreenState extends State<InsuranceNewJobScreen> {
     }
   }
 
-  // ── Select customer from suggestion dropdown ──────────────────────────────
+  // ── Navigate to Insurance Invoice Create Page ─────────────────────────────
+  void _navigateToInsuranceInvoice(Map<String, dynamic> customer) {
+    final vehicles = List<dynamic>.from(customer['vehicles'] ?? []);
+    final vehicle = vehicles.isNotEmpty
+        ? Map<String, dynamic>.from(vehicles.first as Map)
+        : <String, dynamic>{
+            'id': '',
+            'no': 'Non-Motor',
+            'vehicle_number': 'Non-Motor',
+            'type': 'Insurance',
+            'vehicle_type': 'General',
+            'wheel_type': 'normal_wheel',
+          };
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => InvoiceCreateScreen(
+          customer: customer,
+          vehicle: vehicle,
+          isInsurance: true,
+        ),
+      ),
+    );
+  }
+
+  // ── Select customer from suggestion dropdown → Go to invoice page ─────────
   void _selectSuggestion(Map<String, dynamic> suggestion) {
     _suggestionsNotifier.value = [];
     FocusScope.of(context).unfocus();
@@ -212,6 +238,9 @@ class _InsuranceNewJobScreenState extends State<InsuranceNewJobScreen> {
     _mobileController.text = strippedPhone;
     _customerNotifier.value = suggestion;
     _notFoundMessageNotifier.value = '';
+
+    // Directly navigate to insurance invoice creation page on selection
+    _navigateToInsuranceInvoice(suggestion);
   }
 
   @override
@@ -398,8 +427,31 @@ class _InsuranceNewJobScreenState extends State<InsuranceNewJobScreen> {
                                       ],
                                     ),
                                   ),
-                                  Icon(Icons.chevron_right,
-                                      color: Colors.grey.shade400),
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 10.w, vertical: 4.h),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF000080)
+                                          .withValues(alpha: 0.08),
+                                      borderRadius:
+                                          BorderRadius.circular(8.r),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text('Select',
+                                            style: GoogleFonts.inter(
+                                                fontSize: 11.sp,
+                                                fontWeight: FontWeight.w600,
+                                                color:
+                                                    const Color(0xFF000080))),
+                                        SizedBox(width: 2.w),
+                                        Icon(Icons.arrow_forward_ios,
+                                            size: 10.r,
+                                            color: const Color(0xFF000080)),
+                                      ],
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -412,7 +464,7 @@ class _InsuranceNewJobScreenState extends State<InsuranceNewJobScreen> {
               },
             ),
 
-            SizedBox(height: 12.h),
+            SizedBox(height: 16.h),
 
             // ── Main content area ──────────────────────────────────────────
             Expanded(
@@ -426,11 +478,12 @@ class _InsuranceNewJobScreenState extends State<InsuranceNewJobScreen> {
                   return ValueListenableBuilder<Map<String, dynamic>?>(
                     valueListenable: _customerNotifier,
                     builder: (_, customer, __) {
-                      // ── Customer found ─────────────────────────────────
+                      // ── Customer found → Show card + Proceed Button (NO vehicle listing)
                       if (customer != null) {
-                        return _CustomerFoundSection(
+                        return _CustomerFoundView(
                           customer: customer,
-                          onRefresh: () => _searchCustomer(),
+                          onProceed: () =>
+                              _navigateToInsuranceInvoice(customer),
                         );
                       }
 
@@ -464,6 +517,7 @@ class _InsuranceNewJobScreenState extends State<InsuranceNewJobScreen> {
                                 if (created != null) {
                                   _notFoundMessageNotifier.value = '';
                                   _customerNotifier.value = created;
+                                  _navigateToInsuranceInvoice(created);
                                 } else {
                                   _searchCustomer();
                                 }
@@ -487,7 +541,7 @@ class _InsuranceNewJobScreenState extends State<InsuranceNewJobScreen> {
                                         color: Colors.grey.shade600)),
                                 SizedBox(height: 6.h),
                                 Text(
-                                    'Enter phone number to automatically find customer and start insurance job',
+                                    'Enter phone number to automatically select customer and create insurance invoice',
                                     textAlign: TextAlign.center,
                                     style: GoogleFonts.inter(
                                         fontSize: 13.sp,
@@ -510,20 +564,19 @@ class _InsuranceNewJobScreenState extends State<InsuranceNewJobScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Customer found section
+// Customer found view: Shows customer card + direct proceed button (NO vehicles)
 // ─────────────────────────────────────────────────────────────────────────────
-class _CustomerFoundSection extends StatelessWidget {
+class _CustomerFoundView extends StatelessWidget {
   final Map<String, dynamic> customer;
-  final VoidCallback onRefresh;
+  final VoidCallback onProceed;
 
-  const _CustomerFoundSection({
+  const _CustomerFoundView({
     required this.customer,
-    required this.onRefresh,
+    required this.onProceed,
   });
 
   @override
   Widget build(BuildContext context) {
-    final vehicles = List<dynamic>.from(customer['vehicles'] ?? []);
     final category =
         (customer['customer_category'] ?? 'motor').toString().toLowerCase();
     final isNonMotor = category == 'non_motor';
@@ -534,16 +587,16 @@ class _CustomerFoundSection extends StatelessWidget {
         children: [
           // ── Customer Card ────────────────────────────────────────────────
           Container(
-            padding: EdgeInsets.all(16.r),
+            padding: EdgeInsets.all(18.r),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16.r),
               border: Border.all(color: Colors.grey.shade200),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
                 ),
               ],
             ),
@@ -554,11 +607,11 @@ class _CustomerFoundSection extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     CircleAvatar(
-                      radius: 24.r,
+                      radius: 26.r,
                       backgroundColor:
                           const Color(0xFF000080).withValues(alpha: 0.1),
                       child: Icon(Icons.person,
-                          color: const Color(0xFF000080), size: 24.r),
+                          color: const Color(0xFF000080), size: 28.r),
                     ),
                     SizedBox(width: 14.w),
                     Expanded(
@@ -573,15 +626,15 @@ class _CustomerFoundSection extends StatelessWidget {
                                 child: Text(
                                   customer['name'] ?? '',
                                   style: GoogleFonts.inter(
-                                      fontSize: 17.sp,
+                                      fontSize: 18.sp,
                                       fontWeight: FontWeight.bold,
                                       color: const Color(0xFF1E293B)),
                                 ),
                               ),
-                              // Category Badge (Motor / Non-Motor)
+                              // Category Badge
                               Container(
                                 padding: EdgeInsets.symmetric(
-                                    horizontal: 8.w, vertical: 4.h),
+                                    horizontal: 10.w, vertical: 4.h),
                                 decoration: BoxDecoration(
                                   color: isNonMotor
                                       ? Colors.purple.shade50
@@ -606,19 +659,27 @@ class _CustomerFoundSection extends StatelessWidget {
                               ),
                             ],
                           ),
-                          SizedBox(height: 4.h),
-                          Text(
-                            customer['phone'] ?? '',
-                            style: GoogleFonts.inter(
-                                fontSize: 13.sp,
-                                color: Colors.grey.shade600),
+                          SizedBox(height: 6.h),
+                          Row(
+                            children: [
+                              Icon(Icons.phone_outlined,
+                                  size: 14.r, color: Colors.grey.shade600),
+                              SizedBox(width: 4.w),
+                              Text(
+                                customer['phone'] ?? '',
+                                style: GoogleFonts.inter(
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.grey.shade700),
+                              ),
+                            ],
                           ),
                           if ((customer['type'] ??
                                   customer['customer_type'] ??
                                   '')
                               .toString()
                               .isNotEmpty) ...[
-                            SizedBox(height: 2.h),
+                            SizedBox(height: 4.h),
                             Text(
                               'Type: ${customer['type'] ?? customer['customer_type']}',
                               style: GoogleFonts.inter(
@@ -632,7 +693,7 @@ class _CustomerFoundSection extends StatelessWidget {
                                   '')
                               .toString()
                               .isNotEmpty) ...[
-                            SizedBox(height: 2.h),
+                            SizedBox(height: 3.h),
                             Text(
                               'Branch: ${customer['branch'] ?? customer['branch_name']}',
                               style: GoogleFonts.inter(
@@ -648,7 +709,7 @@ class _CustomerFoundSection extends StatelessWidget {
 
                 // Aadhaar & DOB for Non-Motor
                 if (isNonMotor) ...[
-                  Divider(height: 20.h, color: Colors.grey.shade200),
+                  Divider(height: 24.h, color: Colors.grey.shade200),
                   Row(
                     children: [
                       if ((customer['aadhaar_number'] ?? '')
@@ -696,217 +757,38 @@ class _CustomerFoundSection extends StatelessWidget {
             ),
           ),
 
-          SizedBox(height: 20.h),
+          SizedBox(height: 24.h),
 
-          // ── Vehicles Section (For Motor Customers) ────────────────────────
-          if (!isNonMotor) ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Customer Vehicles',
-                    style: GoogleFonts.inter(
-                        fontSize: 16.sp, fontWeight: FontWeight.bold)),
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    final token = context.read<AuthProvider>().token;
-                    if (token == null) return;
-                    final res = await Navigator.push<bool>(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => AddVehicleScreen(
-                          customerData: customer,
-                          token: token,
-                        ),
-                      ),
-                    );
-                    if (res == true) {
-                      onRefresh();
-                    }
-                  },
-                  icon: Icon(Icons.add_circle_outline, size: 16.r),
-                  label: Text('Add Vehicle',
-                      style: GoogleFonts.inter(
-                          fontWeight: FontWeight.w700, fontSize: 12.sp)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        const Color(0xFF000080).withValues(alpha: 0.08),
-                    foregroundColor: const Color(0xFF000080),
-                    elevation: 0,
-                    padding: EdgeInsets.symmetric(
-                        horizontal: 14.w, vertical: 8.h),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10.r),
-                      side: const BorderSide(
-                          color: Color(0xFF000080), width: 1.2),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 12.h),
-
-            if (vehicles.isEmpty)
-              Container(
-                padding: EdgeInsets.all(20.r),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12.r),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
-                child: Center(
-                  child: Text('No vehicles found for this customer',
-                      style: GoogleFonts.inter(
-                          color: Colors.grey.shade500, fontSize: 13.sp)),
-                ),
-              )
-            else
-              ...vehicles.asMap().entries.map((entry) {
-                final v = entry.value as Map<String, dynamic>;
-                final vehicleNo = v['no']?.toString() ??
-                    v['vehicle_number']?.toString() ??
-                    '';
-                final model = v['type']?.toString() ??
-                    v['vehicle_model']?.toString() ??
-                    '';
-                final type = v['vehicle_type']?.toString() ?? '';
-
-                return Padding(
-                  padding: EdgeInsets.only(bottom: 12.h),
-                  child: InkWell(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => InvoiceCreateScreen(
-                            customer: customer,
-                            vehicle: v,
-                          ),
-                        ),
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(16.r),
-                    child: Container(
-                      padding: EdgeInsets.all(16.r),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16.r),
-                        border: Border.all(
-                          color: const Color(0xFF000080)
-                              .withValues(alpha: 0.18),
-                          width: 1.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF000080)
-                                .withValues(alpha: 0.04),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.all(10.r),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF000080)
-                                  .withValues(alpha: 0.08),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(Icons.directions_car,
-                                color: const Color(0xFF000080), size: 22.r),
-                          ),
-                          SizedBox(width: 14.w),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  vehicleNo,
-                                  style: GoogleFonts.inter(
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 16.sp,
-                                      color: const Color(0xFF1E293B)),
-                                ),
-                                if (model.isNotEmpty || type.isNotEmpty) ...[
-                                  SizedBox(height: 3.h),
-                                  Text(
-                                    [type, model]
-                                        .where((s) => s.isNotEmpty)
-                                        .join(' · '),
-                                    style: GoogleFonts.inter(
-                                        fontSize: 12.sp,
-                                        color: Colors.grey.shade600),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 12.w, vertical: 6.h),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF000080),
-                              borderRadius: BorderRadius.circular(10.r),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text('New Job',
-                                    style: GoogleFonts.inter(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 12.sp)),
-                                SizedBox(width: 4.w),
-                                Icon(Icons.arrow_forward_ios,
-                                    color: Colors.white, size: 10.r),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              }),
-          ],
-
-          // ── Start Job Button (For Non-Motor or Motor with 0 vehicles) ─────
-          if (isNonMotor || vehicles.isEmpty) ...[
-            SizedBox(height: 16.h),
-            ElevatedButton.icon(
-              onPressed: () {
-                final fallbackVehicle = {
-                  'id': '',
-                  'no': isNonMotor ? 'Non-Motor' : 'General',
-                  'vehicle_number': isNonMotor ? 'Non-Motor' : 'General',
-                  'type': 'Insurance',
-                  'vehicle_type': 'General',
-                  'wheel_type': 'normal_wheel',
-                };
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => InvoiceCreateScreen(
-                      customer: customer,
-                      vehicle: fallbackVehicle,
-                    ),
-                  ),
-                );
-              },
-              icon: Icon(Icons.shield_outlined, size: 18.r),
-              label: Text('Start Insurance Job',
-                  style: GoogleFonts.inter(
-                      fontWeight: FontWeight.w700, fontSize: 15.sp)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF000080),
-                foregroundColor: Colors.white,
-                minimumSize: Size(double.infinity, 50.h),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12.r)),
+          // ── Proceed Button ───────────────────────────────────────────────
+          ElevatedButton(
+            onPressed: onProceed,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF000080),
+              foregroundColor: Colors.white,
+              elevation: 2,
+              padding: EdgeInsets.symmetric(vertical: 16.h),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14.r),
               ),
             ),
-          ],
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.shield_outlined, size: 20.r),
+                SizedBox(width: 8.w),
+                Text(
+                  'Proceed to Insurance Invoice',
+                  style: GoogleFonts.inter(
+                    fontSize: 15.sp,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                SizedBox(width: 8.w),
+                Icon(Icons.arrow_forward, size: 18.r),
+              ],
+            ),
+          ),
         ],
       ),
     );

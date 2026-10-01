@@ -9,7 +9,6 @@ import '../config/country_config.dart';
 import '../services/api_service.dart';
 import 'invoice_view_screen.dart';
 
-
 class _OilItemRow {
   String? selectedOilCategory;
   String? selectedOilProductId;
@@ -27,7 +26,6 @@ class _OilItemRow {
     oilLitresController.dispose();
   }
 }
-
 
 class _TyreItemRow {
   String? selectedBrandId;
@@ -92,7 +90,9 @@ class _BatteryItemRow {
     double initialPrice = 0.0,
   }) {
     defaultPrice = initialPrice;
-    priceController.text = initialPrice > 0 ? initialPrice.toStringAsFixed(2) : '0.00';
+    priceController.text = initialPrice > 0
+        ? initialPrice.toStringAsFixed(2)
+        : '0.00';
     warrantyController.text = warrantyYears.toString();
   }
 
@@ -111,17 +111,25 @@ class _BatteryItemRow {
 // ── Trading/Stock Itemized row for inventory/stock items ──────────────────────
 class _TradingItemRow {
   Map<String, dynamic>? selectedStockItem;
-  final TextEditingController rateController = TextEditingController(text: '0.00');
+  final TextEditingController rateController = TextEditingController(
+    text: '0.00',
+  );
   final TextEditingController qtyController = TextEditingController(text: '1');
-  final TextEditingController discountController = TextEditingController(text: '0.00');
+  final TextEditingController discountController = TextEditingController(
+    text: '0.00',
+  );
   double currentStock = 0.0;
   String unitName = 'Pcs';
   bool isOperational = false;
 
-  double get rate => isOperational ? 0.0 : (double.tryParse(rateController.text) ?? 0.0);
+  double get rate =>
+      isOperational ? 0.0 : (double.tryParse(rateController.text) ?? 0.0);
   double get qty => double.tryParse(qtyController.text) ?? 1.0;
-  double get discount => isOperational ? 0.0 : (double.tryParse(discountController.text) ?? 0.0);
-  double get netTaxable => isOperational ? 0.0 : ((rate * qty) - discount).clamp(0.0, double.infinity);
+  double get discount =>
+      isOperational ? 0.0 : (double.tryParse(discountController.text) ?? 0.0);
+  double get netTaxable => isOperational
+      ? 0.0
+      : ((rate * qty) - discount).clamp(0.0, double.infinity);
   double get lineTotal => netTaxable;
 
   void dispose() {
@@ -147,22 +155,22 @@ class _ServiceRow {
   String? validatedVoucherId;
 
   // Manual discount (shown only when no scheme selected on this row)
-  final TextEditingController discountController =
-      TextEditingController(text: '0');
+  final TextEditingController discountController = TextEditingController(
+    text: '0',
+  );
 
   // ── Category-specific Inputs ──
   String get serviceCategory => service['service_type_slug']?.toString() ?? '';
 
   // Oil Change (Itemized List - defaults to 1 item)
-  final List<_OilItemRow> oilItems = [
-    _OilItemRow(),
-  ];
+  final List<_OilItemRow> oilItems = [_OilItemRow()];
   bool oilFilterChanged = false;
   String? selectedOilFilterId;
   double oilFilterPrice = 0.0;
   int? selectedOilFilterRunKm;
   final TextEditingController odometerController = TextEditingController();
-  final TextEditingController nextOilChangeKmController = TextEditingController();
+  final TextEditingController nextOilChangeKmController =
+      TextEditingController();
 
   double get oilTotalCharge {
     if (serviceCategory != 'oil_change') return 0.0;
@@ -171,10 +179,9 @@ class _ServiceRow {
   }
 
   // Tyre Change (Itemized List - defaults to 1 item)
-  final List<_TyreItemRow> tyreItems = [
-    _TyreItemRow(initialQty: 4),
-  ];
-  final TextEditingController nextTyreChangeKmController = TextEditingController();
+  final List<_TyreItemRow> tyreItems = [_TyreItemRow(initialQty: 4)];
+  final TextEditingController nextTyreChangeKmController =
+      TextEditingController();
 
   double get tyreTotalCharge {
     if (serviceCategory != 'tyre_change') return 0.0;
@@ -185,36 +192,70 @@ class _ServiceRow {
   final List<_BatteryItemRow> batteryItems = [];
 
   double get batteryTotalCharge {
-    if (serviceCategory != 'battery_change' && serviceCategory != 'battery' && !serviceName.toLowerCase().contains('battery')) return 0.0;
+    if (serviceCategory != 'battery_change' &&
+        serviceCategory != 'battery' &&
+        !serviceName.toLowerCase().contains('battery'))
+      return 0.0;
     return batteryItems.fold(0.0, (sum, item) => sum + item.lineTotal);
   }
 
   // Wheel Alignment
   bool alignmentDone = true;
   bool balancingDone = true;
-  final TextEditingController alignmentNotesController = TextEditingController();
-  final TextEditingController nextAlignmentKmController = TextEditingController();
+  final TextEditingController alignmentNotesController =
+      TextEditingController();
+  final TextEditingController nextAlignmentKmController =
+      TextEditingController();
 
   // Smoke Test Renewal Period (6 or 12 months)
   int smokeTestPeriodMonths = 6;
   bool isSmokeTestPeriodInitialized = false;
 
+  // Auto Insurance Expiry Date & Reminders
+  DateTime? insuranceExpiryDate;
+  bool isInsuranceDateInitialized = false;
+
+  bool get isInsuranceCategory {
+    final cat = serviceCategory.toLowerCase();
+    final typeName =
+        (service['service_type'] ??
+                service['service_category'] ??
+                service['service_type_name'] ??
+                service['category'] ??
+                '')
+            .toString()
+            .toLowerCase();
+    final name = serviceName.toLowerCase();
+    final slug = (service['service_type_slug'] ?? service['slug'] ?? '')
+        .toString()
+        .toLowerCase();
+    return cat.contains('insurance') ||
+        typeName.contains('insurance') ||
+        name.contains('insurance') ||
+        slug.contains('insurance');
+  }
+
   // Car Detailing Warranty & Price Edit
-  final TextEditingController warrantyValueController = TextEditingController(text: '6');
+  final TextEditingController warrantyValueController = TextEditingController(
+    text: '6',
+  );
   String warrantyUnit = 'month';
   final TextEditingController customRateController;
 
   _ServiceRow({required this.service})
-      : customRateController = TextEditingController(
-          text: ((service['rate'] as num?)?.toDouble() ?? 0.0).toStringAsFixed(2),
-        ) {
+    : customRateController = TextEditingController(
+        text: ((service['rate'] as num?)?.toDouble() ?? 0.0).toStringAsFixed(2),
+      ) {
     // If odometer controller is updated, auto-calculate next oil/tyre change km if blank
     odometerController.addListener(_onOdometerChanged);
   }
 
   bool get isDetailingCategory {
     final cat = serviceCategory.toLowerCase();
-    final typeName = (service['service_type'] ?? service['service_category'] ?? '').toString().toLowerCase();
+    final typeName =
+        (service['service_type'] ?? service['service_category'] ?? '')
+            .toString()
+            .toLowerCase();
     final name = serviceName.toLowerCase();
     return cat == 'car_detailing' ||
         cat == 'detailing' ||
@@ -245,6 +286,7 @@ class _ServiceRow {
   }
 
   bool get isWheelBalancingOrAlignmentCategory {
+    if (isInsuranceCategory) return false;
     final cat = serviceCategory.toLowerCase();
     final name = serviceName.toLowerCase();
     return cat.contains('wheel') ||
@@ -257,7 +299,10 @@ class _ServiceRow {
 
   bool get isCarwashOrCleaningCategory {
     final cat = serviceCategory.toLowerCase();
-    final typeName = (service['service_type'] ?? service['service_category'] ?? '').toString().toLowerCase();
+    final typeName =
+        (service['service_type'] ?? service['service_category'] ?? '')
+            .toString()
+            .toLowerCase();
     final name = serviceName.toLowerCase();
     return cat == 'car_wash' ||
         cat == 'washing' ||
@@ -280,11 +325,14 @@ class _ServiceRow {
     final odo = int.tryParse(odometerController.text) ?? 0;
     if (odo > 0) {
       if (serviceCategory == 'oil_change') {
-        final firstOilRunKm = oilItems.isNotEmpty ? oilItems.first.selectedOilRunKm : null;
+        final firstOilRunKm = oilItems.isNotEmpty
+            ? oilItems.first.selectedOilRunKm
+            : null;
         final runKm = selectedOilFilterRunKm ?? firstOilRunKm ?? 5000;
         nextOilChangeKmController.text = (odo + runKm).toString();
       }
-      if (serviceCategory == 'tyre_change' && nextTyreChangeKmController.text.isEmpty) {
+      if (serviceCategory == 'tyre_change' &&
+          nextTyreChangeKmController.text.isEmpty) {
         // Default to +40000 km
         nextTyreChangeKmController.text = (odo + 40000).toString();
       }
@@ -308,7 +356,9 @@ class _ServiceRow {
       base += oilTotalCharge;
     } else if (serviceCategory == 'tyre_change') {
       base += tyreTotalCharge;
-    } else if (serviceCategory == 'battery_change' || serviceCategory == 'battery' || serviceName.toLowerCase().contains('battery')) {
+    } else if (serviceCategory == 'battery_change' ||
+        serviceCategory == 'battery' ||
+        serviceName.toLowerCase().contains('battery')) {
       base += batteryTotalCharge;
     }
     return base;
@@ -319,7 +369,8 @@ class _ServiceRow {
     return double.tryParse(discountController.text) ?? 0.0;
   }
 
-  double get total => (subtotal - effectiveDiscount).clamp(0.0, double.infinity);
+  double get total =>
+      (subtotal - effectiveDiscount).clamp(0.0, double.infinity);
   double get lineTotal => total;
 
   String get serviceId => service['id']?.toString() ?? '';
@@ -345,13 +396,12 @@ class _ServiceRow {
   }
 }
 
-
-
 class InvoiceCreateScreen extends StatefulWidget {
   final Map<String, dynamic> customer;
   final Map<String, dynamic> vehicle;
   final String? bookingId;
   final Map<String, dynamic>? invoiceToEdit;
+  final bool isInsurance;
 
   const InvoiceCreateScreen({
     super.key,
@@ -359,6 +409,7 @@ class InvoiceCreateScreen extends StatefulWidget {
     required this.vehicle,
     this.bookingId,
     this.invoiceToEdit,
+    this.isInsurance = false,
   });
 
   @override
@@ -415,8 +466,6 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
     'Transfer Case Fluid',
   ];
 
-
-
   // Branch Staff State
   bool _addStaffs = false;
   List<Map<String, dynamic>> _availableStaffs = [];
@@ -441,7 +490,8 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
 
   // Additional Invoice-level discount (Percentage/Amount)
   bool _usePercentageDiscount = false; // false = Amount, true = Percentage
-  final TextEditingController _additionalDiscountController = TextEditingController(text: '0');
+  final TextEditingController _additionalDiscountController =
+      TextEditingController(text: '0');
 
   // Payment mode selection state
   String _selectedPaymentMode = 'digital_payments';
@@ -449,20 +499,25 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
   // Sales type (Cash = show payment mode, Credit = hide payment mode)
   String _selectedSalesType = 'cash';
 
-  double get totalServicesAmount =>
-      _rows.fold(0.0, (s, r) => s + r.subtotal);
-  double get totalTradingItemsAmount =>
-      _addTradingItems ? _tradingRows.fold(0.0, (s, r) => s + r.netTaxable) : 0.0;
+  double get totalServicesAmount => _rows.fold(0.0, (s, r) => s + r.subtotal);
+  double get totalTradingItemsAmount => _addTradingItems
+      ? _tradingRows.fold(0.0, (s, r) => s + r.netTaxable)
+      : 0.0;
   double get totalExtrasAmount => _addExtras
       ? _selectedExtras.fold(0.0, (s, e) {
           final qtyController = e['qtyController'] as TextEditingController?;
           final rateController = e['rateController'] as TextEditingController?;
-          final priceController = e['priceController'] as TextEditingController?;
+          final priceController =
+              e['priceController'] as TextEditingController?;
 
-          final qty = qtyController != null ? (double.tryParse(qtyController.text) ?? 1.0) : 1.0;
+          final qty = qtyController != null
+              ? (double.tryParse(qtyController.text) ?? 1.0)
+              : 1.0;
           final rate = rateController != null
               ? (double.tryParse(rateController.text) ?? 0.0)
-              : (priceController != null ? (double.tryParse(priceController.text) ?? 0.0) : 0.0);
+              : (priceController != null
+                    ? (double.tryParse(priceController.text) ?? 0.0)
+                    : 0.0);
           return s + (qty * rate);
         })
       : 0.0;
@@ -478,16 +533,22 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
 
   double get totalDiscount {
     final itemDiscount = _rows.fold(0.0, (s, r) => s + r.effectiveDiscount);
-    final tradingDiscount = _addTradingItems ? _tradingRows.fold(0.0, (s, r) => s + r.discount) : 0.0;
+    final tradingDiscount = _addTradingItems
+        ? _tradingRows.fold(0.0, (s, r) => s + r.discount)
+        : 0.0;
     return itemDiscount + tradingDiscount + additionalDiscountAmount;
   }
 
   // Subtotal = gross amount before discount
   double get subtotal =>
-      (totalServicesAmount + totalTradingItemsAmount + totalExtrasAmount).clamp(0.0, double.infinity);
+      (totalServicesAmount + totalTradingItemsAmount + totalExtrasAmount).clamp(
+        0.0,
+        double.infinity,
+      );
 
   // Taxable Value = Subtotal after discount
-  double get taxableValue => (subtotal - totalDiscount).clamp(0.0, double.infinity);
+  double get taxableValue =>
+      (subtotal - totalDiscount).clamp(0.0, double.infinity);
 
   // Tax Amount = calculated on Taxable Value (post-discount)
   double get taxAmount {
@@ -560,16 +621,24 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
     final Set<TextEditingController> extraControllersToDispose = {};
     for (final extra in _selectedExtras) {
       if (extra['qtyController'] is TextEditingController) {
-        extraControllersToDispose.add(extra['qtyController'] as TextEditingController);
+        extraControllersToDispose.add(
+          extra['qtyController'] as TextEditingController,
+        );
       }
       if (extra['rateController'] is TextEditingController) {
-        extraControllersToDispose.add(extra['rateController'] as TextEditingController);
+        extraControllersToDispose.add(
+          extra['rateController'] as TextEditingController,
+        );
       }
       if (extra['remarkController'] is TextEditingController) {
-        extraControllersToDispose.add(extra['remarkController'] as TextEditingController);
+        extraControllersToDispose.add(
+          extra['remarkController'] as TextEditingController,
+        );
       }
       if (extra['priceController'] is TextEditingController) {
-        extraControllersToDispose.add(extra['priceController'] as TextEditingController);
+        extraControllersToDispose.add(
+          extra['priceController'] as TextEditingController,
+        );
       }
     }
     for (final c in extraControllersToDispose) {
@@ -609,23 +678,62 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
       } catch (_) {}
 
       if (svcRes['success'] == true) {
-        if (svcRes['wheel_type'] != null && (widget.vehicle['wheel_type'] == null || widget.vehicle['wheel_type'].toString().isEmpty)) {
+        if (svcRes['wheel_type'] != null &&
+            (widget.vehicle['wheel_type'] == null ||
+                widget.vehicle['wheel_type'].toString().isEmpty)) {
           widget.vehicle['wheel_type'] = svcRes['wheel_type'];
         }
         _allServices = svcRes['services'] ?? [];
-        final rawEnabled = (svcRes['enabled_categories'] as List<dynamic>? ?? []);
+        final rawEnabled =
+            (svcRes['enabled_categories'] as List<dynamic>? ?? []);
         // Only keep categories that have at least one priced service available for this vehicle
         _enabledCategories = rawEnabled.where((slug) {
-          return _allServices.any((s) => s['service_type_slug'] == slug && s['has_price'] == true);
+          final sSlug = slug.toString().toLowerCase();
+          return _allServices.any((s) {
+            final svcCat = (s['service_type_slug'] ?? '')
+                .toString()
+                .toLowerCase();
+            final svcName = (s['name'] ?? '').toString().toLowerCase();
+            return (svcCat == sSlug ||
+                (sSlug.contains('insurance') &&
+                    (svcCat.contains('insurance') ||
+                        svcName.contains('insurance'))));
+          });
         }).toList();
+        if (widget.isInsurance) {
+          _allServices = _allServices.where((s) {
+            final svcCat = (s['service_type_slug'] ?? '').toString().toLowerCase();
+            final svcName = (s['name'] ?? '').toString().toLowerCase();
+            final svcType = (s['service_type'] ?? '').toString().toLowerCase();
+            return svcCat.contains('insurance') ||
+                svcName.contains('insurance') ||
+                svcType.contains('insurance');
+          }).toList();
+
+          _enabledCategories = _enabledCategories.where((slug) {
+            final sSlug = slug.toString().toLowerCase();
+            return _allServices.any((s) =>
+                (s['service_type_slug'] ?? '').toString().toLowerCase() == sSlug) ||
+                sSlug.contains('insurance');
+          }).toList();
+
+          if (_enabledCategories.isEmpty && _allServices.isNotEmpty) {
+            _enabledCategories = [
+              _allServices.first['service_type_slug'] ?? 'auto_insurance'
+            ];
+          }
+        }
+
         if (_enabledCategories.isNotEmpty) {
           _selectedCategoryFilter = _enabledCategories.first.toString();
         }
         final rawTaxes = svcRes['taxes'] as List<dynamic>? ?? [];
-        _availableTaxes =
-            rawTaxes.map((t) => Map<String, dynamic>.from(t as Map)).toList();
-        _selectedTaxIds =
-            _availableTaxes.map((t) => t['id']?.toString() ?? '').toSet();
+        _availableTaxes = rawTaxes
+            .map((t) => Map<String, dynamic>.from(t as Map))
+            .toList();
+        _selectedTaxIds = _availableTaxes
+            .map((t) => t['id']?.toString() ?? '')
+            .toSet();
         // Auto-enable tax if branch has taxes configured
         if (_availableTaxes.isNotEmpty) {
           _applyGst = true;
@@ -672,30 +780,42 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           } catch (_) {}
         }
         if (editInv['discount'] != null) {
-          _additionalDiscountController.text = (double.tryParse(editInv['discount'].toString()) ?? 0.0).toStringAsFixed(2);
+          _additionalDiscountController.text =
+              (double.tryParse(editInv['discount'].toString()) ?? 0.0)
+                  .toStringAsFixed(2);
         }
         if (editInv['amount_collected'] != null) {
-          _amountCollectedController.text = (double.tryParse(editInv['amount_collected'].toString()) ?? 0.0).toStringAsFixed(0);
+          _amountCollectedController.text =
+              (double.tryParse(editInv['amount_collected'].toString()) ?? 0.0)
+                  .toStringAsFixed(0);
         }
         if (editInv['invoice_type'] == 'creditinvoice') {
           _selectedSalesType = 'credit';
         } else {
           _selectedSalesType = 'cash';
         }
-        if (editInv['remarks'] != null && editInv['remarks'].toString().trim().isNotEmpty) {
+        if (editInv['remarks'] != null &&
+            editInv['remarks'].toString().trim().isNotEmpty) {
           _addRemarks = true;
           _remarksController.text = editInv['remarks'].toString();
         }
         if (editInv['show_warranty_in_pdf'] == true) {
           _showWarrantyInPdf = true;
         }
-        final existingServices = editInv['services'] as List<dynamic>? ?? editInv['items'] as List<dynamic>? ?? [];
+        final existingServices =
+            editInv['services'] as List<dynamic>? ??
+            editInv['items'] as List<dynamic>? ??
+            [];
         for (final item in existingServices) {
-          final svcName = (item['name'] ?? item['service_name'] ?? '').toString();
+          final svcName = (item['name'] ?? item['service_name'] ?? '')
+              .toString();
           // service_id is the actual FK id from the service table; id may be invoice_item.id
-          final svcFkId = item['service_id']?.toString() ?? item['id']?.toString();
-          final itemRate = double.tryParse(item['rate']?.toString() ?? '') ?? 0.0;
-          final itemDisc = double.tryParse(item['discount']?.toString() ?? '') ?? 0.0;
+          final svcFkId =
+              item['service_id']?.toString() ?? item['id']?.toString();
+          final itemRate =
+              double.tryParse(item['rate']?.toString() ?? '') ?? 0.0;
+          final itemDisc =
+              double.tryParse(item['discount']?.toString() ?? '') ?? 0.0;
 
           Map<String, dynamic> matchedSvc = {};
           // Try matching by service FK id first, then fall back to name match
@@ -707,14 +827,16 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           }
           if (matchedSvc.isEmpty) {
             matchedSvc = _allServices.firstWhere(
-              (s) => s['name'].toString().toLowerCase() == svcName.toLowerCase(),
+              (s) =>
+                  s['name'].toString().toLowerCase() == svcName.toLowerCase(),
               orElse: () => <String, dynamic>{},
             );
           }
           // If still not found, build a placeholder so the service still shows
           if (matchedSvc.isEmpty) {
             matchedSvc = {
-              'id': svcFkId ?? 'custom_${DateTime.now().millisecondsSinceEpoch}',
+              'id':
+                  svcFkId ?? 'custom_${DateTime.now().millisecondsSinceEpoch}',
               'name': svcName,
               'rate': itemRate,
               'has_price': itemRate > 0,
@@ -723,8 +845,11 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           }
 
           final row = _ServiceRow(service: matchedSvc);
-          final detailMap = item['service_detail'] as Map<String, dynamic>? ?? {};
-          final savedPeriod = detailMap['smoke_test_period_months'] ?? item['smoke_test_period_months'];
+          final detailMap =
+              item['service_detail'] as Map<String, dynamic>? ?? {};
+          final savedPeriod =
+              detailMap['smoke_test_period_months'] ??
+              item['smoke_test_period_months'];
           if (savedPeriod != null) {
             final p = int.tryParse(savedPeriod.toString());
             if (p != null) {
@@ -748,14 +873,23 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           _rows.add(row);
         }
 
-        final existingTrading = editInv['trading_items'] as List<dynamic>? ?? [];
+        final existingTrading =
+            editInv['trading_items'] as List<dynamic>? ?? [];
         if (existingTrading.isNotEmpty) {
           _addTradingItems = true;
           for (final t in existingTrading) {
             final tRow = _TradingItemRow();
-            tRow.rateController.text = double.tryParse(t['rate']?.toString() ?? '')?.toStringAsFixed(2) ?? '0.00';
+            tRow.rateController.text =
+                double.tryParse(
+                  t['rate']?.toString() ?? '',
+                )?.toStringAsFixed(2) ??
+                '0.00';
             tRow.qtyController.text = (t['qty'] ?? 1).toString();
-            tRow.discountController.text = double.tryParse(t['discount']?.toString() ?? '')?.toStringAsFixed(2) ?? '0.00';
+            tRow.discountController.text =
+                double.tryParse(
+                  t['discount']?.toString() ?? '',
+                )?.toStringAsFixed(2) ??
+                '0.00';
             tRow.isOperational = (t['is_operational'] == true);
             if (t['id'] != null) {
               final stockMatch = _availableStockItems.firstWhere(
@@ -770,7 +904,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           }
         }
 
-        final existingStaffs = editInv['assigned_staffs'] as List<dynamic>? ?? editInv['staffs'] as List<dynamic>? ?? [];
+        final existingStaffs =
+            editInv['assigned_staffs'] as List<dynamic>? ??
+            editInv['staffs'] as List<dynamic>? ??
+            [];
         if (existingStaffs.isNotEmpty) {
           _addStaffs = true;
           for (final st in existingStaffs) {
@@ -780,7 +917,8 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 (s) => s['id'].toString() == stId,
                 orElse: () => <String, dynamic>{},
               );
-              if (match.isNotEmpty && !_selectedStaffs.any((s) => s['id'] == match['id'])) {
+              if (match.isNotEmpty &&
+                  !_selectedStaffs.any((s) => s['id'] == match['id'])) {
                 _selectedStaffs.add(match);
               }
             }
@@ -789,8 +927,14 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
       }
 
       _isLoading = false;
-      if (widget.invoiceToEdit != null && widget.invoiceToEdit!['amount_collected'] != null) {
-        _amountCollectedController.text = (double.tryParse(widget.invoiceToEdit!['amount_collected'].toString()) ?? 0.0).toStringAsFixed(0);
+      if (widget.invoiceToEdit != null &&
+          widget.invoiceToEdit!['amount_collected'] != null) {
+        _amountCollectedController.text =
+            (double.tryParse(
+                      widget.invoiceToEdit!['amount_collected'].toString(),
+                    ) ??
+                    0.0)
+                .toStringAsFixed(0);
       } else {
         _syncAmountCollected();
       }
@@ -802,16 +946,18 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
     }
   }
 
-
   void _syncAmountCollected() {
     // When editing an existing invoice, don't auto-overwrite the saved collected amount
     if (widget.invoiceToEdit != null) return;
     _amountCollectedController.text = total.round().toString();
   }
 
-  bool get _hasWheelAlignmentService => _rows.any((r) => r.isWheelBalancingOrAlignmentCategory);
+  bool get _hasWheelAlignmentService =>
+      _rows.any((r) => r.isWheelBalancingOrAlignmentCategory);
   bool get _hasDetailingService => _rows.any((r) => r.isDetailingCategory);
-  bool get _hasOilChangeService => _rows.any((r) => r.serviceCategory == 'oil_change');
+  bool get _hasOilChangeService =>
+      _rows.any((r) => r.serviceCategory == 'oil_change');
+  bool get _hasInsuranceService => _rows.any((r) => r.isInsuranceCategory);
 
   // ── Add / Remove service rows ─────────────────────────────────────────────
   void _toggleService(Map<String, dynamic> svc) {
@@ -832,9 +978,11 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
       _rows.insert(0, row);
       _loadSchemesForRow(row);
     }
-    if (_hasWheelAlignmentService || _hasOilChangeService) {
+    if (_hasWheelAlignmentService ||
+        _hasOilChangeService ||
+        _hasInsuranceService) {
       _addCustomReminders = true;
-      if (_reminderDaysControllers.isEmpty) {
+      if (_reminderDaysControllers.isEmpty && !_hasInsuranceService) {
         _reminderDaysControllers.add(TextEditingController(text: ''));
       }
     }
@@ -860,8 +1008,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
         token,
       );
       if (!mounted) return;
-      row.availableSchemes =
-          res['success'] == true ? res['schemes'] ?? [] : [];
+      row.availableSchemes = res['success'] == true ? res['schemes'] ?? [] : [];
       row.isLoadingSchemes = false;
       _updateUi();
     } catch (_) {
@@ -872,7 +1019,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
     }
   }
 
-  Future<void> _fetchOilPriceForProduct(_OilItemRow item, String oilProductId) async {
+  Future<void> _fetchOilPriceForProduct(
+    _OilItemRow item,
+    String oilProductId,
+  ) async {
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
     item.isLoadingOilPrice = true;
@@ -888,7 +1038,8 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
       if (!mounted) return;
       item.isLoadingOilPrice = false;
       if (res['success'] == true) {
-        if (res['price_per_litre'] != null && (res['price_per_litre'] as num) > 0) {
+        if (res['price_per_litre'] != null &&
+            (res['price_per_litre'] as num) > 0) {
           item.oilPricePerLitre = (res['price_per_litre'] as num).toDouble();
         }
       }
@@ -948,8 +1099,11 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
     _updateUi();
 
     try {
-      final res =
-          await ApiService.validateVoucher(row.selectedScheme!['id'], voucher, token);
+      final res = await ApiService.validateVoucher(
+        row.selectedScheme!['id'],
+        voucher,
+        token,
+      );
       if (res['success'] == true) {
         row.schemeDiscount = (res['discount'] as num).toDouble();
         row.voucherSuccess = res['message'] ?? 'Voucher applied!';
@@ -972,7 +1126,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
   // ── Save Invoice ─────────────────────────────────────────────────────────
   Future<void> _saveInvoice() async {
     if (_rows.isEmpty && _selectedExtras.isEmpty) {
-      _snack(context.tr('Please select at least one service or extra item'), isError: true);
+      _snack(
+        context.tr('Please select at least one service or extra item'),
+        isError: true,
+      );
       return;
     }
 
@@ -992,25 +1149,37 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
       if (row.isWheelAlignmentCategory) {
         final odoStr = row.odometerController.text.trim();
         final nextKmStr = row.nextAlignmentKmController.text.trim();
-        if (odoStr.isEmpty || int.tryParse(odoStr) == null || int.tryParse(odoStr)! <= 0) {
+        if (odoStr.isEmpty ||
+            int.tryParse(odoStr) == null ||
+            int.tryParse(odoStr)! <= 0) {
           _snack(
-            context.tr('Please enter Current Odometer (KM) for Wheel Alignment'),
+            context.tr(
+              'Please enter Current Odometer (KM) for Wheel Alignment',
+            ),
             isError: true,
           );
           return;
         }
-        if (nextKmStr.isEmpty || int.tryParse(nextKmStr) == null || int.tryParse(nextKmStr)! <= 0) {
+        if (nextKmStr.isEmpty ||
+            int.tryParse(nextKmStr) == null ||
+            int.tryParse(nextKmStr)! <= 0) {
           _snack(
-            context.tr('Please enter Next Alignment Due (KM) for Wheel Alignment'),
+            context.tr(
+              'Please enter Next Alignment Due (KM) for Wheel Alignment',
+            ),
             isError: true,
           );
           return;
         }
 
         if (!_addCustomReminders ||
-            !_reminderDaysControllers.any((c) => (int.tryParse(c.text.trim()) ?? 0) > 0)) {
+            !_reminderDaysControllers.any(
+              (c) => (int.tryParse(c.text.trim()) ?? 0) > 0,
+            )) {
           _snack(
-            context.tr('Please enter at least one valid Custom Reminder Day for Wheel Alignment'),
+            context.tr(
+              'Please enter at least one valid Custom Reminder Day for Wheel Alignment',
+            ),
             isError: true,
           );
           return;
@@ -1021,14 +1190,18 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
       if (row.serviceCategory == 'oil_change') {
         final odoStr = row.odometerController.text.trim();
         final nextKmStr = row.nextOilChangeKmController.text.trim();
-        if (odoStr.isEmpty || int.tryParse(odoStr) == null || int.tryParse(odoStr)! <= 0) {
+        if (odoStr.isEmpty ||
+            int.tryParse(odoStr) == null ||
+            int.tryParse(odoStr)! <= 0) {
           _snack(
             context.tr('Please enter Current Odometer (KM) for Oil Change'),
             isError: true,
           );
           return;
         }
-        if (nextKmStr.isEmpty || int.tryParse(nextKmStr) == null || int.tryParse(nextKmStr)! <= 0) {
+        if (nextKmStr.isEmpty ||
+            int.tryParse(nextKmStr) == null ||
+            int.tryParse(nextKmStr)! <= 0) {
           _snack(
             context.tr('Please enter Next Oil Change Due (KM) for Oil Change'),
             isError: true,
@@ -1037,9 +1210,13 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
         }
 
         if (!_addCustomReminders ||
-            !_reminderDaysControllers.any((c) => (int.tryParse(c.text.trim()) ?? 0) > 0)) {
+            !_reminderDaysControllers.any(
+              (c) => (int.tryParse(c.text.trim()) ?? 0) > 0,
+            )) {
           _snack(
-            context.tr('Please enter at least one valid Custom Reminder Day for Oil Change'),
+            context.tr(
+              'Please enter at least one valid Custom Reminder Day for Oil Change',
+            ),
             isError: true,
           );
           return;
@@ -1056,7 +1233,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
       // Use the primary scheme from the first row that has one
       final primaryRow = _rows.isEmpty
           ? null
-          : _rows.firstWhere((r) => r.selectedScheme != null, orElse: () => _rows.first);
+          : _rows.firstWhere(
+              (r) => r.selectedScheme != null,
+              orElse: () => _rows.first,
+            );
       final primarySchemeId = primaryRow?.selectedScheme?['id'];
       final primaryVoucherId = primaryRow?.validatedVoucherId;
 
@@ -1065,7 +1245,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           Map<String, dynamic>? detail;
           if (r.serviceCategory == 'oil_change') {
             final mappedOilItems = r.oilItems.map((item) {
-              final p = _oilProducts.firstWhere((o) => o['id'] == item.selectedOilProductId, orElse: () => <String, dynamic>{});
+              final p = _oilProducts.firstWhere(
+                (o) => o['id'] == item.selectedOilProductId,
+                orElse: () => <String, dynamic>{},
+              );
               return {
                 'category': item.selectedOilCategory ?? 'Engine Oil',
                 'oil_product_id': item.selectedOilProductId,
@@ -1078,7 +1261,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
             }).toList();
 
             final firstItem = r.oilItems.first;
-            final firstP = _oilProducts.firstWhere((item) => item['id'] == firstItem.selectedOilProductId, orElse: () => <String, dynamic>{});
+            final firstP = _oilProducts.firstWhere(
+              (item) => item['id'] == firstItem.selectedOilProductId,
+              orElse: () => <String, dynamic>{},
+            );
 
             detail = {
               'service_category': 'oil_change',
@@ -1091,7 +1277,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               'oil_filter_id': r.selectedOilFilterId,
               'oil_filter_price': r.oilFilterPrice,
               'odometer_at_service': int.tryParse(r.odometerController.text),
-              'next_oil_change_km': int.tryParse(r.nextOilChangeKmController.text),
+              'next_oil_change_km': int.tryParse(
+                r.nextOilChangeKmController.text,
+              ),
             };
           } else if (r.serviceCategory == 'tyre_change') {
             final mappedItems = r.tyreItems.map((item) {
@@ -1114,18 +1302,27 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 'quantity': item.quantity,
                 'unit_price': item.unitPrice,
                 'line_total': item.lineTotal,
-                'odometer_at_service': int.tryParse(item.odometerController.text),
-                'next_tyre_change_km': int.tryParse(item.nextChangeKmController.text),
+                'odometer_at_service': int.tryParse(
+                  item.odometerController.text,
+                ),
+                'next_tyre_change_km': int.tryParse(
+                  item.nextChangeKmController.text,
+                ),
               };
             }).toList();
 
             detail = {
               'service_category': 'tyre_change',
               'tyre_items': mappedItems,
-              'total_tyres_count': r.tyreItems.fold<int>(0, (sum, item) => sum + item.quantity),
+              'total_tyres_count': r.tyreItems.fold<int>(
+                0,
+                (sum, item) => sum + item.quantity,
+              ),
               'total_tyre_charge': r.tyreTotalCharge,
               'odometer_at_service': int.tryParse(r.odometerController.text),
-              'next_tyre_change_km': int.tryParse(r.nextTyreChangeKmController.text),
+              'next_tyre_change_km': int.tryParse(
+                r.nextTyreChangeKmController.text,
+              ),
             };
           } else if (r.isWheelAlignmentCategory) {
             detail = {
@@ -1134,9 +1331,14 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               'balancing_done': r.balancingDone,
               'alignment_notes': r.alignmentNotesController.text.trim(),
               'odometer_at_service': int.tryParse(r.odometerController.text),
-              'next_alignment_km': int.tryParse(r.nextAlignmentKmController.text),
+              'next_alignment_km': int.tryParse(
+                r.nextAlignmentKmController.text,
+              ),
             };
-          } else if (r.serviceCategory == 'smoke_test' || r.serviceCategory == 'pollution_test' || r.serviceName.toLowerCase().contains('smoke') || r.serviceName.toLowerCase().contains('pollution')) {
+          } else if (r.serviceCategory == 'smoke_test' ||
+              r.serviceCategory == 'pollution_test' ||
+              r.serviceName.toLowerCase().contains('smoke') ||
+              r.serviceName.toLowerCase().contains('pollution')) {
             detail = {
               'service_category': 'smoke_test',
               'smoke_test_period_months': r.smokeTestPeriodMonths,
@@ -1144,27 +1346,56 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           } else if (r.isDetailingCategory) {
             final wVal = int.tryParse(r.warrantyValueController.text.trim());
             final wUnit = r.warrantyUnit;
-            final unitText = wUnit == 'year' ? (wVal == 1 ? 'Year' : 'Years') : (wVal == 1 ? 'Month' : 'Months');
+            final unitText = wUnit == 'year'
+                ? (wVal == 1 ? 'Year' : 'Years')
+                : (wVal == 1 ? 'Month' : 'Months');
             detail = {
               'service_category': 'car_detailing',
               'warranty_value': wVal,
               'warranty_unit': wUnit,
               'warranty_text': wVal != null ? '$wVal $unitText' : '',
             };
+          } else if (r.isInsuranceCategory) {
+            final expiry =
+                r.insuranceExpiryDate ??
+                _selectedInvoiceDate.add(const Duration(days: 365));
+            detail = {
+              'service_category': 'auto_insurance',
+              'insurance_expiry_date':
+                  "${expiry.year}-${expiry.month.toString().padLeft(2, '0')}-${expiry.day.toString().padLeft(2, '0')}",
+            };
           }
           return {
-            'id': r.serviceId,
             'name': r.serviceName,
             'rate': r.subtotal,
             'discount': r.effectiveDiscount,
+            if (r.isInsuranceCategory) ...{
+              'service_category': 'auto_insurance',
+              'insurance_expiry_date':
+                  '${(r.insuranceExpiryDate ?? _selectedInvoiceDate.add(const Duration(days: 365))).year}-'
+                  '${(r.insuranceExpiryDate ?? _selectedInvoiceDate.add(const Duration(days: 365))).month.toString().padLeft(2, '0')}-'
+                  '${(r.insuranceExpiryDate ?? _selectedInvoiceDate.add(const Duration(days: 365))).day.toString().padLeft(2, '0')}',
+            },
             if (detail != null) 'service_detail': detail,
           };
         }),
         ..._selectedExtras.map((e) {
-          final qtyVal = double.tryParse((e['qtyController'] as TextEditingController?)?.text ?? '1') ?? 1.0;
-          final rateVal = double.tryParse((e['rateController'] as TextEditingController?)?.text ?? (e['priceController'] as TextEditingController?)?.text ?? '0') ?? 0.0;
-          final remarkVal = (e['remarkController'] as TextEditingController?)?.text.trim() ?? '';
-          
+          final qtyVal =
+              double.tryParse(
+                (e['qtyController'] as TextEditingController?)?.text ?? '1',
+              ) ??
+              1.0;
+          final rateVal =
+              double.tryParse(
+                (e['rateController'] as TextEditingController?)?.text ??
+                    (e['priceController'] as TextEditingController?)?.text ??
+                    '0',
+              ) ??
+              0.0;
+          final remarkVal =
+              (e['remarkController'] as TextEditingController?)?.text.trim() ??
+              '';
+
           String extraName = e['extra']['name'] as String;
           if (remarkVal.isNotEmpty) {
             extraName = '$extraName ($remarkVal)';
@@ -1181,39 +1412,92 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
         }),
       ];
 
-
       final tradingItemsPayload = _addTradingItems
-          ? _tradingRows.where((r) => r.selectedStockItem != null).map((r) => {
-                'id': r.selectedStockItem!['id'],
-                'item_name': r.selectedStockItem!['item_name'],
-                'rate': r.rate,
-                'qty': r.qty,
-                'discount': r.discount,
-                'net_taxable': r.netTaxable,
-                'is_operational': r.isOperational,
-              }).toList()
+          ? _tradingRows
+                .where((r) => r.selectedStockItem != null)
+                .map(
+                  (r) => {
+                    'id': r.selectedStockItem!['id'],
+                    'item_name': r.selectedStockItem!['item_name'],
+                    'rate': r.rate,
+                    'qty': r.qty,
+                    'discount': r.discount,
+                    'net_taxable': r.netTaxable,
+                    'is_operational': r.isOperational,
+                  },
+                )
+                .toList()
           : [];
 
-      final customRemindersPayload = _addCustomReminders
-          ? _reminderDaysControllers
+      final customRemindersPayload = <Map<String, dynamic>>[
+        if (_addCustomReminders)
+          ..._reminderDaysControllers
               .map((c) => int.tryParse(c.text.trim()) ?? 0)
               .where((days) => days > 0)
-              .map((days) => {'days_after': days})
-              .toList()
-          : [];
+              .map(
+                (days) => {
+                  'days_after': days,
+                  'template_name': 'servicesreminder',
+                },
+              ),
+        if (_rows.any((r) => r.isInsuranceCategory)) ...[
+          for (final r in _rows.where((row) => row.isInsuranceCategory)) ...[
+            ...() {
+              final expiry =
+                  r.insuranceExpiryDate ??
+                  _selectedInvoiceDate.add(const Duration(days: 365));
+              // Subtract directly from expiry — same as UI preview (line ~2473).
+              // The old approach used difference(_selectedInvoiceDate).inDays which
+              // truncated by 1 day because _selectedInvoiceDate = DateTime.now()
+              // has a time component (e.g. 12:55 PM) while expiry is at midnight.
+              final reminder1Date = expiry.subtract(const Duration(days: 20));
+              final reminder2Date = expiry.subtract(const Duration(days: 1));
+              final invoiceDateOnly = DateTime(
+                _selectedInvoiceDate.year,
+                _selectedInvoiceDate.month,
+                _selectedInvoiceDate.day,
+              );
+              final d1 = reminder1Date.difference(invoiceDateOnly).inDays;
+              final d2 = reminder2Date.difference(invoiceDateOnly).inDays;
+              String dateString(DateTime date) =>
+                  '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+              return [
+                if (d1 > 0)
+                  {
+                    'days_after': d1,
+                    'scheduled_date': dateString(reminder1Date),
+                    'insurance_expiry_date': dateString(expiry),
+                    'template_name': 'insurancereminder',
+                  },
+                if (d2 > 0 && d2 != d1)
+                  {
+                    'days_after': d2,
+                    'scheduled_date': dateString(reminder2Date),
+                    'insurance_expiry_date': dateString(expiry),
+                    'template_name': 'insurancereminder',
+                  },
+              ];
+            }(),
+          ],
+        ],
+      ];
 
       final invoiceData = {
         'customer_id': widget.customer['id'],
         'vehicle_id': widget.vehicle['id'],
-        'date': "${_selectedInvoiceDate.year}-${_selectedInvoiceDate.month.toString().padLeft(2, '0')}-${_selectedInvoiceDate.day.toString().padLeft(2, '0')}",
-        'invoice_date': "${_selectedInvoiceDate.year}-${_selectedInvoiceDate.month.toString().padLeft(2, '0')}-${_selectedInvoiceDate.day.toString().padLeft(2, '0')}",
+        'date':
+            "${_selectedInvoiceDate.year}-${_selectedInvoiceDate.month.toString().padLeft(2, '0')}-${_selectedInvoiceDate.day.toString().padLeft(2, '0')}",
+        'invoice_date':
+            "${_selectedInvoiceDate.year}-${_selectedInvoiceDate.month.toString().padLeft(2, '0')}-${_selectedInvoiceDate.day.toString().padLeft(2, '0')}",
         'subtotal': subtotal,
         'discount': totalDiscount,
         'tax_amount': taxAmount,
         'total': total,
         'amount_collected':
             double.tryParse(_amountCollectedController.text) ?? 0.0,
-        'payment_mode': _selectedSalesType == 'cash' ? _selectedPaymentMode : null,
+        'payment_mode': _selectedSalesType == 'cash'
+            ? _selectedPaymentMode
+            : null,
         'sales_type': _selectedSalesType,
         'services': services,
         'trading_items': tradingItemsPayload,
@@ -1223,13 +1507,13 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
         if (_addStaffs && _selectedStaffs.isNotEmpty)
           'staff_ids': _selectedStaffs.map((s) => s['id']).toList(),
         if (_addStaffs && _selectedStaffs.isNotEmpty)
-          'staffs': _selectedStaffs.map((s) => {'id': s['id'], 'name': s['name']}).toList(),
-        if (_addCustomReminders && customRemindersPayload.isNotEmpty)
+          'staffs': _selectedStaffs
+              .map((s) => {'id': s['id'], 'name': s['name']})
+              .toList(),
+        if (customRemindersPayload.isNotEmpty || _addReminders)
           'reminders_enabled': true,
-        if (_addCustomReminders && customRemindersPayload.isNotEmpty)
+        if (customRemindersPayload.isNotEmpty)
           'reminders': customRemindersPayload,
-        if (!_addCustomReminders && _addReminders)
-          'reminders_enabled': true,
         if (widget.bookingId != null) 'booking_id': widget.bookingId,
         if (primarySchemeId != null) 'scheme_id': primarySchemeId,
         if (primaryVoucherId != null) 'voucher_id': primaryVoucherId,
@@ -1237,7 +1521,8 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
 
       final response = widget.invoiceToEdit != null
           ? await ApiService.updateInvoice(
-              widget.invoiceToEdit!['id'] ?? widget.invoiceToEdit!['invoice_id'],
+              widget.invoiceToEdit!['id'] ??
+                  widget.invoiceToEdit!['invoice_id'],
               invoiceData,
               token,
             )
@@ -1315,22 +1600,38 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.directions_car, color: Color(0xFF000080)),
+                      const Icon(
+                        Icons.directions_car,
+                        color: Color(0xFF000080),
+                      ),
                       SizedBox(width: 8),
                       Text(
                         context.tr('Select Vehicle Wheel Type'),
-                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16.sp, color: Color(0xFF000080)),
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16.sp,
+                          color: Color(0xFF000080),
+                        ),
                       ),
                     ],
                   ),
                   SizedBox(height: 6),
                   Text(
                     "${context.tr('Vehicle')}: ${widget.vehicle['no'] ?? widget.vehicle['number'] ?? ''}",
-                    style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.grey.shade700),
+                    style: GoogleFonts.inter(
+                      fontSize: 13.sp,
+                      color: Colors.grey.shade700,
+                    ),
                   ),
                   SizedBox(height: 16),
                   RadioListTile<String>(
-                    title: Text(context.tr('Alloy Wheel (Alignment Vehicle)'), style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14.sp)),
+                    title: Text(
+                      context.tr('Alloy Wheel (Alignment Vehicle)'),
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14.sp,
+                      ),
+                    ),
                     value: 'alloy_wheel',
                     groupValue: selectedType,
                     activeColor: Color(0xFF000080),
@@ -1339,7 +1640,13 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     },
                   ),
                   RadioListTile<String>(
-                    title: Text(context.tr('Normal Wheel'), style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14.sp)),
+                    title: Text(
+                      context.tr('Normal Wheel'),
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14.sp,
+                      ),
+                    ),
                     value: 'normal_wheel',
                     groupValue: selectedType,
                     activeColor: Color(0xFF000080),
@@ -1361,13 +1668,17 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                               'customer_id': widget.customer['id'],
                               'name': widget.customer['name'],
                               'phone': widget.customer['phone'],
-                              'customer_type_id': widget.customer['customer_type_id'] ?? '',
+                              'customer_type_id':
+                                  widget.customer['customer_type_id'] ?? '',
                               'updated_vehicles': [
                                 {
                                   'id': widget.vehicle['id'],
-                                  'vehicle_number': widget.vehicle['no'] ?? widget.vehicle['number'] ?? '',
+                                  'vehicle_number':
+                                      widget.vehicle['no'] ??
+                                      widget.vehicle['number'] ??
+                                      '',
                                   'wheel_type': selectedType,
-                                }
+                                },
                               ],
                             }, token);
                           } catch (_) {}
@@ -1378,9 +1689,17 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                         backgroundColor: Color(0xFF000080),
                         foregroundColor: Colors.white,
                         padding: EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
-                      child: Text(context.tr('Save Wheel Type'), style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14.sp)),
+                      child: Text(
+                        context.tr('Save Wheel Type'),
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14.sp,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -1404,7 +1723,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
             title: Text(
               widget.invoiceToEdit != null
                   ? context.tr('Edit Invoice')
-                  : context.tr('Create Invoice'),
+                  : widget.isInsurance
+                      ? context.tr('Insurance Invoice')
+                      : context.tr('Create Invoice'),
               style: GoogleFonts.inter(fontWeight: FontWeight.w700),
             ),
             backgroundColor: Color(0xFF000080),
@@ -1438,8 +1759,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                       ],
                       _staffSelectionCard(),
                       const SizedBox(height: 16),
-                      _tradingItemsCard(),
-                      const SizedBox(height: 16),
+                      if (!widget.isInsurance) ...[
+                        _tradingItemsCard(),
+                        const SizedBox(height: 16),
+                      ],
                       if (_availableExtras.isNotEmpty) ...[
                         _extrasCard(),
                         const SizedBox(height: 16),
@@ -1452,12 +1775,14 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                       const SizedBox(height: 16),
                       _customRemindersCard(),
                       const SizedBox(height: 16),
-                      
+
                       if (_availableTaxes.isNotEmpty) ...[
                         _taxSelectionSection(),
                         const SizedBox(height: 16),
                       ],
-                      if (_rows.isNotEmpty || _tradingRows.isNotEmpty || _selectedExtras.isNotEmpty) ...[
+                      if (_rows.isNotEmpty ||
+                          _tradingRows.isNotEmpty ||
+                          _selectedExtras.isNotEmpty) ...[
                         _additionalDiscountCard(),
                         const SizedBox(height: 16),
                         _billSummary(),
@@ -1519,7 +1844,8 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     color: Color(0xFF1e293b),
                   ),
                 ),
-                if (widget.customer['branch'] != null && widget.customer['branch'].toString().isNotEmpty)
+                if (widget.customer['branch'] != null &&
+                    widget.customer['branch'].toString().isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 2, bottom: 2),
                     child: Text(
@@ -1533,8 +1859,17 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                   ),
                 Builder(
                   builder: (context) {
-                    final emission = (widget.vehicle['emission_standard'] ?? widget.vehicle['emission_standard_name'] ?? '').toString().trim();
-                    final vehicleInfo = (widget.vehicle['vehicle_type'] != null && widget.vehicle['vehicle_type'].toString().isNotEmpty)
+                    final emission =
+                        (widget.vehicle['emission_standard'] ??
+                                widget.vehicle['emission_standard_name'] ??
+                                '')
+                            .toString()
+                            .trim();
+                    final vehicleInfo =
+                        (widget.vehicle['vehicle_type'] != null &&
+                            widget.vehicle['vehicle_type']
+                                .toString()
+                                .isNotEmpty)
                         ? "${widget.vehicle['no'] ?? widget.vehicle['number'] ?? ''} · ${widget.vehicle['vehicle_type']} - ${widget.vehicle['type']}"
                         : "${widget.vehicle['no'] ?? widget.vehicle['number'] ?? ''} · ${widget.vehicle['type']}";
                     return Column(
@@ -1553,14 +1888,14 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                             "${context.tr('Emission')}: $emission",
                             style: GoogleFonts.inter(
                               fontSize: 12.sp,
-                              fontWeight:FontWeight.bold,
+                              fontWeight: FontWeight.bold,
                               color: Colors.grey.shade600,
                             ),
                           ),
                         ],
                       ],
                     );
-                  }
+                  },
                 ),
               ],
             ),
@@ -1641,7 +1976,11 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.edit_calendar_rounded, color: Color(0xFF000080), size: 20),
+                  const Icon(
+                    Icons.edit_calendar_rounded,
+                    color: Color(0xFF000080),
+                    size: 20,
+                  ),
                   const SizedBox(width: 10),
                   Text(
                     formattedDate,
@@ -1654,7 +1993,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFF000080).withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(6),
@@ -1677,7 +2019,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
 
   // ── Service multi-select card ─────────────────────────────────────────────
   Widget _serviceSelectionCard() {
-    final vehicleWheelType = (widget.vehicle['wheel_type'] ?? '').toString().toLowerCase().trim();
+    final vehicleWheelType = (widget.vehicle['wheel_type'] ?? '')
+        .toString()
+        .toLowerCase()
+        .trim();
 
     // Filter services based on priced status & wheel_type matching for wheel alignment
     final allPriced = _allServices.where((svc) {
@@ -1689,20 +2034,32 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
         if (vehicleWheelType == 'alloy_wheel') {
           return !name.contains('normal wheel');
         } else if (vehicleWheelType == 'normal_wheel') {
-          return !name.contains('alloy wheel') && !name.contains('alignment vehicle');
+          return !name.contains('alloy wheel') &&
+              !name.contains('alignment vehicle');
         }
       }
       return true;
     }).toList();
-    
+
     // Filter services based on category filter
     final pricedServices = allPriced.where((svc) {
       if (_selectedCategoryFilter == 'all') return true;
-      return svc['service_type_slug'] == _selectedCategoryFilter;
+      final sSlug = (svc['service_type_slug'] ?? '').toString().toLowerCase();
+      final filterSlug = _selectedCategoryFilter.toLowerCase();
+      if (sSlug == filterSlug) return true;
+      if (filterSlug.contains('insurance') &&
+          (sSlug.contains('insurance') ||
+              svc['name'].toString().toLowerCase().contains('insurance')))
+        return true;
+      return false;
     }).toList();
 
-    final isWheelTypeMissing = _selectedCategoryFilter == 'wheel_alignment' &&
-        (vehicleWheelType.isEmpty || vehicleWheelType == 'none' || (vehicleWheelType != 'alloy_wheel' && vehicleWheelType != 'normal_wheel'));
+    final isWheelTypeMissing =
+        _selectedCategoryFilter == 'wheel_alignment' &&
+        (vehicleWheelType.isEmpty ||
+            vehicleWheelType == 'none' ||
+            (vehicleWheelType != 'alloy_wheel' &&
+                vehicleWheelType != 'normal_wheel'));
 
     return _card(
       title: 'Select Service',
@@ -1722,20 +2079,28 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     orElse: () => null,
                   );
                   String name;
-                  if (matchingService != null && matchingService['service_type'] != null) {
+                  if (matchingService != null &&
+                      matchingService['service_type'] != null) {
                     name = matchingService['service_type'].toString();
                   } else {
-                    if (slug == 'washing') name = 'Washing';
-                    else if (slug == 'oil_change') name = 'Oil Change';
-                    else if (slug == 'tyre_change') name = 'Tyre Change';
-                    else if (slug == 'wheel_alignment') name = 'Alignment';
+                    if (slug == 'washing')
+                      name = 'Washing';
+                    else if (slug == 'oil_change')
+                      name = 'Oil Change';
+                    else if (slug == 'tyre_change')
+                      name = 'Tyre Change';
+                    else if (slug == 'wheel_alignment')
+                      name = 'Alignment';
                     else {
-                      name = slug.toString()
+                      name = slug
+                          .toString()
                           .replaceAll('_', ' ')
                           .split(' ')
-                          .map((word) => word.isNotEmpty
-                              ? '${word[0].toUpperCase()}${word.substring(1)}'
-                              : '')
+                          .map(
+                            (word) => word.isNotEmpty
+                                ? '${word[0].toUpperCase()}${word.substring(1)}'
+                                : '',
+                          )
                           .join(' ');
                     }
                   }
@@ -1758,20 +2123,33 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.warning_amber_rounded, color: Colors.amber.shade900, size: 22),
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        color: Colors.amber.shade900,
+                        size: 22,
+                      ),
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           context.tr('Wheel Type Not Selected'),
-                          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14.sp, color: Colors.amber.shade900),
+                          style: GoogleFonts.inter(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14.sp,
+                            color: Colors.amber.shade900,
+                          ),
                         ),
                       ),
                     ],
                   ),
                   SizedBox(height: 8),
                   Text(
-                    context.tr('Wheel type (Alloy Wheel / Normal Wheel) is not set for this vehicle. Please update the wheel type in customer vehicle section to view wheel alignment services.'),
-                    style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.amber.shade900),
+                    context.tr(
+                      'Wheel type (Alloy Wheel / Normal Wheel) is not set for this vehicle. Please update the wheel type in customer vehicle section to view wheel alignment services.',
+                    ),
+                    style: GoogleFonts.inter(
+                      fontSize: 12.sp,
+                      color: Colors.amber.shade900,
+                    ),
                   ),
                   SizedBox(height: 14),
                   SizedBox(
@@ -1779,11 +2157,19 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     child: ElevatedButton.icon(
                       onPressed: _showWheelTypePickerModal,
                       icon: Icon(Icons.edit, size: 16),
-                      label: Text(context.tr('Add / Select Wheel Type'), style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13.sp)),
+                      label: Text(
+                        context.tr('Add / Select Wheel Type'),
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13.sp,
+                        ),
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Color(0xFF000080),
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                         padding: EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
@@ -1803,126 +2189,121 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
             )
           else
             Column(
-                  children: pricedServices.map((svc) {
-                    final id = svc['id']?.toString() ?? '';
-                    final name = svc['name'] as String;
-                    final rate = (svc['rate'] as num).toDouble();
-                    final isSelected = _isServiceSelected(id);
-                    final hasPrice = svc['has_price'] == true;
+              children: pricedServices.map((svc) {
+                final id = svc['id']?.toString() ?? '';
+                final name = svc['name'] as String;
+                final rate = (svc['rate'] as num).toDouble();
+                final isSelected = _isServiceSelected(id);
+                final hasPrice = svc['has_price'] == true;
 
-                    return GestureDetector(
-                      onTap: hasPrice ? () => _toggleService(svc) : null,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 180),
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? Color(0xFF000080).withValues(alpha: 0.05)
-                              : Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
+                return GestureDetector(
+                  onTap: hasPrice ? () => _toggleService(svc) : null,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? Color(0xFF000080).withValues(alpha: 0.05)
+                          : Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isSelected
+                            ? const Color(0xFF000080)
+                            : Colors.grey.shade200,
+                        width: isSelected ? 2 : 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          width: 22,
+                          height: 22,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
                             color: isSelected
-                                ? const Color(0xFF000080)
-                                : Colors.grey.shade200,
-                            width: isSelected ? 2 : 1,
+                                ? Color(0xFF000080)
+                                : Colors.white,
+                            border: Border.all(
+                              color: isSelected
+                                  ? Color(0xFF000080)
+                                  : Colors.grey.shade400,
+                              width: 2,
+                            ),
+                          ),
+                          child: isSelected
+                              ? Icon(Icons.check, color: Colors.white, size: 14)
+                              : null,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                context.tr(name),
+                                style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14.sp,
+                                  color: hasPrice
+                                      ? Color(0xFF1e293b)
+                                      : Colors.grey,
+                                ),
+                              ),
+                              if (svc['service_type'] != null)
+                                Text(
+                                  context.tr(svc['service_type'] as String),
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11.sp,
+                                    color: Colors.grey.shade500,
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
-                        child: Row(
-                          children: [
-                            AnimatedContainer(
-                              duration: const Duration(milliseconds: 180),
-                              width: 22,
-                              height: 22,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: isSelected
-                                    ? Color(0xFF000080)
-                                    : Colors.white,
-                                border: Border.all(
-                                  color: isSelected
-                                      ? Color(0xFF000080)
-                                      : Colors.grey.shade400,
-                                  width: 2,
-                                ),
-                              ),
-                              child: isSelected
-                                  ? Icon(
-                                      Icons.check,
-                                      color: Colors.white,
-                                      size: 14,
-                                    )
-                                  : null,
+                        if (!hasPrice)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    context.tr(name),
-                                    style: GoogleFonts.inter(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 14.sp,
-                                      color: hasPrice
-                                          ? Color(0xFF1e293b)
-                                          : Colors.grey,
-                                    ),
-                                  ),
-                                  if (svc['service_type'] != null)
-                                    Text(
-                                      context.tr(svc['service_type'] as String),
-                                      style: GoogleFonts.inter(
-                                        fontSize: 11.sp,
-                                        color: Colors.grey.shade500,
-                                      ),
-                                    ),
-                                ],
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade50,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: Colors.orange.shade200),
+                            ),
+                            child: Text(
+                              context.tr('No price'),
+                              style: GoogleFonts.inter(
+                                fontSize: 10.sp,
+                                color: Colors.orange.shade700,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                            if (!hasPrice)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.orange.shade50,
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: Colors.orange.shade200),
-                                ),
-                                child: Text(
-                                  context.tr('No price'),
-                                  style: GoogleFonts.inter(
-                                    fontSize: 10.sp,
-                                    color: Colors.orange.shade700,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              )
-                            else
-                              Text(
-                                '$currencySymbol${rate.toStringAsFixed(2)}',
-                                style: GoogleFonts.inter(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 15.sp,
-                                  color: Color(0xFF000080),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
+                          )
+                        else
+                          Text(
+                            '$currencySymbol${rate.toStringAsFixed(2)}',
+                            style: GoogleFonts.inter(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15.sp,
+                              color: Color(0xFF000080),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
         ],
       ),
     );
   }
-
 
   // ── Per-service row card (scheme + discount) ──────────────────────────────
   Widget _serviceRowCard(_ServiceRow row) {
@@ -1952,13 +2333,18 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline,
-                      size: 16, color: Colors.grey.shade500),
+                  Icon(
+                    Icons.info_outline,
+                    size: 16,
+                    color: Colors.grey.shade500,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     context.tr('No schemes available for this service'),
                     style: GoogleFonts.inter(
-                        color: Colors.grey.shade600, fontSize: 12.sp),
+                      color: Colors.grey.shade600,
+                      fontSize: 12.sp,
+                    ),
                   ),
                 ],
               ),
@@ -1973,8 +2359,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               ),
             ),
             SizedBox(height: 8),
-            ...row.availableSchemes.map((scheme) =>
-                _schemeChip(row, scheme as Map<String, dynamic>)),
+            ...row.availableSchemes.map(
+              (scheme) => _schemeChip(row, scheme as Map<String, dynamic>),
+            ),
           ],
 
           // Category-specific details (oil/tyre/alignment details)
@@ -2000,7 +2387,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
             decoration: BoxDecoration(
               color: Color(0xFF000080).withValues(alpha: 0.04),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Color(0xFF000080).withValues(alpha: 0.12)),
+              border: Border.all(
+                color: Color(0xFF000080).withValues(alpha: 0.12),
+              ),
             ),
             child: Column(
               children: [
@@ -2081,15 +2470,17 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
             alignment: Alignment.centerRight,
             child: TextButton.icon(
               onPressed: () => _toggleService(row.service),
-              icon: Icon(Icons.remove_circle_outline,
-                  color: Colors.red, size: 16),
+              icon: Icon(
+                Icons.remove_circle_outline,
+                color: Colors.red,
+                size: 16,
+              ),
               label: Text(
                 context.tr('Remove Service'),
                 style: GoogleFonts.inter(color: Colors.red, fontSize: 12.sp),
               ),
               style: TextButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               ),
             ),
           ),
@@ -2099,7 +2490,274 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
   }
 
   Widget _categoryDetailSection(_ServiceRow row) {
-    if (row.serviceCategory == 'oil_change') {
+    if (row.isInsuranceCategory) {
+      if (!row.isInsuranceDateInitialized) {
+        row.insuranceExpiryDate = _selectedInvoiceDate.add(
+          const Duration(days: 365),
+        );
+        row.isInsuranceDateInitialized = true;
+      }
+      final expiry =
+          row.insuranceExpiryDate ??
+          _selectedInvoiceDate.add(const Duration(days: 365));
+      final reminder1 = expiry.subtract(const Duration(days: 20));
+      final reminder2 = expiry.subtract(const Duration(days: 1));
+
+      String formatD(DateTime d) {
+        final monthNames = [
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec',
+        ];
+        return "${monthNames[d.month - 1]}-${d.day.toString().padLeft(2, '0')}-${d.year}";
+      }
+
+      return Container(
+        margin: const EdgeInsets.only(top: 12),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.blue.shade50.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.blue.shade200),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.edit_note, color: Colors.blue.shade800, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  context.tr('Service Price'),
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12.sp,
+                    color: Colors.blue.shade900,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: row.customRateController,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF000080),
+                fontSize: 15.sp,
+              ),
+              decoration: InputDecoration(
+                labelText: context.tr('Service Price'),
+                hintText: 'Enter price',
+                isDense: true,
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Color(0xFF000080)),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+              ),
+              onChanged: (_) {
+                _syncAmountCollected();
+                _updateUi();
+              },
+            ),
+            const SizedBox(height: 14),
+
+            Row(
+              children: [
+                const Icon(
+                  Icons.shield_outlined,
+                  color: Color(0xFF000080),
+                  size: 22,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        context.tr('Insurance Expiry Date'),
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13.sp,
+                          color: const Color(0xFF000080),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                InkWell(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: expiry,
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime(2035),
+                    );
+                    if (picked != null) {
+                      setState(() {
+                        row.insuranceExpiryDate = picked;
+                        row.isInsuranceDateInitialized = true;
+                      });
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF000080),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          formatD(expiry),
+                          style: GoogleFonts.inter(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12.sp,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        const Icon(
+                          Icons.calendar_month,
+                          color: Colors.white,
+                          size: 16,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade100),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.notifications_active,
+                        color: Colors.blue.shade700,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        context.tr('Auto Scheduled Reminders (2 Reminders)'),
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 11.5.sp,
+                          color: Colors.blue.shade900,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade100,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          '1',
+                          style: GoogleFonts.inter(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10.sp,
+                            color: Colors.blue.shade900,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '1. ${formatD(reminder1)} (${expiry.difference(reminder1).inDays} days before expiry)',
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12.sp,
+                          color: Colors.grey.shade800,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade100,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          '2',
+                          style: GoogleFonts.inter(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10.sp,
+                            color: Colors.blue.shade900,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '2. ${formatD(reminder2)} (${expiry.difference(reminder2).inDays} day before expiry)',
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12.sp,
+                          color: Colors.grey.shade800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    } else if (row.serviceCategory == 'oil_change') {
       return Container(
         margin: const EdgeInsets.only(top: 12),
         padding: const EdgeInsets.all(12),
@@ -2117,25 +2775,47 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 const SizedBox(width: 8),
                 Text(
                   context.tr('Service Price'),
-                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12.sp, color: const Color(0xFF000080)),
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12.sp,
+                    color: const Color(0xFF000080),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 10),
             TextField(
               controller: row.customRateController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: const Color(0xFF000080), fontSize: 15.sp),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF000080),
+                fontSize: 15.sp,
+              ),
               decoration: InputDecoration(
                 labelText: context.tr('Service Price'),
                 hintText: 'Enter price',
                 isDense: true,
                 filled: true,
                 fillColor: Colors.white,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF000080))),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Color(0xFF000080)),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
               ),
               onChanged: (_) {
                 _syncAmountCollected();
@@ -2145,11 +2825,19 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
             const SizedBox(height: 14),
             Row(
               children: [
-                Icon(Icons.oil_barrel, color: const Color(0xFF000080), size: 18),
+                Icon(
+                  Icons.oil_barrel,
+                  color: const Color(0xFF000080),
+                  size: 18,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   context.tr('Oil Change Odometer Details'),
-                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13.sp, color: const Color(0xFF000080)),
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13.sp,
+                    color: const Color(0xFF000080),
+                  ),
                 ),
               ],
             ),
@@ -2162,14 +2850,19 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                   child: TextField(
                     controller: row.odometerController,
                     keyboardType: TextInputType.number,
-                    style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.w600),
+                    style: GoogleFonts.inter(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
                     decoration: InputDecoration(
                       labelText: '${context.tr("Current Odometer (KM)")} *',
                       hintText: 'e.g. 10000',
                       isDense: true,
                       filled: true,
                       fillColor: Colors.white,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                   ),
                 ),
@@ -2178,14 +2871,20 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                   child: TextField(
                     controller: row.nextOilChangeKmController,
                     keyboardType: TextInputType.number,
-                    style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.bold, color: const Color(0xFF000080)),
+                    style: GoogleFonts.inter(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF000080),
+                    ),
                     decoration: InputDecoration(
                       labelText: '${context.tr("Next Oil Change (KM)")} *',
                       hintText: 'e.g. 15000',
                       isDense: true,
                       filled: true,
                       fillColor: Colors.white,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                   ),
                 ),
@@ -2215,13 +2914,21 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     SizedBox(width: 8),
                     Text(
                       context.tr('Tyre Details'),
-                      style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13.sp, color: Colors.blue.shade900),
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13.sp,
+                        color: Colors.blue.shade900,
+                      ),
                     ),
                   ],
                 ),
                 Text(
                   '${context.tr("Total Charge")}: $currencySymbol${row.tyreTotalCharge.toStringAsFixed(2)}',
-                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13.sp, color: Colors.green.shade800),
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13.sp,
+                    color: Colors.green.shade800,
+                  ),
                 ),
               ],
             ),
@@ -2233,8 +2940,11 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 builder: (context) {
                   final item = row.tyreItems[i];
                   final filteredTyres = _tyres.where((t) {
-                    if (item.selectedBrandId == null || item.selectedBrandId!.isEmpty) return true;
-                    return t['tyre_brand_id']?.toString() == item.selectedBrandId;
+                    if (item.selectedBrandId == null ||
+                        item.selectedBrandId!.isEmpty)
+                      return true;
+                    return t['tyre_brand_id']?.toString() ==
+                        item.selectedBrandId;
                   }).toList();
 
                   return Container(
@@ -2245,7 +2955,11 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: Colors.blue.shade100),
                       boxShadow: [
-                        BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4, offset: Offset(0, 1)),
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.02),
+                          blurRadius: 4,
+                          offset: Offset(0, 1),
+                        ),
                       ],
                     ),
                     child: Column(
@@ -2256,13 +2970,21 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                           children: [
                             Text(
                               '${context.tr("Tyre Item")} #${i + 1}',
-                              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12.sp, color: Colors.blue.shade800),
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12.sp,
+                                color: Colors.blue.shade800,
+                              ),
                             ),
                             if (row.tyreItems.length > 1)
                               IconButton(
                                 constraints: BoxConstraints(),
                                 padding: EdgeInsets.zero,
-                                icon: Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                                icon: Icon(
+                                  Icons.delete_outline,
+                                  color: Colors.red,
+                                  size: 20,
+                                ),
                                 onPressed: () {
                                   item.dispose();
                                   row.tyreItems.removeAt(i);
@@ -2285,17 +3007,31 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                                   labelText: context.tr('Select Brand *'),
                                   labelStyle: TextStyle(fontSize: 12.sp),
                                   border: OutlineInputBorder(),
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
                                 ),
                                 items: [
                                   DropdownMenuItem<String>(
                                     value: null,
-                                    child: Text(context.tr('-- Select Brand --'), style: TextStyle(fontSize: 12.sp)),
+                                    child: Text(
+                                      context.tr('-- Select Brand --'),
+                                      style: TextStyle(fontSize: 12.sp),
+                                    ),
                                   ),
-                                  ..._tyreBrands.map<DropdownMenuItem<String>>((b) {
+                                  ..._tyreBrands.map<DropdownMenuItem<String>>((
+                                    b,
+                                  ) {
                                     return DropdownMenuItem<String>(
                                       value: b['id']?.toString(),
-                                      child: Text(b['brand'] as String, style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold)),
+                                      child: Text(
+                                        b['brand'] as String,
+                                        style: TextStyle(
+                                          fontSize: 12.sp,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                                     );
                                   }),
                                 ],
@@ -2318,24 +3054,37 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                                   labelText: context.tr('Select Size *'),
                                   labelStyle: TextStyle(fontSize: 12.sp),
                                   border: OutlineInputBorder(),
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
                                 ),
                                 items: [
                                   DropdownMenuItem<String>(
                                     value: null,
-                                    child: Text(context.tr('-- Select Size --'), style: TextStyle(fontSize: 12.sp)),
+                                    child: Text(
+                                      context.tr('-- Select Size --'),
+                                      style: TextStyle(fontSize: 12.sp),
+                                    ),
                                   ),
-                                  ...filteredTyres.map<DropdownMenuItem<String>>((t) {
+                                  ...filteredTyres.map<
+                                    DropdownMenuItem<String>
+                                  >((t) {
                                     final sizeStr = t['size']?.toString() ?? '';
-                                    final priceVal = (t['price'] as num?)?.toDouble() ?? 0.0;
+                                    final priceVal =
+                                        (t['price'] as num?)?.toDouble() ?? 0.0;
                                     final stockVal = t['stock_qty'] ?? 0;
-                                    final label = '$sizeStr ($currencySymbol${priceVal.toStringAsFixed(0)} · $stockVal in stock)';
+                                    final label =
+                                        '$sizeStr ($currencySymbol${priceVal.toStringAsFixed(0)} · $stockVal in stock)';
 
                                     return DropdownMenuItem<String>(
                                       value: t['id']?.toString(),
                                       child: Text(
                                         label,
-                                        style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600),
+                                        style: TextStyle(
+                                          fontSize: 11.sp,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     );
@@ -2344,11 +3093,22 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                                 onChanged: (val) {
                                   item.selectedTyreId = val;
                                   if (val != null) {
-                                    final selectedTyre = filteredTyres.firstWhere((t) => t['id'] == val, orElse: () => {});
+                                    final selectedTyre = filteredTyres
+                                        .firstWhere(
+                                          (t) => t['id'] == val,
+                                          orElse: () => {},
+                                        );
                                     if (selectedTyre.isNotEmpty) {
-                                      item.unitPrice = (selectedTyre['price'] as num?)?.toDouble() ?? 0.0;
-                                      item.runningKm = selectedTyre['running_km'] as int? ?? 40000;
-                                      item.sizeController.text = selectedTyre['size']?.toString() ?? '';
+                                      item.unitPrice =
+                                          (selectedTyre['price'] as num?)
+                                              ?.toDouble() ??
+                                          0.0;
+                                      item.runningKm =
+                                          selectedTyre['running_km'] as int? ??
+                                          40000;
+                                      item.sizeController.text =
+                                          selectedTyre['size']?.toString() ??
+                                          '';
                                     }
                                   }
                                   _syncAmountCollected();
@@ -2372,7 +3132,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                                   labelText: context.tr('Qty *'),
                                   labelStyle: TextStyle(fontSize: 12.sp),
                                   border: OutlineInputBorder(),
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
                                 ),
                                 onChanged: (_) {
                                   _syncAmountCollected();
@@ -2383,20 +3146,35 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.grey.shade100,
                                   borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: Colors.grey.shade300),
+                                  border: Border.all(
+                                    color: Colors.grey.shade300,
+                                  ),
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(context.tr('Price (Autofill)'), style: TextStyle(fontSize: 10.sp, color: Colors.grey.shade600)),
+                                    Text(
+                                      context.tr('Price (Autofill)'),
+                                      style: TextStyle(
+                                        fontSize: 10.sp,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ),
                                     SizedBox(height: 2),
                                     Text(
                                       '$currencySymbol${item.unitPrice.toStringAsFixed(2)}',
-                                      style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.bold, color: Color(0xFF1e293b)),
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13.sp,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF1e293b),
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -2405,20 +3183,35 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.blue.shade50,
                                   borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: Colors.blue.shade200),
+                                  border: Border.all(
+                                    color: Colors.blue.shade200,
+                                  ),
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(context.tr('Line Total'), style: TextStyle(fontSize: 10.sp, color: Colors.blue.shade700)),
+                                    Text(
+                                      context.tr('Line Total'),
+                                      style: TextStyle(
+                                        fontSize: 10.sp,
+                                        color: Colors.blue.shade700,
+                                      ),
+                                    ),
                                     SizedBox(height: 2),
                                     Text(
                                       '$currencySymbol${item.lineTotal.toStringAsFixed(2)}',
-                                      style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13.sp,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.blue.shade900,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -2439,7 +3232,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                                   labelText: context.tr('Odometer (KM)'),
                                   labelStyle: TextStyle(fontSize: 12.sp),
                                   border: OutlineInputBorder(),
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
                                 ),
                               ),
                             ),
@@ -2452,7 +3248,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                                   labelText: context.tr('Next Change (KM)'),
                                   labelStyle: TextStyle(fontSize: 12.sp),
                                   border: OutlineInputBorder(),
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
                                 ),
                               ),
                             ),
@@ -2473,11 +3272,19 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 _updateUi();
               },
               icon: Icon(Icons.add_circle_outline, size: 18),
-              label: Text(context.tr('+ Add Another Tyre Brand / Size'), style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12.sp)),
+              label: Text(
+                context.tr('+ Add Another Tyre Brand / Size'),
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12.sp,
+                ),
+              ),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Color(0xFF000080),
                 side: BorderSide(color: Color(0xFF000080)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
             ),
           ],
@@ -2501,25 +3308,47 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 const SizedBox(width: 8),
                 Text(
                   context.tr('Service Price'),
-                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12.sp, color: Colors.indigo.shade900),
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12.sp,
+                    color: Colors.indigo.shade900,
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 10),
             TextField(
               controller: row.customRateController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: const Color(0xFF000080), fontSize: 15.sp),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF000080),
+                fontSize: 15.sp,
+              ),
               decoration: InputDecoration(
                 labelText: context.tr('Service Price'),
                 hintText: 'Enter price',
                 isDense: true,
                 filled: true,
                 fillColor: Colors.white,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF000080))),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Color(0xFF000080)),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
               ),
               onChanged: (_) {
                 _syncAmountCollected();
@@ -2530,11 +3359,19 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               const SizedBox(height: 14),
               Row(
                 children: [
-                  Icon(Icons.tune_rounded, color: Colors.indigo.shade800, size: 20),
+                  Icon(
+                    Icons.tune_rounded,
+                    color: Colors.indigo.shade800,
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     context.tr('Wheel Alignment & Balancing Details'),
-                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13.sp, color: Colors.indigo.shade900),
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13.sp,
+                      color: Colors.indigo.shade900,
+                    ),
                   ),
                 ],
               ),
@@ -2545,14 +3382,19 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     child: TextField(
                       controller: row.odometerController,
                       keyboardType: TextInputType.number,
-                      style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.w600),
+                      style: GoogleFonts.inter(
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
                       decoration: InputDecoration(
                         labelText: '${context.tr("Current Odometer (KM)")} *',
                         hintText: 'e.g. 10000',
                         isDense: true,
                         filled: true,
                         fillColor: Colors.white,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                     ),
                   ),
@@ -2561,14 +3403,20 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     child: TextField(
                       controller: row.nextAlignmentKmController,
                       keyboardType: TextInputType.number,
-                      style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.bold, color: Colors.indigo.shade900),
+                      style: GoogleFonts.inter(
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.indigo.shade900,
+                      ),
                       decoration: InputDecoration(
                         labelText: '${context.tr("Next Alignment Due (KM)")} *',
                         hintText: 'e.g. 15000',
                         isDense: true,
                         filled: true,
                         fillColor: Colors.white,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                     ),
                   ),
@@ -2578,24 +3426,48 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           ],
         ),
       );
-    } else if (row.serviceCategory == 'smoke_test' || row.serviceCategory == 'pollution_test' || row.serviceName.toLowerCase().contains('smoke') || row.serviceName.toLowerCase().contains('pollution')) {
+    } else if (row.serviceCategory == 'smoke_test' ||
+        row.serviceCategory == 'pollution_test' ||
+        row.serviceName.toLowerCase().contains('smoke') ||
+        row.serviceName.toLowerCase().contains('pollution')) {
       final modelName = (widget.vehicle['type'] ?? '').toString().toUpperCase();
-      final emission = (widget.vehicle['emission_standard'] ?? '').toString().toUpperCase();
+      final emission = (widget.vehicle['emission_standard'] ?? '')
+          .toString()
+          .toUpperCase();
       final combined = '$modelName $emission';
-      
-      final bs3Keywords = ['BS-1', 'BS-2', 'BS-3', 'BS 1', 'BS 2', 'BS 3', 'BS1', 'BS2', 'BS3', 'BS -1', 'BS -2', 'BS -3'];
+
+      final bs3Keywords = [
+        'BS-1',
+        'BS-2',
+        'BS-3',
+        'BS 1',
+        'BS 2',
+        'BS 3',
+        'BS1',
+        'BS2',
+        'BS3',
+        'BS -1',
+        'BS -2',
+        'BS -3',
+      ];
       if (!row.isSmokeTestPeriodInitialized) {
-        final defaultValidity = bs3Keywords.any((k) => combined.contains(k)) ? 6 : 12;
+        final defaultValidity = bs3Keywords.any((k) => combined.contains(k))
+            ? 6
+            : 12;
         row.smokeTestPeriodMonths = defaultValidity;
         row.isSmokeTestPeriodInitialized = true;
       }
       final validityMonths = row.smokeTestPeriodMonths;
 
-      final nextDate = DateTime.now().add(Duration(days: validityMonths == 6 ? 180 : 365));
-      final nextDateStr = "${nextDate.day.toString().padLeft(2, '0')}-${nextDate.month.toString().padLeft(2, '0')}-${nextDate.year}";
+      final nextDate = DateTime.now().add(
+        Duration(days: validityMonths == 6 ? 180 : 365),
+      );
+      final nextDateStr =
+          "${nextDate.day.toString().padLeft(2, '0')}-${nextDate.month.toString().padLeft(2, '0')}-${nextDate.year}";
       final reminder1Date = nextDate.subtract(const Duration(days: 15));
       final reminder2Date = nextDate.subtract(const Duration(days: 3));
-      String fmtDate(DateTime d) => "${d.day.toString().padLeft(2, '0')}-${d.month.toString().padLeft(2, '0')}-${d.year}";
+      String fmtDate(DateTime d) =>
+          "${d.day.toString().padLeft(2, '0')}-${d.month.toString().padLeft(2, '0')}-${d.year}";
 
       return Container(
         margin: EdgeInsets.only(top: 12),
@@ -2614,25 +3486,47 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 const SizedBox(width: 8),
                 Text(
                   context.tr('Service Price'),
-                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12.sp, color: Colors.purple.shade900),
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12.sp,
+                    color: Colors.purple.shade900,
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 10),
             TextField(
               controller: row.customRateController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: const Color(0xFF000080), fontSize: 15.sp),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF000080),
+                fontSize: 15.sp,
+              ),
               decoration: InputDecoration(
                 labelText: context.tr('Service Price'),
                 hintText: 'Enter price',
                 isDense: true,
                 filled: true,
                 fillColor: Colors.white,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF000080))),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Color(0xFF000080)),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
               ),
               onChanged: (_) {
                 _syncAmountCollected();
@@ -2642,7 +3536,11 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
             const SizedBox(height: 14),
             Row(
               children: [
-                const Icon(Icons.verified_outlined, color: Colors.purple, size: 22),
+                const Icon(
+                  Icons.verified_outlined,
+                  color: Colors.purple,
+                  size: 22,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -2650,13 +3548,20 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     children: [
                       Text(
                         context.tr('Smoke Test Renewal Validity'),
-                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13.sp, color: Colors.purple.shade900),
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13.sp,
+                          color: Colors.purple.shade900,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.purple.shade800,
                     borderRadius: BorderRadius.circular(20),
@@ -2665,16 +3570,29 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     child: DropdownButton<int>(
                       value: row.smokeTestPeriodMonths == 6 ? 6 : 12,
                       dropdownColor: Colors.purple.shade900,
-                      icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
-                      style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13.sp, color: Colors.white),
+                      icon: const Icon(
+                        Icons.arrow_drop_down,
+                        color: Colors.white,
+                      ),
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13.sp,
+                        color: Colors.white,
+                      ),
                       items: [
                         DropdownMenuItem<int>(
                           value: 6,
-                          child: Text(context.tr('6 Months'), style: const TextStyle(color: Colors.white)),
+                          child: Text(
+                            context.tr('6 Months'),
+                            style: const TextStyle(color: Colors.white),
+                          ),
                         ),
                         DropdownMenuItem<int>(
                           value: 12,
-                          child: Text(context.tr('1 Year'), style: const TextStyle(color: Colors.white)),
+                          child: Text(
+                            context.tr('1 Year'),
+                            style: const TextStyle(color: Colors.white),
+                          ),
                         ),
                       ],
                       onChanged: (val) {
@@ -2702,16 +3620,27 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.calendar_today, size: 14, color: Colors.purple.shade700),
+                  Icon(
+                    Icons.calendar_today,
+                    size: 14,
+                    color: Colors.purple.shade700,
+                  ),
                   SizedBox(width: 8),
                   Text(
                     "${context.tr('Next Renewal Date')}: ",
-                    style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade700),
+                    style: GoogleFonts.inter(
+                      fontSize: 12.sp,
+                      color: Colors.grey.shade700,
+                    ),
                   ),
                   Text(
                     nextDateStr,
-                    style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.bold, color: Colors.purple.shade900),
-                  ),  
+                    style: GoogleFonts.inter(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.purple.shade900,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -2727,20 +3656,34 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.notifications_active_outlined, size: 14, color: Colors.purple.shade700),
+                  Icon(
+                    Icons.notifications_active_outlined,
+                    size: 14,
+                    color: Colors.purple.shade700,
+                  ),
                   SizedBox(width: 8),
                   Text(
                     "${context.tr('1st Reminder')}: ",
-                    style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade700),
+                    style: GoogleFonts.inter(
+                      fontSize: 12.sp,
+                      color: Colors.grey.shade700,
+                    ),
                   ),
                   Text(
                     fmtDate(reminder1Date),
-                    style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.bold, color: Colors.purple.shade700),
+                    style: GoogleFonts.inter(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.purple.shade700,
+                    ),
                   ),
                   SizedBox(width: 6),
                   Text(
                     context.tr('(15 days before)'),
-                    style: GoogleFonts.inter(fontSize: 10.sp, color: Colors.purple.shade900),
+                    style: GoogleFonts.inter(
+                      fontSize: 10.sp,
+                      color: Colors.purple.shade900,
+                    ),
                   ),
                 ],
               ),
@@ -2757,20 +3700,34 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.notifications_active, size: 14, color: Colors.purple.shade700),
+                  Icon(
+                    Icons.notifications_active,
+                    size: 14,
+                    color: Colors.purple.shade700,
+                  ),
                   SizedBox(width: 8),
                   Text(
                     "${context.tr('2nd Reminder')}: ",
-                    style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.purple.shade700),
+                    style: GoogleFonts.inter(
+                      fontSize: 12.sp,
+                      color: Colors.purple.shade700,
+                    ),
                   ),
                   Text(
                     fmtDate(reminder2Date),
-                    style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.bold, color: Colors.purple.shade700),
+                    style: GoogleFonts.inter(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.purple.shade700,
+                    ),
                   ),
                   SizedBox(width: 6),
                   Text(
                     context.tr('(3 days before)'),
-                    style: GoogleFonts.inter(fontSize: 10.sp, color: Colors.purple.shade900),
+                    style: GoogleFonts.inter(
+                      fontSize: 10.sp,
+                      color: Colors.purple.shade900,
+                    ),
                   ),
                 ],
               ),
@@ -2796,7 +3753,11 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 SizedBox(width: 8),
                 Text(
                   context.tr('Service Price'),
-                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12.sp, color: Colors.blue.shade900),
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12.sp,
+                    color: Colors.blue.shade900,
+                  ),
                 ),
               ],
             ),
@@ -2804,17 +3765,33 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
             TextField(
               controller: row.customRateController,
               keyboardType: TextInputType.numberWithOptions(decimal: true),
-              style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Color(0xFF000080), fontSize: 15.sp),
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF000080),
+                fontSize: 15.sp,
+              ),
               decoration: InputDecoration(
                 labelText: context.tr('Service Price'),
                 hintText: 'Enter price',
                 isDense: true,
                 filled: true,
                 fillColor: Colors.white,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Color(0xFF000080))),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Color(0xFF000080)),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
               ),
               onChanged: (_) {
                 _syncAmountCollected();
@@ -2824,11 +3801,19 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
             const SizedBox(height: 14),
             Row(
               children: [
-                Icon(Icons.shield_outlined, color: Colors.blue.shade800, size: 20),
+                Icon(
+                  Icons.shield_outlined,
+                  color: Colors.blue.shade800,
+                  size: 20,
+                ),
                 SizedBox(width: 8),
                 Text(
                   context.tr('Warranty Details'),
-                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13.sp, color: Colors.blue.shade900),
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13.sp,
+                    color: Colors.blue.shade900,
+                  ),
                 ),
               ],
             ),
@@ -2847,10 +3832,22 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                       isDense: true,
                       filled: true,
                       fillColor: Colors.white,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
-                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
-                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Color(0xFF000080))),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Color(0xFF000080)),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
                     ),
                     onChanged: (_) => _updateUi(),
                   ),
@@ -2861,10 +3858,22 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                   child: Row(
                     children: [
                       ChoiceChip(
-                        label: Text(context.tr('Month'), style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: row.warrantyUnit == 'month' ? FontWeight.bold : FontWeight.normal)),
+                        label: Text(
+                          context.tr('Month'),
+                          style: GoogleFonts.inter(
+                            fontSize: 12.sp,
+                            fontWeight: row.warrantyUnit == 'month'
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                          ),
+                        ),
                         selected: row.warrantyUnit == 'month',
                         selectedColor: Color(0xFF000080),
-                        labelStyle: TextStyle(color: row.warrantyUnit == 'month' ? Colors.white : Colors.black87),
+                        labelStyle: TextStyle(
+                          color: row.warrantyUnit == 'month'
+                              ? Colors.white
+                              : Colors.black87,
+                        ),
                         onSelected: (sel) {
                           if (sel) {
                             row.warrantyUnit = 'month';
@@ -2874,10 +3883,22 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                       ),
                       SizedBox(width: 6),
                       ChoiceChip(
-                        label: Text(context.tr('Year'), style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: row.warrantyUnit == 'year' ? FontWeight.bold : FontWeight.normal)),
+                        label: Text(
+                          context.tr('Year'),
+                          style: GoogleFonts.inter(
+                            fontSize: 12.sp,
+                            fontWeight: row.warrantyUnit == 'year'
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                          ),
+                        ),
                         selected: row.warrantyUnit == 'year',
                         selectedColor: Color(0xFF000080),
-                        labelStyle: TextStyle(color: row.warrantyUnit == 'year' ? Colors.white : Colors.black87),
+                        labelStyle: TextStyle(
+                          color: row.warrantyUnit == 'year'
+                              ? Colors.white
+                              : Colors.black87,
+                        ),
                         onSelected: (sel) {
                           if (sel) {
                             row.warrantyUnit = 'year';
@@ -2894,8 +3915,12 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               SizedBox(height: 10),
               Builder(
                 builder: (context) {
-                  final val = int.tryParse(row.warrantyValueController.text.trim()) ?? 0;
-                  final unitStr = row.warrantyUnit == 'year' ? (val == 1 ? 'Year' : 'Years') : (val == 1 ? 'Month' : 'Months');
+                  final val =
+                      int.tryParse(row.warrantyValueController.text.trim()) ??
+                      0;
+                  final unitStr = row.warrantyUnit == 'year'
+                      ? (val == 1 ? 'Year' : 'Years')
+                      : (val == 1 ? 'Month' : 'Months');
                   return Container(
                     padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
@@ -2906,11 +3931,19 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.verified, size: 14, color: Colors.blue),
+                        const Icon(
+                          Icons.verified,
+                          size: 14,
+                          color: Colors.blue,
+                        ),
                         SizedBox(width: 6),
                         Text(
                           "${context.tr('Warranty')}: $val ${context.tr(unitStr)}",
-                          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12.sp, color: Colors.blue.shade900),
+                          style: GoogleFonts.inter(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12.sp,
+                            color: Colors.blue.shade900,
+                          ),
                         ),
                       ],
                     ),
@@ -2921,7 +3954,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           ],
         ),
       );
-    } else if (row.serviceCategory == 'battery_service' || row.serviceCategory == 'battery_change' || row.serviceCategory == 'battery' || row.serviceName.toLowerCase().contains('battery')) {
+    } else if (row.serviceCategory == 'battery_service' ||
+        row.serviceCategory == 'battery_change' ||
+        row.serviceCategory == 'battery' ||
+        row.serviceName.toLowerCase().contains('battery')) {
       return Container(
         margin: EdgeInsets.only(top: 12),
         padding: EdgeInsets.all(12),
@@ -2938,11 +3974,19 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.battery_charging_full, color: Color(0xFF000080), size: 20),
+                    const Icon(
+                      Icons.battery_charging_full,
+                      color: Color(0xFF000080),
+                      size: 20,
+                    ),
                     SizedBox(width: 8),
                     Text(
                       context.tr('Battery Details'),
-                      style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13.sp, color: Color(0xFF000080)),
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13.sp,
+                        color: Color(0xFF000080),
+                      ),
                     ),
                   ],
                 ),
@@ -2955,7 +3999,11 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     },
                     child: Text(
                       context.tr('Clear'),
-                      style: GoogleFonts.inter(fontSize: 11.sp, fontWeight: FontWeight.bold, color: Colors.red.shade700),
+                      style: GoogleFonts.inter(
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red.shade700,
+                      ),
                     ),
                   ),
               ],
@@ -2970,16 +4018,26 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Color(0xFF000080).withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: Color(0xFF000080).withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.search, color: Color(0xFF000080), size: 18),
+                      const Icon(
+                        Icons.search,
+                        color: Color(0xFF000080),
+                        size: 18,
+                      ),
                       SizedBox(width: 8),
                       Text(
                         context.tr('Select Battery from Master...'),
-                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13.sp, color: Color(0xFF000080)),
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13.sp,
+                          color: Color(0xFF000080),
+                        ),
                       ),
                     ],
                   ),
@@ -2996,7 +4054,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Color(0xFF000080).withValues(alpha: 0.2)),
+                        border: Border.all(
+                          color: Color(0xFF000080).withValues(alpha: 0.2),
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3007,13 +4067,21 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                               Expanded(
                                 child: Text(
                                   item.displayName,
-                                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13.sp, color: Color(0xFF1e293b)),
+                                  style: GoogleFonts.inter(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13.sp,
+                                    color: Color(0xFF1e293b),
+                                  ),
                                 ),
                               ),
                               IconButton(
                                 constraints: BoxConstraints(),
                                 padding: EdgeInsets.zero,
-                                icon: Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                                icon: Icon(
+                                  Icons.delete_outline,
+                                  color: Colors.red,
+                                  size: 20,
+                                ),
                                 onPressed: () {
                                   item.dispose();
                                   row.batteryItems.removeAt(i);
@@ -3034,11 +4102,29 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                               spacing: 8,
                               runSpacing: 4,
                               children: [
-                                Text('Make: ${item.makeName}', style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600)),
+                                Text(
+                                  'Make: ${item.makeName}',
+                                  style: TextStyle(
+                                    fontSize: 11.sp,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                                 if (item.ampereName.isNotEmpty)
-                                  Text('•  Ampere: ${item.ampereName}', style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600)),
+                                  Text(
+                                    '•  Ampere: ${item.ampereName}',
+                                    style: TextStyle(
+                                      fontSize: 11.sp,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 if (item.segmentName.isNotEmpty)
-                                  Text('•  Segment: ${item.segmentName}', style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600)),
+                                  Text(
+                                    '•  Segment: ${item.segmentName}',
+                                    style: TextStyle(
+                                      fontSize: 11.sp,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                               ],
                             ),
                           ),
@@ -3054,7 +4140,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                                     labelText: context.tr('Qty *'),
                                     labelStyle: TextStyle(fontSize: 11.sp),
                                     border: OutlineInputBorder(),
-                                    contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                    contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 6,
+                                    ),
                                   ),
                                   onChanged: (_) {
                                     _syncAmountCollected();
@@ -3067,12 +4156,17 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                                 width: 90,
                                 child: TextFormField(
                                   controller: item.warrantyController,
-                                  keyboardType: TextInputType.numberWithOptions(decimal: true),
+                                  keyboardType: TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
                                   decoration: InputDecoration(
                                     labelText: context.tr('Warranty (Yrs)'),
                                     labelStyle: TextStyle(fontSize: 11.sp),
                                     border: OutlineInputBorder(),
-                                    contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                    contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 6,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -3080,13 +4174,27 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                               Expanded(
                                 child: TextFormField(
                                   controller: item.priceController,
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Color(0xFF000080)),
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                        decimal: true,
+                                      ),
+                                  style: GoogleFonts.inter(
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF000080),
+                                  ),
                                   decoration: InputDecoration(
-                                    labelText: context.tr('Price ($currencySymbol) *'),
-                                    labelStyle: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.bold),
+                                    labelText: context.tr(
+                                      'Price ($currencySymbol) *',
+                                    ),
+                                    labelStyle: TextStyle(
+                                      fontSize: 11.sp,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                     border: OutlineInputBorder(),
-                                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
                                   ),
                                   onChanged: (_) {
                                     _syncAmountCollected();
@@ -3101,13 +4209,29 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               TextButton.icon(
-                                onPressed: () => _openBatterySearchPickerForRow(row),
-                                icon: Icon(Icons.swap_horiz, size: 16, color: Color(0xFF000080)),
-                                label: Text(context.tr('Change Battery'), style: TextStyle(fontSize: 11.sp, color: Color(0xFF000080), fontWeight: FontWeight.bold)),
+                                onPressed: () =>
+                                    _openBatterySearchPickerForRow(row),
+                                icon: Icon(
+                                  Icons.swap_horiz,
+                                  size: 16,
+                                  color: Color(0xFF000080),
+                                ),
+                                label: Text(
+                                  context.tr('Change Battery'),
+                                  style: TextStyle(
+                                    fontSize: 11.sp,
+                                    color: Color(0xFF000080),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ),
                               Text(
                                 'Line Total: $currencySymbol${item.lineTotal.toStringAsFixed(2)}',
-                                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13.sp, color: Color(0xFF10b981)),
+                                style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13.sp,
+                                  color: Color(0xFF10b981),
+                                ),
                               ),
                             ],
                           ),
@@ -3139,25 +4263,47 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 const SizedBox(width: 8),
                 Text(
                   context.tr('Service Price'),
-                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12.sp, color: Colors.teal.shade900),
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12.sp,
+                    color: Colors.teal.shade900,
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 10),
             TextField(
               controller: row.customRateController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: const Color(0xFF000080), fontSize: 15.sp),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF000080),
+                fontSize: 15.sp,
+              ),
               decoration: InputDecoration(
                 labelText: context.tr('Service Price'),
                 hintText: 'Enter price',
                 isDense: true,
                 filled: true,
                 fillColor: Colors.white,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF000080))),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Color(0xFF000080)),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
               ),
               onChanged: (_) {
                 _syncAmountCollected();
@@ -3171,7 +4317,6 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
     return const SizedBox.shrink();
   }
 
-
   // ── Scheme chip (compact selection) ──────────────────────────────────────
   Widget _schemeChip(_ServiceRow row, Map<String, dynamic> scheme) {
     final isSelected = row.selectedScheme?['id'] == scheme['id'];
@@ -3182,7 +4327,8 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
 
     // Disable quantity scheme only if another row already uses it
     // (A qty scheme can always be selected to track progress; discount only applies when eligible)
-    final lockedByOtherRow = schemeType == 'Quantity' &&
+    final lockedByOtherRow =
+        schemeType == 'Quantity' &&
         !isSelected &&
         _quantitySchemeUsedId == scheme['id'];
 
@@ -3219,15 +4365,15 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           color: !canSelect
               ? Colors.grey.shade50
               : isSelected
-                  ? Color(0xFF000080).withValues(alpha: 0.05)
-                  : Colors.white,
+              ? Color(0xFF000080).withValues(alpha: 0.05)
+              : Colors.white,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: !canSelect
                 ? Colors.grey.shade200
                 : isSelected
-                    ? const Color(0xFF000080)
-                    : Colors.grey.shade200,
+                ? const Color(0xFF000080)
+                : Colors.grey.shade200,
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -3288,7 +4434,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     isEligible
                         ? (lockedByOtherRow ? 'Used' : 'FREE! 🎉')
                         : '$visitsCount / $paidVisits',
-                    isEligible && !lockedByOtherRow ? Colors.green : Colors.blue,
+                    isEligible && !lockedByOtherRow
+                        ? Colors.green
+                        : Colors.blue,
                   ),
                 const SizedBox(width: 8),
                 Radio<String>(
@@ -3374,23 +4522,24 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
       children: [
         Text(
           context.tr('Manual Discount'),
-          style:
-              GoogleFonts.inter(color: Colors.grey.shade700, fontSize: 13.sp),
+          style: GoogleFonts.inter(
+            color: Colors.grey.shade700,
+            fontSize: 13.sp,
+          ),
         ),
         SizedBox(
           width: 120,
           child: TextField(
             controller: row.discountController,
-            keyboardType:
-                TextInputType.numberWithOptions(decimal: true),
+            keyboardType: TextInputType.numberWithOptions(decimal: true),
             textAlign: TextAlign.right,
-            style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13.sp),
+            style: GoogleFonts.inter(
+              fontWeight: FontWeight.w600,
+              fontSize: 13.sp,
+            ),
             decoration: InputDecoration(
               prefixText: '$currencySymbol ',
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: 8,
-              ),
+              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               isDense: true,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -3428,15 +4577,18 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 style: GoogleFonts.inter(fontWeight: FontWeight.w600),
                 decoration: InputDecoration(
                   hintText: context.tr('Enter voucher number'),
-                  hintStyle:
-                      GoogleFonts.inter(color: Colors.grey.shade400),
-                  suffixIcon:
-                      const Icon(Icons.qr_code_scanner, color: Colors.grey),
+                  hintStyle: GoogleFonts.inter(color: Colors.grey.shade400),
+                  suffixIcon: const Icon(
+                    Icons.qr_code_scanner,
+                    color: Colors.grey,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
                   contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 12),
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
                 ),
               ),
             ),
@@ -3448,28 +4600,34 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Color(0xFF000080),
                 foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 14),
+                padding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               child: row.voucherValidating
                   ? const SizedBox(
                       height: 16,
                       width: 16,
                       child: CircularProgressIndicator(
-                          color: Colors.white, strokeWidth: 2),
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
                     )
-                  : Text(context.tr('Apply'),
-                      style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                  : Text(
+                      context.tr('Apply'),
+                      style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+                    ),
             ),
           ],
         ),
         if (row.voucherError != null)
           Padding(
             padding: EdgeInsets.only(top: 6),
-            child: Text(row.voucherError!,
-                style: GoogleFonts.inter(color: Colors.red, fontSize: 12.sp)),
+            child: Text(
+              row.voucherError!,
+              style: GoogleFonts.inter(color: Colors.red, fontSize: 12.sp),
+            ),
           ),
         if (row.voucherSuccess != null)
           Padding(
@@ -3481,9 +4639,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 Text(
                   row.voucherSuccess!,
                   style: GoogleFonts.inter(
-                      color: Colors.green,
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w600),
+                    color: Colors.green,
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
@@ -3562,7 +4721,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                         ? '$currencySymbol 0.00'
                         : '$currencySymbol${(subtotal * percent / 100).toStringAsFixed(2)}',
                     style: GoogleFonts.inter(
-                        fontSize: 13.sp, color: Colors.grey.shade700),
+                      fontSize: 13.sp,
+                      color: Colors.grey.shade700,
+                    ),
                   ),
                 ],
               );
@@ -3575,14 +4736,12 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
 
   // ── Bill summary ──────────────────────────────────────────────────────────
   Widget _billSummary() {
-    final selectedTaxRows = selectedTaxes
-        .map((t) {
-          final name = t['name'] as String;
-          final pct = (t['percent'] as num).toDouble();
-          final amt = double.tryParse(t['amount'].toString()) ?? 0.0;
-          return MapEntry('$name (${pct.toStringAsFixed(1)}%)', amt);
-        })
-        .toList();
+    final selectedTaxRows = selectedTaxes.map((t) {
+      final name = t['name'] as String;
+      final pct = (t['percent'] as num).toDouble();
+      final amt = double.tryParse(t['amount'].toString()) ?? 0.0;
+      return MapEntry('$name (${pct.toStringAsFixed(1)}%)', amt);
+    }).toList();
 
     return _card(
       title: 'Bill Summary',
@@ -3590,13 +4749,19 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
         children: [
           // Per-service lines
           for (final row in _rows) ...[
-            _summaryRow(context.tr(row.serviceName), '$currencySymbol${row.rate.toStringAsFixed(2)}'),
+            _summaryRow(
+              context.tr(row.serviceName),
+              '$currencySymbol${row.rate.toStringAsFixed(2)}',
+            ),
             if (row.serviceCategory == 'oil_change') ...[
               for (final item in row.oilItems) ...[
                 Builder(
                   builder: (context) {
                     if (item.lineTotal <= 0) return const SizedBox.shrink();
-                    final p = _oilProducts.firstWhere((o) => o['id'] == item.selectedOilProductId, orElse: () => {});
+                    final p = _oilProducts.firstWhere(
+                      (o) => o['id'] == item.selectedOilProductId,
+                      orElse: () => {},
+                    );
                     final brand = p['brand']?.toString() ?? '';
                     final grade = p['grade']?.toString() ?? '';
                     final cat = item.selectedOilCategory ?? 'Oil';
@@ -3616,8 +4781,12 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               ],
               Builder(
                 builder: (context) {
-                  if (!row.oilFilterChanged || row.oilFilterPrice <= 0) return const SizedBox.shrink();
-                  final f = _oilFilters.firstWhere((item) => item['id'] == row.selectedOilFilterId, orElse: () => {});
+                  if (!row.oilFilterChanged || row.oilFilterPrice <= 0)
+                    return const SizedBox.shrink();
+                  final f = _oilFilters.firstWhere(
+                    (item) => item['id'] == row.selectedOilFilterId,
+                    orElse: () => {},
+                  );
                   final fBrand = f['brand_name']?.toString() ?? '';
                   final fName = f['name']?.toString() ?? '';
                   final filterLabel = (fBrand.isNotEmpty || fName.isNotEmpty)
@@ -3639,10 +4808,16 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 Builder(
                   builder: (context) {
                     if (item.lineTotal <= 0) return const SizedBox.shrink();
-                    final brandObj = _tyreBrands.firstWhere((b) => b['id'] == item.selectedBrandId, orElse: () => {});
+                    final brandObj = _tyreBrands.firstWhere(
+                      (b) => b['id'] == item.selectedBrandId,
+                      orElse: () => {},
+                    );
                     final brandName = brandObj['brand']?.toString() ?? '';
                     final size = item.sizeController.text.trim();
-                    final labelParts = [if (brandName.isNotEmpty) brandName, if (size.isNotEmpty) size].join(' ');
+                    final labelParts = [
+                      if (brandName.isNotEmpty) brandName,
+                      if (size.isNotEmpty) size,
+                    ].join(' ');
                     final label = labelParts.isNotEmpty
                         ? '  + Tyre ($labelParts x${item.quantity})'
                         : '  + Tyre (x${item.quantity})';
@@ -3658,12 +4833,17 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 ),
               ],
             ],
-            if (row.serviceCategory == 'battery_service' || row.serviceCategory == 'battery_change' || row.serviceCategory == 'battery' || row.serviceName.toLowerCase().contains('battery')) ...[
+            if (row.serviceCategory == 'battery_service' ||
+                row.serviceCategory == 'battery_change' ||
+                row.serviceCategory == 'battery' ||
+                row.serviceName.toLowerCase().contains('battery')) ...[
               for (final item in row.batteryItems) ...[
                 Builder(
                   builder: (context) {
                     if (item.lineTotal <= 0) return const SizedBox.shrink();
-                    final name = item.displayName.isNotEmpty ? item.displayName : 'Battery';
+                    final name = item.displayName.isNotEmpty
+                        ? item.displayName
+                        : 'Battery';
                     final label = '  + Battery ($name x${item.quantity})';
                     return Padding(
                       padding: const EdgeInsets.only(top: 4.0),
@@ -3711,11 +4891,26 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           if (_addExtras) ...[
             for (final e in _selectedExtras) ...[
               () {
-                final qty = double.tryParse((e['qtyController'] as TextEditingController?)?.text ?? '1') ?? 1.0;
-                final rate = double.tryParse((e['rateController'] as TextEditingController?)?.text ?? (e['priceController'] as TextEditingController?)?.text ?? '0') ?? 0.0;
-                final remark = (e['remarkController'] as TextEditingController?)?.text.trim() ?? '';
+                final qty =
+                    double.tryParse(
+                      (e['qtyController'] as TextEditingController?)?.text ??
+                          '1',
+                    ) ??
+                    1.0;
+                final rate =
+                    double.tryParse(
+                      (e['rateController'] as TextEditingController?)?.text ??
+                          (e['priceController'] as TextEditingController?)
+                              ?.text ??
+                          '0',
+                    ) ??
+                    0.0;
+                final remark =
+                    (e['remarkController'] as TextEditingController?)?.text
+                        .trim() ??
+                    '';
                 final lineTotal = qty * rate;
-                
+
                 String label = e['extra']['name'] as String;
                 if (qty > 1) {
                   label = '$label (x${qty % 1 == 0 ? qty.toInt() : qty})';
@@ -3731,7 +4926,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               const SizedBox(height: 6),
             ],
           ],
-          if (_rows.length > 1 || _tradingRows.isNotEmpty || _selectedExtras.isNotEmpty)
+          if (_rows.length > 1 ||
+              _tradingRows.isNotEmpty ||
+              _selectedExtras.isNotEmpty)
             _summaryRow(
               context.tr('Subtotal'),
               '$currencySymbol${subtotal.toStringAsFixed(2)}',
@@ -3751,7 +4948,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           for (final entry in selectedTaxRows) ...[
             const SizedBox(height: 6),
             _summaryRow(
-                entry.key, '$currencySymbol${entry.value.toStringAsFixed(2)}'),
+              entry.key,
+              '$currencySymbol${entry.value.toStringAsFixed(2)}',
+            ),
           ],
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
@@ -3802,8 +5001,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
             width: 130,
             child: TextField(
               controller: _amountCollectedController,
-              keyboardType:
-                  TextInputType.numberWithOptions(decimal: true),
+              keyboardType: TextInputType.numberWithOptions(decimal: true),
               textAlign: TextAlign.right,
               style: GoogleFonts.inter(
                 fontWeight: FontWeight.w700,
@@ -3893,16 +5091,23 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           TextFormField(
             controller: _additionalDiscountController,
             keyboardType: TextInputType.numberWithOptions(decimal: true),
-            style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14.sp),
+            style: GoogleFonts.inter(
+              fontWeight: FontWeight.w700,
+              fontSize: 14.sp,
+            ),
             decoration: InputDecoration(
               labelText: _usePercentageDiscount
                   ? context.tr('Discount Percentage (%)')
                   : context.tr('Discount Amount'),
               prefixText: _usePercentageDiscount ? null : '$currencySymbol ',
               suffixText: _usePercentageDiscount ? '%' : null,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
             ),
           ),
         ],
@@ -3947,7 +5152,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 : Colors.grey.shade50,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: isSelected ? const Color(0xFF000080) : Colors.grey.shade200,
+              color: isSelected
+                  ? const Color(0xFF000080)
+                  : Colors.grey.shade200,
               width: isSelected ? 2 : 1,
             ),
           ),
@@ -3955,7 +5162,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
             children: [
               Icon(
                 icon,
-                color: isSelected ? const Color(0xFF000080) : Colors.grey.shade600,
+                color: isSelected
+                    ? const Color(0xFF000080)
+                    : Colors.grey.shade600,
                 size: 20,
               ),
               const SizedBox(height: 6),
@@ -3985,10 +5194,13 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-               _paymentModeOption('digital_payments', 'Digital payments', Icons.qr_code_scanner),
+              _paymentModeOption(
+                'digital_payments',
+                'Digital payments',
+                Icons.qr_code_scanner,
+              ),
               _paymentModeOption('cash', 'Cash', Icons.money),
               _paymentModeOption('card', 'Card', Icons.credit_card),
-             
             ],
           ),
         ],
@@ -4023,7 +5235,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
             children: [
               Icon(
                 icon,
-                color: isSelected ? const Color(0xFF000080) : Colors.grey.shade600,
+                color: isSelected
+                    ? const Color(0xFF000080)
+                    : Colors.grey.shade600,
                 size: 20,
               ),
               const SizedBox(height: 6),
@@ -4052,7 +5266,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               height: 18,
               width: 18,
               child: CircularProgressIndicator(
-                  color: Colors.white, strokeWidth: 2),
+                color: Colors.white,
+                strokeWidth: 2,
+              ),
             )
           : Icon(Icons.check_circle_outline),
       label: Text(
@@ -4063,8 +5279,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
         backgroundColor: Color(0xFF000080),
         foregroundColor: Colors.white,
         padding: EdgeInsets.symmetric(vertical: 15),
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
@@ -4086,7 +5301,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               final name = (item['item_name'] ?? '').toString().toLowerCase();
               final brand = (item['brand'] ?? '').toString().toLowerCase();
               final group = (item['group_name'] ?? '').toString().toLowerCase();
-              final subGroup = (item['sub_group_name'] ?? '').toString().toLowerCase();
+              final subGroup = (item['sub_group_name'] ?? '')
+                  .toString()
+                  .toLowerCase();
               return query.isEmpty ||
                   name.contains(query) ||
                   brand.contains(query) ||
@@ -4134,7 +5351,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     autofocus: true,
                     decoration: InputDecoration(
                       hintText: context.tr('Search item name, brand, group...'),
-                      prefixIcon: const Icon(Icons.search, color: Color(0xFF000080)),
+                      prefixIcon: const Icon(
+                        Icons.search,
+                        color: Color(0xFF000080),
+                      ),
                       suffixIcon: searchController.text.isNotEmpty
                           ? IconButton(
                               icon: const Icon(Icons.clear),
@@ -4150,7 +5370,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
                     ),
                     onChanged: (val) {
                       setModalState(() {});
@@ -4159,7 +5382,11 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                   SizedBox(height: 12),
                   Text(
                     '${filteredItems.length} ${context.tr('items found')}',
-                    style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade600, fontWeight: FontWeight.w600),
+                    style: GoogleFonts.inter(
+                      fontSize: 12.sp,
+                      color: Colors.grey.shade600,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   SizedBox(height: 8),
                   Expanded(
@@ -4172,22 +5399,34 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                           )
                         : ListView.separated(
                             itemCount: filteredItems.length,
-                            separatorBuilder: (_, __) => const Divider(height: 1),
+                            separatorBuilder: (_, __) =>
+                                const Divider(height: 1),
                             itemBuilder: (context, index) {
                               final item = filteredItems[index];
-                              final isSelected = row.selectedStockItem != null &&
-                                  row.selectedStockItem!['id'].toString() == item['id'].toString();
+                              final isSelected =
+                                  row.selectedStockItem != null &&
+                                  row.selectedStockItem!['id'].toString() ==
+                                      item['id'].toString();
                               final itemName = item['item_name'].toString();
                               final brand = (item['brand'] ?? '').toString();
-                              final groupName = (item['group_name'] ?? '').toString();
-                              final subGroupName = (item['sub_group_name'] ?? '').toString();
-                              final qty = (item['quantity'] as num?)?.toDouble() ?? 0.0;
-                              final unitName = (item['unit_name'] ?? 'Pcs').toString();
-                              final rate = (item['rate'] as num?)?.toDouble() ?? 0.0;
-                              final marginPercent = (item['profit_margin_percent'] as num?)?.toDouble() ?? 0.0;
+                              final groupName = (item['group_name'] ?? '')
+                                  .toString();
+                              final subGroupName =
+                                  (item['sub_group_name'] ?? '').toString();
+                              final qty =
+                                  (item['quantity'] as num?)?.toDouble() ?? 0.0;
+                              final unitName = (item['unit_name'] ?? 'Pcs')
+                                  .toString();
+                              final rate =
+                                  (item['rate'] as num?)?.toDouble() ?? 0.0;
+                              final marginPercent =
+                                  (item['profit_margin_percent'] as num?)
+                                      ?.toDouble() ??
+                                  0.0;
 
                               String categoryText = '';
-                              if (groupName.isNotEmpty && subGroupName.isNotEmpty) {
+                              if (groupName.isNotEmpty &&
+                                  subGroupName.isNotEmpty) {
                                 categoryText = '$groupName > $subGroupName';
                               } else if (groupName.isNotEmpty) {
                                 categoryText = groupName;
@@ -4195,19 +5434,21 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
 
                               return InkWell(
                                 onTap: () {
-                                  row.selectedStockItem = Map<String, dynamic>.from(item as Map);
+                                  row.selectedStockItem =
+                                      Map<String, dynamic>.from(item as Map);
                                   row.currentStock = qty;
-                                  row.selectedStockItem = Map<String, dynamic>.from(item as Map);
+                                  row.selectedStockItem =
+                                      Map<String, dynamic>.from(item as Map);
                                   row.currentStock = qty;
                                   row.unitName = unitName;
                                   row.isOperational = false;
                                   if (rate > 0) {
-                                    row.rateController.text = rate.toStringAsFixed(2);
+                                    row.rateController.text = rate
+                                        .toStringAsFixed(2);
                                   } else {
                                     row.rateController.text = '0.00';
                                   }
                                   row.discountController.text = '0.00';
-
 
                                   _syncAmountCollected();
                                   _updateUi();
@@ -4215,26 +5456,39 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                                 },
                                 borderRadius: BorderRadius.circular(10),
                                 child: Container(
-                                  padding: EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: 10,
+                                    horizontal: 8,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: isSelected ? Color(0xFF000080).withOpacity(0.06) : Colors.transparent,
+                                    color: isSelected
+                                        ? Color(0xFF000080).withOpacity(0.06)
+                                        : Colors.transparent,
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
                                     children: [
                                       Container(
                                         padding: EdgeInsets.all(8),
                                         decoration: BoxDecoration(
-                                          color: Color(0xFF000080).withOpacity(0.1),
+                                          color: Color(
+                                            0xFF000080,
+                                          ).withOpacity(0.1),
                                           shape: BoxShape.circle,
                                         ),
-                                        child: Icon(Icons.inventory_2_outlined, color: Color(0xFF000080), size: 20),
+                                        child: Icon(
+                                          Icons.inventory_2_outlined,
+                                          color: Color(0xFF000080),
+                                          size: 20,
+                                        ),
                                       ),
                                       const SizedBox(width: 12),
                                       Expanded(
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Row(
                                               children: [
@@ -4242,7 +5496,8 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                                                   child: Text(
                                                     itemName,
                                                     style: GoogleFonts.inter(
-                                                      fontWeight: FontWeight.bold,
+                                                      fontWeight:
+                                                          FontWeight.bold,
                                                       fontSize: 14.sp,
                                                       color: Colors.black87,
                                                     ),
@@ -4250,14 +5505,29 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                                                 ),
                                                 if (brand.isNotEmpty) ...[
                                                   Container(
-                                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 6,
+                                                          vertical: 2,
+                                                        ),
                                                     decoration: BoxDecoration(
-                                                      color: Colors.grey.shade200,
-                                                      borderRadius: BorderRadius.circular(6),
+                                                      color:
+                                                          Colors.grey.shade200,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            6,
+                                                          ),
                                                     ),
                                                     child: Text(
                                                       brand,
-                                                      style: GoogleFonts.inter(fontSize: 11.sp, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 11.sp,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        color: Colors
+                                                            .grey
+                                                            .shade700,
+                                                      ),
                                                     ),
                                                   ),
                                                 ],
@@ -4267,25 +5537,53 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                                               SizedBox(height: 2),
                                               Text(
                                                 categoryText,
-                                                style: GoogleFonts.inter(fontSize: 11.sp, color: Colors.grey.shade600),
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 11.sp,
+                                                  color: Colors.grey.shade600,
+                                                ),
                                               ),
                                             ],
                                             SizedBox(height: 4),
                                             Row(
                                               children: [
                                                 Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 6,
+                                                        vertical: 2,
+                                                      ),
                                                   decoration: BoxDecoration(
-                                                    color: qty > 0 ? Colors.green.shade50 : Colors.orange.shade50,
-                                                    borderRadius: BorderRadius.circular(4),
-                                                    border: Border.all(color: qty > 0 ? Colors.green.shade300 : Colors.orange.shade300, width: 0.5),
+                                                    color: qty > 0
+                                                        ? Colors.green.shade50
+                                                        : Colors.orange.shade50,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          4,
+                                                        ),
+                                                    border: Border.all(
+                                                      color: qty > 0
+                                                          ? Colors
+                                                                .green
+                                                                .shade300
+                                                          : Colors
+                                                                .orange
+                                                                .shade300,
+                                                      width: 0.5,
+                                                    ),
                                                   ),
                                                   child: Text(
                                                     '${context.tr('Stock')}: ${qty.toStringAsFixed(0)} $unitName',
                                                     style: GoogleFonts.inter(
                                                       fontSize: 11.sp,
-                                                      fontWeight: FontWeight.w600,
-                                                      color: qty > 0 ? Colors.green.shade800 : Colors.orange.shade800,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: qty > 0
+                                                          ? Colors
+                                                                .green
+                                                                .shade800
+                                                          : Colors
+                                                                .orange
+                                                                .shade800,
                                                     ),
                                                   ),
                                                 ),
@@ -4295,7 +5593,8 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                                                     '₹${rate.toStringAsFixed(2)}',
                                                     style: GoogleFonts.inter(
                                                       fontSize: 12.sp,
-                                                      fontWeight: FontWeight.bold,
+                                                      fontWeight:
+                                                          FontWeight.bold,
                                                       color: Color(0xFF000080),
                                                     ),
                                                   ),
@@ -4303,18 +5602,34 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                                                 if (marginPercent > 0) ...[
                                                   const SizedBox(width: 6),
                                                   Container(
-                                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 5,
+                                                          vertical: 1.5,
+                                                        ),
                                                     decoration: BoxDecoration(
-                                                      color: Colors.blue.shade50,
-                                                      borderRadius: BorderRadius.circular(4),
-                                                      border: Border.all(color: Colors.blue.shade300, width: 0.5),
+                                                      color:
+                                                          Colors.blue.shade50,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            4,
+                                                          ),
+                                                      border: Border.all(
+                                                        color: Colors
+                                                            .blue
+                                                            .shade300,
+                                                        width: 0.5,
+                                                      ),
                                                     ),
                                                     child: Text(
                                                       '+${marginPercent.toStringAsFixed(0)}% margin',
                                                       style: GoogleFonts.inter(
                                                         fontSize: 10.sp,
-                                                        fontWeight: FontWeight.w600,
-                                                        color: Colors.blue.shade900,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        color: Colors
+                                                            .blue
+                                                            .shade900,
                                                       ),
                                                     ),
                                                   ),
@@ -4325,7 +5640,11 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                                         ),
                                       ),
                                       if (isSelected)
-                                        const Icon(Icons.check_circle, color: Color(0xFF000080), size: 20),
+                                        const Icon(
+                                          Icons.check_circle,
+                                          color: Color(0xFF000080),
+                                          size: 20,
+                                        ),
                                     ],
                                   ),
                                 ),
@@ -4367,7 +5686,11 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           ),
           if (_addStaffs)
             IconButton(
-              icon: const Icon(Icons.person_add_alt_1, color: Color(0xFF000080), size: 24),
+              icon: const Icon(
+                Icons.person_add_alt_1,
+                color: Color(0xFF000080),
+                size: 24,
+              ),
               onPressed: _showStaffSearchSheet,
               tooltip: context.tr('+ Select Staff'),
             ),
@@ -4385,7 +5708,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF000080),
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
                 if (_selectedStaffs.isNotEmpty) ...[
@@ -4400,22 +5725,44 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                         avatar: CircleAvatar(
                           backgroundColor: const Color(0xFF000080),
                           child: Text(
-                            staffName.isNotEmpty ? staffName[0].toUpperCase() : 'S',
-                            style: GoogleFonts.inter(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.bold),
+                            staffName.isNotEmpty
+                                ? staffName[0].toUpperCase()
+                                : 'S',
+                            style: GoogleFonts.inter(
+                              color: Colors.white,
+                              fontSize: 11.sp,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                         label: Text(
                           empId.isNotEmpty ? '$staffName ($empId)' : staffName,
-                          style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B)),
+                          style: GoogleFonts.inter(
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF1E293B),
+                          ),
                         ),
-                        backgroundColor: const Color(0xFF000080).withValues(alpha: 0.08),
-                        deleteIcon: const Icon(Icons.close, size: 16, color: Colors.red),
+                        backgroundColor: const Color(
+                          0xFF000080,
+                        ).withValues(alpha: 0.08),
+                        deleteIcon: const Icon(
+                          Icons.close,
+                          size: 16,
+                          color: Colors.red,
+                        ),
                         onDeleted: () {
-                          _selectedStaffs.removeWhere((s) => s['id'] == staff['id']);
+                          _selectedStaffs.removeWhere(
+                            (s) => s['id'] == staff['id'],
+                          );
                           _updateUi();
                         },
-                        side: BorderSide(color: const Color(0xFF000080).withValues(alpha: 0.2)),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        side: BorderSide(
+                          color: const Color(0xFF000080).withValues(alpha: 0.2),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
                       );
                     }).toList(),
                   ),
@@ -4464,7 +5811,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.badge_outlined, color: Color(0xFF000080)),
+                          const Icon(
+                            Icons.badge_outlined,
+                            color: Color(0xFF000080),
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             context.tr('Select Branch Staffs'),
@@ -4488,7 +5838,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     autofocus: true,
                     decoration: InputDecoration(
                       hintText: context.tr('Search staff name or ID...'),
-                      prefixIcon: const Icon(Icons.search, color: Color(0xFF000080)),
+                      prefixIcon: const Icon(
+                        Icons.search,
+                        color: Color(0xFF000080),
+                      ),
                       suffixIcon: searchController.text.isNotEmpty
                           ? IconButton(
                               icon: const Icon(Icons.clear),
@@ -4504,7 +5857,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
                     ),
                     onChanged: (val) {
                       setModalState(() {});
@@ -4513,42 +5869,68 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                   const SizedBox(height: 12),
                   Text(
                     '${filteredStaffs.length} ${context.tr('staff members found')}',
-                    style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade600, fontWeight: FontWeight.w600),
+                    style: GoogleFonts.inter(
+                      fontSize: 12.sp,
+                      color: Colors.grey.shade600,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Expanded(
                     child: filteredStaffs.isEmpty
                         ? Center(
                             child: Text(
-                              context.tr('No staff members found for this branch'),
+                              context.tr(
+                                'No staff members found for this branch',
+                              ),
                               style: GoogleFonts.inter(color: Colors.grey),
                             ),
                           )
                         : ListView.separated(
                             itemCount: filteredStaffs.length,
-                            separatorBuilder: (_, __) => const Divider(height: 1),
+                            separatorBuilder: (_, __) =>
+                                const Divider(height: 1),
                             itemBuilder: (context, index) {
                               final staff = filteredStaffs[index];
                               final staffId = staff['id'].toString();
-                              final isSelected = _selectedStaffs.any((s) => s['id'].toString() == staffId);
-                              final staffName = (staff['name'] ?? '').toString();
-                              final empId = (staff['employee_id'] ?? '').toString();
-                              final branchName = (staff['branch_name'] ?? '').toString();
+                              final isSelected = _selectedStaffs.any(
+                                (s) => s['id'].toString() == staffId,
+                              );
+                              final staffName = (staff['name'] ?? '')
+                                  .toString();
+                              final empId = (staff['employee_id'] ?? '')
+                                  .toString();
+                              final branchName = (staff['branch_name'] ?? '')
+                                  .toString();
 
                               return CheckboxListTile(
                                 value: isSelected,
                                 activeColor: const Color(0xFF000080),
                                 title: Text(
                                   staffName,
-                                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14.sp),
+                                  style: GoogleFonts.inter(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14.sp,
+                                  ),
                                 ),
                                 subtitle: Text(
-                                  empId.isNotEmpty ? '$empId · $branchName' : branchName,
-                                  style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade600),
+                                  empId.isNotEmpty
+                                      ? '$empId · $branchName'
+                                      : branchName,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12.sp,
+                                    color: Colors.grey.shade600,
+                                  ),
                                 ),
                                 secondary: CircleAvatar(
-                                  backgroundColor: const Color(0xFF000080).withValues(alpha: 0.1),
-                                  child: Icon(Icons.person, color: const Color(0xFF000080), size: 20),
+                                  backgroundColor: const Color(
+                                    0xFF000080,
+                                  ).withValues(alpha: 0.1),
+                                  child: Icon(
+                                    Icons.person,
+                                    color: const Color(0xFF000080),
+                                    size: 20,
+                                  ),
                                 ),
                                 onChanged: (bool? checked) {
                                   if (checked == true) {
@@ -4556,7 +5938,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                                       _selectedStaffs.add(staff);
                                     }
                                   } else {
-                                    _selectedStaffs.removeWhere((s) => s['id'].toString() == staffId);
+                                    _selectedStaffs.removeWhere(
+                                      (s) => s['id'].toString() == staffId,
+                                    );
                                   }
                                   setModalState(() {});
                                   _updateUi();
@@ -4603,7 +5987,11 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           ),
           if (_addTradingItems)
             IconButton(
-              icon: const Icon(Icons.add_circle, color: Color(0xFF000080), size: 26),
+              icon: const Icon(
+                Icons.add_circle,
+                color: Color(0xFF000080),
+                size: 26,
+              ),
               onPressed: () {
                 _tradingRows.insert(0, _TradingItemRow());
                 _updateUi();
@@ -4627,7 +6015,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Color(0xFF000080),
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -4641,16 +6031,24 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
   }
 
   Widget _tradingItemRowWidget(_TradingItemRow row, int index) {
-    final bool isTrading = (row.selectedStockItem?['is_trading'] as bool?) ?? true;
-    final bool isOperationalItem = (row.selectedStockItem?['is_operational'] as bool?) ?? false;
+    final bool isTrading =
+        (row.selectedStockItem?['is_trading'] as bool?) ?? true;
+    final bool isOperationalItem =
+        (row.selectedStockItem?['is_operational'] as bool?) ?? false;
     final bool isDualUse = isTrading && isOperationalItem;
 
     return Container(
       padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: row.isOperational ? Colors.amber.shade50.withOpacity(0.5) : Colors.grey.shade50,
+        color: row.isOperational
+            ? Colors.amber.shade50.withOpacity(0.5)
+            : Colors.grey.shade50,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: row.isOperational ? Colors.amber.shade300 : Colors.grey.shade200),
+        border: Border.all(
+          color: row.isOperational
+              ? Colors.amber.shade300
+              : Colors.grey.shade200,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -4664,10 +6062,22 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                   child: InputDecorator(
                     decoration: InputDecoration(
                       labelText: context.tr('1. Select Stock Item'),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                      suffixIcon: const Icon(Icons.arrow_drop_down, color: Color(0xFF000080)),
-                      prefixIcon: const Icon(Icons.search, color: Color(0xFF000080), size: 20),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 10,
+                      ),
+                      suffixIcon: const Icon(
+                        Icons.arrow_drop_down,
+                        color: Color(0xFF000080),
+                      ),
+                      prefixIcon: const Icon(
+                        Icons.search,
+                        color: Color(0xFF000080),
+                        size: 20,
+                      ),
                     ),
                     child: Text(
                       row.selectedStockItem != null
@@ -4675,8 +6085,12 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                           : context.tr('Tap to search & select stock item...'),
                       style: GoogleFonts.inter(
                         fontSize: 13.sp,
-                        fontWeight: row.selectedStockItem != null ? FontWeight.w700 : FontWeight.w400,
-                        color: row.selectedStockItem != null ? Colors.black87 : Colors.grey.shade600,
+                        fontWeight: row.selectedStockItem != null
+                            ? FontWeight.w700
+                            : FontWeight.w400,
+                        color: row.selectedStockItem != null
+                            ? Colors.black87
+                            : Colors.grey.shade600,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -4703,8 +6117,11 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                   row.rateController.text = '0.00';
                   row.discountController.text = '0.00';
                 } else {
-                  final rate = (row.selectedStockItem!['rate'] as num?)?.toDouble() ?? 0.0;
-                  if (rate > 0) row.rateController.text = rate.toStringAsFixed(2);
+                  final rate =
+                      (row.selectedStockItem!['rate'] as num?)?.toDouble() ??
+                      0.0;
+                  if (rate > 0)
+                    row.rateController.text = rate.toStringAsFixed(2);
                 }
                 _syncAmountCollected();
                 _updateUi();
@@ -4723,8 +6140,12 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                           row.rateController.text = '0.00';
                           row.discountController.text = '0.00';
                         } else {
-                          final rate = (row.selectedStockItem!['rate'] as num?)?.toDouble() ?? 0.0;
-                          if (rate > 0) row.rateController.text = rate.toStringAsFixed(2);
+                          final rate =
+                              (row.selectedStockItem!['rate'] as num?)
+                                  ?.toDouble() ??
+                              0.0;
+                          if (rate > 0)
+                            row.rateController.text = rate.toStringAsFixed(2);
                         }
                         _syncAmountCollected();
                         _updateUi();
@@ -4735,7 +6156,11 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                   Expanded(
                     child: Text(
                       context.tr('Operational / Internal Use'),
-                      style: GoogleFonts.inter(fontSize: 11.sp, fontWeight: FontWeight.w600, color: Color(0xFF000080)),
+                      style: GoogleFonts.inter(
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF000080),
+                      ),
                     ),
                   ),
                 ],
@@ -4753,16 +6178,27 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.inventory_2_outlined, color: Colors.amber.shade900, size: 18),
+                  Icon(
+                    Icons.inventory_2_outlined,
+                    color: Colors.amber.shade900,
+                    size: 18,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       context.tr('Operational Consumable'),
-                      style: GoogleFonts.inter(fontSize: 11.sp, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
+                      style: GoogleFonts.inter(
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.amber.shade900,
+                      ),
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.blue.shade50,
                       borderRadius: BorderRadius.circular(6),
@@ -4770,7 +6206,11 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     ),
                     child: Text(
                       'Stock: ${row.currentStock.toStringAsFixed(1)} ${row.unitName}',
-                      style: GoogleFonts.inter(fontSize: 10.sp, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
+                      style: GoogleFonts.inter(
+                        fontSize: 10.sp,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue.shade900,
+                      ),
                     ),
                   ),
                 ],
@@ -4782,11 +6222,18 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 Expanded(
                   child: TextField(
                     controller: row.qtyController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     decoration: InputDecoration(
                       labelText: context.tr('Qty Consumed'),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 8,
+                      ),
                     ),
                     onChanged: (_) {
                       _syncAmountCollected();
@@ -4802,12 +6249,19 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 Expanded(
                   child: TextField(
                     controller: row.rateController,
-                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     decoration: InputDecoration(
                       labelText: context.tr('Rate'),
                       prefixText: '$currencySymbol ',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 8,
+                      ),
                     ),
                     onChanged: (_) {
                       _syncAmountCollected();
@@ -4817,7 +6271,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.blue.shade50,
                     borderRadius: BorderRadius.circular(8),
@@ -4828,11 +6285,18 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     children: [
                       Text(
                         context.tr('Current Stock'),
-                        style: GoogleFonts.inter(fontSize: 10.sp, color: Colors.grey.shade700),
+                        style: GoogleFonts.inter(
+                          fontSize: 10.sp,
+                          color: Colors.grey.shade700,
+                        ),
                       ),
                       Text(
                         '${row.currentStock.toStringAsFixed(1)} ${row.unitName}',
-                        style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
+                        style: GoogleFonts.inter(
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue.shade900,
+                        ),
                       ),
                     ],
                   ),
@@ -4845,11 +6309,18 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 Expanded(
                   child: TextField(
                     controller: row.qtyController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     decoration: InputDecoration(
                       labelText: context.tr('Qty'),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 8,
+                      ),
                     ),
                     onChanged: (_) {
                       _syncAmountCollected();
@@ -4861,12 +6332,19 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 Expanded(
                   child: TextField(
                     controller: row.discountController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     decoration: InputDecoration(
                       labelText: context.tr('Discount'),
                       prefixText: '$currencySymbol ',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 8,
+                      ),
                     ),
                     onChanged: (_) {
                       _syncAmountCollected();
@@ -4889,11 +6367,18 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               children: [
                 Text(
                   context.tr('Net Taxable:'),
-                  style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade800),
+                  style: GoogleFonts.inter(
+                    fontSize: 12.sp,
+                    color: Colors.grey.shade800,
+                  ),
                 ),
                 Text(
                   '$currencySymbol ${row.netTaxable.toStringAsFixed(2)}',
-                  style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.w700, color: Color(0xFF000080)),
+                  style: GoogleFonts.inter(
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF000080),
+                  ),
                 ),
               ],
             ),
@@ -4937,7 +6422,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     padding: EdgeInsets.symmetric(vertical: 8),
                     child: Text(
                       context.tr('No extras added yet'),
-                      style: GoogleFonts.inter(color: Colors.grey, fontSize: 13.sp),
+                      style: GoogleFonts.inter(
+                        color: Colors.grey,
+                        fontSize: 13.sp,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   )
@@ -4945,21 +6433,29 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                   ..._selectedExtras.map((extraMap) {
                     final extra = extraMap['extra'] as Map<String, dynamic>;
                     final name = extra['name'] as String;
-                    final categoryName = (extra['service_type_name'] ?? '').toString();
+                    final categoryName = (extra['service_type_name'] ?? '')
+                        .toString();
 
-                    final qtyController = extraMap['qtyController'] as TextEditingController? ??
-                        (extraMap['qtyController'] = TextEditingController(text: '1')
-                          ..addListener(() {
-                            _syncAmountCollected();
-                            _updateUi();
-                          }));
-                    final rateController = extraMap['rateController'] as TextEditingController? ??
-                        (extraMap['rateController'] = (extraMap['priceController'] as TextEditingController? ?? TextEditingController(text: '0'))
-                          ..addListener(() {
-                            _syncAmountCollected();
-                            _updateUi();
-                          }));
-                    final remarkController = extraMap['remarkController'] as TextEditingController? ??
+                    final qtyController =
+                        extraMap['qtyController'] as TextEditingController? ??
+                        (extraMap['qtyController'] =
+                            TextEditingController(text: '1')..addListener(() {
+                              _syncAmountCollected();
+                              _updateUi();
+                            }));
+                    final rateController =
+                        extraMap['rateController'] as TextEditingController? ??
+                        (extraMap['rateController'] =
+                            (extraMap['priceController']
+                                      as TextEditingController? ??
+                                  TextEditingController(text: '0'))
+                              ..addListener(() {
+                                _syncAmountCollected();
+                                _updateUi();
+                              }));
+                    final remarkController =
+                        extraMap['remarkController']
+                            as TextEditingController? ??
                         (extraMap['remarkController'] = TextEditingController()
                           ..addListener(() {
                             _updateUi();
@@ -4999,10 +6495,17 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                                     if (categoryName.isNotEmpty) ...[
                                       const SizedBox(height: 3),
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 2,
+                                        ),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFF000080).withValues(alpha: 0.08),
-                                          borderRadius: BorderRadius.circular(4),
+                                          color: const Color(
+                                            0xFF000080,
+                                          ).withValues(alpha: 0.08),
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
                                         ),
                                         child: Text(
                                           categoryName,
@@ -5019,9 +6522,14 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                               ),
                               // Item Line Total Badge
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF000080).withValues(alpha: 0.06),
+                                  color: const Color(
+                                    0xFF000080,
+                                  ).withValues(alpha: 0.06),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
@@ -5037,24 +6545,45 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                               IconButton(
                                 constraints: const BoxConstraints(),
                                 padding: const EdgeInsets.all(4),
-                                icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  color: Colors.red,
+                                  size: 20,
+                                ),
                                 onPressed: () {
                                   _selectedExtras.remove(extraMap);
                                   _syncAmountCollected();
                                   _updateUi();
 
-                                  final Set<TextEditingController> controllersToDispose = {};
-                                  if (extraMap['qtyController'] is TextEditingController) {
-                                    controllersToDispose.add(extraMap['qtyController'] as TextEditingController);
+                                  final Set<TextEditingController>
+                                  controllersToDispose = {};
+                                  if (extraMap['qtyController']
+                                      is TextEditingController) {
+                                    controllersToDispose.add(
+                                      extraMap['qtyController']
+                                          as TextEditingController,
+                                    );
                                   }
-                                  if (extraMap['rateController'] is TextEditingController) {
-                                    controllersToDispose.add(extraMap['rateController'] as TextEditingController);
+                                  if (extraMap['rateController']
+                                      is TextEditingController) {
+                                    controllersToDispose.add(
+                                      extraMap['rateController']
+                                          as TextEditingController,
+                                    );
                                   }
-                                  if (extraMap['remarkController'] is TextEditingController) {
-                                    controllersToDispose.add(extraMap['remarkController'] as TextEditingController);
+                                  if (extraMap['remarkController']
+                                      is TextEditingController) {
+                                    controllersToDispose.add(
+                                      extraMap['remarkController']
+                                          as TextEditingController,
+                                    );
                                   }
-                                  if (extraMap['priceController'] is TextEditingController) {
-                                    controllersToDispose.add(extraMap['priceController'] as TextEditingController);
+                                  if (extraMap['priceController']
+                                      is TextEditingController) {
+                                    controllersToDispose.add(
+                                      extraMap['priceController']
+                                          as TextEditingController,
+                                    );
                                   }
                                   for (final c in controllersToDispose) {
                                     c.dispose();
@@ -5085,13 +6614,27 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                                     const SizedBox(height: 4),
                                     TextField(
                                       controller: qtyController,
-                                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                      keyboardType:
+                                          const TextInputType.numberWithOptions(
+                                            decimal: true,
+                                          ),
                                       textAlign: TextAlign.center,
-                                      style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13.sp),
+                                      style: GoogleFonts.inter(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 13.sp,
+                                      ),
                                       decoration: InputDecoration(
-                                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 8,
+                                            ),
                                         isDense: true,
-                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
                                       ),
                                       onChanged: (_) {
                                         _syncAmountCollected();
@@ -5120,15 +6663,32 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                                     const SizedBox(height: 4),
                                     TextField(
                                       controller: rateController,
-                                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                      keyboardType:
+                                          const TextInputType.numberWithOptions(
+                                            decimal: true,
+                                          ),
                                       textAlign: TextAlign.right,
-                                      style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13.sp),
+                                      style: GoogleFonts.inter(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 13.sp,
+                                      ),
                                       decoration: InputDecoration(
                                         prefixText: '$currencySymbol ',
-                                        prefixStyle: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade700),
-                                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                        prefixStyle: GoogleFonts.inter(
+                                          fontSize: 12.sp,
+                                          color: Colors.grey.shade700,
+                                        ),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 8,
+                                            ),
                                         isDense: true,
-                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
                                       ),
                                       onChanged: (_) {
                                         _syncAmountCollected();
@@ -5159,11 +6719,21 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                                 controller: remarkController,
                                 style: GoogleFonts.inter(fontSize: 12.sp),
                                 decoration: InputDecoration(
-                                  hintText: context.tr('Add remark / note (optional)'),
-                                  hintStyle: GoogleFonts.inter(fontSize: 11.sp, color: Colors.grey.shade400),
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                  hintText: context.tr(
+                                    'Add remark / note (optional)',
+                                  ),
+                                  hintStyle: GoogleFonts.inter(
+                                    fontSize: 11.sp,
+                                    color: Colors.grey.shade400,
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 8,
+                                  ),
                                   isDense: true,
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
                                 ),
                                 onChanged: (_) {
                                   _updateUi();
@@ -5185,14 +6755,15 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     foregroundColor: Color(0xFF000080),
                     elevation: 0,
                     side: BorderSide(color: Color(0xFF000080)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
               ],
             ),
     );
   }
-
 
   Widget _warrantyPdfCheckboxCard() {
     return _card(
@@ -5210,7 +6781,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           ),
           Expanded(
             child: Text(
-              context.tr('Include Warranty & Free Top-Up Details in Invoice PDF'),
+              context.tr(
+                'Include Warranty & Free Top-Up Details in Invoice PDF',
+              ),
               style: GoogleFonts.inter(
                 fontWeight: FontWeight.w800,
                 fontSize: 12.sp,
@@ -5221,12 +6794,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
         ],
       ),
       child: Text(
-          context.tr(''),
-          style: GoogleFonts.inter(
-            fontSize: 11.sp,
-            color: Colors.grey.shade600,
-          ),
-        ),
+        context.tr(''),
+        style: GoogleFonts.inter(fontSize: 11.sp, color: Colors.grey.shade600),
+      ),
     );
   }
 
@@ -5261,7 +6831,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               style: GoogleFonts.inter(fontSize: 13.sp),
               decoration: InputDecoration(
                 hintText: context.tr('Enter invoice remarks / notes...'),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
                 contentPadding: const EdgeInsets.all(12),
               ),
             ),
@@ -5269,7 +6841,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
   }
 
   Widget _customRemindersCard() {
-    final bool isReminderLocked = _hasWheelAlignmentService || _hasDetailingService || _hasOilChangeService;
+    final bool isReminderLocked =
+        _hasWheelAlignmentService ||
+        _hasDetailingService ||
+        _hasOilChangeService;
     if (isReminderLocked) {
       _addCustomReminders = true;
       if (_reminderDaysControllers.isEmpty) {
@@ -5284,13 +6859,18 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           Checkbox(
             value: _addCustomReminders,
             activeColor: const Color(0xFF000080),
-            onChanged: isReminderLocked ? null : (val) {
-              _addCustomReminders = val ?? false;
-              if (_addCustomReminders && _reminderDaysControllers.isEmpty) {
-                _reminderDaysControllers.add(TextEditingController(text: ''));
-              }
-              _updateUi();
-            },
+            onChanged: isReminderLocked
+                ? null
+                : (val) {
+                    _addCustomReminders = val ?? false;
+                    if (_addCustomReminders &&
+                        _reminderDaysControllers.isEmpty) {
+                      _reminderDaysControllers.add(
+                        TextEditingController(text: ''),
+                      );
+                    }
+                    _updateUi();
+                  },
           ),
           RichText(
             text: TextSpan(
@@ -5302,7 +6882,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               children: [
                 TextSpan(text: context.tr('Add Custom Reminders')),
                 if (isReminderLocked)
-                  TextSpan(text: ' *', style: TextStyle(color: Colors.red)),
+                  TextSpan(
+                    text: ' *',
+                    style: TextStyle(color: Colors.red),
+                  ),
               ],
             ),
           ),
@@ -5341,7 +6924,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 ],
                 ElevatedButton.icon(
                   onPressed: () {
-                    _reminderDaysControllers.add(TextEditingController(text: '120'));
+                    _reminderDaysControllers.add(
+                      TextEditingController(text: '120'),
+                    );
                     _updateUi();
                   },
                   icon: const Icon(Icons.add_alarm, size: 16),
@@ -5349,7 +6934,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Color(0xFF000080),
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
               ],
@@ -5361,7 +6948,20 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
     final controller = _reminderDaysControllers[index];
     final days = int.tryParse(controller.text.trim()) ?? 0;
     final scheduledDate = DateTime.now().add(Duration(days: days));
-    final monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final monthNames = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     final dateStr = days > 0
         ? '${scheduledDate.day} ${monthNames[scheduledDate.month - 1]} ${scheduledDate.year}'
         : 'Invalid days';
@@ -5379,12 +6979,20 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
             child: TextField(
               controller: controller,
               keyboardType: TextInputType.number,
-              style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.bold),
+              style: GoogleFonts.inter(
+                fontSize: 13.sp,
+                fontWeight: FontWeight.bold,
+              ),
               decoration: InputDecoration(
                 labelText: context.tr('Reminder Days'),
                 hintText: '',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
               ),
               onChanged: (_) => _updateUi(),
             ),
@@ -5395,18 +7003,27 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Color(0xFF000080).withValues(alpha: 0.3)),
+              border: Border.all(
+                color: Color(0xFF000080).withValues(alpha: 0.3),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   context.tr('Send Date'),
-                  style: GoogleFonts.inter(fontSize: 10.sp, color: Colors.grey.shade600),
+                  style: GoogleFonts.inter(
+                    fontSize: 10.sp,
+                    color: Colors.grey.shade600,
+                  ),
                 ),
                 Text(
                   dateStr,
-                  style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.bold, color: Color(0xFF000080)),
+                  style: GoogleFonts.inter(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF000080),
+                  ),
                 ),
               ],
             ),
@@ -5423,8 +7040,6 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
       ),
     );
   }
-
-
 
   // ── Battery Search Picker for Service Row ─────────────────────────────────
   void _openBatterySearchPickerForRow(_ServiceRow row) {
@@ -5475,7 +7090,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                       controller: searchCtrl,
                       decoration: InputDecoration(
                         hintText: context.tr('Search make, ampere, segment...'),
-                        prefixIcon: const Icon(Icons.search, color: Color(0xFF000080)),
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          color: Color(0xFF000080),
+                        ),
                         filled: true,
                         fillColor: Colors.grey.shade100,
                         border: OutlineInputBorder(
@@ -5487,11 +7105,22 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                         setModalState(() {
                           final q = query.toLowerCase();
                           localList = _batteries.where((b) {
-                            final name = (b['display_name'] ?? '').toString().toLowerCase();
-                            final make = (b['make_name'] ?? '').toString().toLowerCase();
-                            final amp = (b['ampere_name'] ?? '').toString().toLowerCase();
-                            final seg = (b['segment_name'] ?? '').toString().toLowerCase();
-                            return name.contains(q) || make.contains(q) || amp.contains(q) || seg.contains(q);
+                            final name = (b['display_name'] ?? '')
+                                .toString()
+                                .toLowerCase();
+                            final make = (b['make_name'] ?? '')
+                                .toString()
+                                .toLowerCase();
+                            final amp = (b['ampere_name'] ?? '')
+                                .toString()
+                                .toLowerCase();
+                            final seg = (b['segment_name'] ?? '')
+                                .toString()
+                                .toLowerCase();
+                            return name.contains(q) ||
+                                make.contains(q) ||
+                                amp.contains(q) ||
+                                seg.contains(q);
                           }).toList();
                         });
                       },
@@ -5507,25 +7136,37 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                             )
                           : ListView.separated(
                               itemCount: localList.length,
-                              separatorBuilder: (_, __) => const Divider(height: 1),
+                              separatorBuilder: (_, __) =>
+                                  const Divider(height: 1),
                               itemBuilder: (ctx, idx) {
                                 final item = localList[idx];
                                 final displayName = item['display_name'] ?? '';
                                 final warranty = item['warranty_years'] ?? 1.0;
-                                final price = (item['price'] as num?)?.toDouble() ?? 0.0;
+                                final price =
+                                    (item['price'] as num?)?.toDouble() ?? 0.0;
 
                                 return ListTile(
                                   leading: CircleAvatar(
-                                    backgroundColor: Color(0xFF000080).withValues(alpha: 0.1),
-                                    child: Icon(Icons.battery_charging_full, color: Color(0xFF000080)),
+                                    backgroundColor: Color(
+                                      0xFF000080,
+                                    ).withValues(alpha: 0.1),
+                                    child: Icon(
+                                      Icons.battery_charging_full,
+                                      color: Color(0xFF000080),
+                                    ),
                                   ),
                                   title: Text(
                                     displayName,
-                                    style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+                                    style: GoogleFonts.inter(
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                   subtitle: Text(
                                     'Warranty: $warranty Yrs · Stock: ${item['stock_qty'] ?? 0}',
-                                    style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey.shade600),
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12.sp,
+                                      color: Colors.grey.shade600,
+                                    ),
                                   ),
                                   trailing: Text(
                                     '$currencySymbol${price.toStringAsFixed(2)}',
@@ -5537,7 +7178,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                                   ),
                                   onTap: () {
                                     Navigator.pop(ctx);
-                                    _showBatteryPriceEditDialogForRow(row, item);
+                                    _showBatteryPriceEditDialogForRow(
+                                      row,
+                                      item,
+                                    );
                                   },
                                 );
                               },
@@ -5553,15 +7197,22 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
     );
   }
 
-  void _showBatteryPriceEditDialogForRow(_ServiceRow row, Map<String, dynamic> battery) {
+  void _showBatteryPriceEditDialogForRow(
+    _ServiceRow row,
+    Map<String, dynamic> battery,
+  ) {
     final defaultPrice = (battery['price'] as num?)?.toDouble() ?? 0.0;
-    final priceCtrl = TextEditingController(text: defaultPrice > 0 ? defaultPrice.toStringAsFixed(2) : '0.00');
+    final priceCtrl = TextEditingController(
+      text: defaultPrice > 0 ? defaultPrice.toStringAsFixed(2) : '0.00',
+    );
 
     showDialog(
       context: context,
       builder: (dlgCtx) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: Row(
             children: [
               const Icon(Icons.battery_charging_full, color: Color(0xFF000080)),
@@ -5569,7 +7220,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               Expanded(
                 child: Text(
                   battery['display_name'] ?? 'Battery Details',
-                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16.sp),
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16.sp,
+                  ),
                 ),
               ),
             ],
@@ -5588,26 +7242,74 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Make: ${battery['make_name'] ?? ''}', style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.w600)),
-                    Text('Ampere: ${battery['ampere_name'] ?? ''}', style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.w600)),
-                    Text('Segment: ${battery['segment_name'] ?? ''}', style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.w600)),
-                    Text('Warranty: ${battery['warranty_years'] ?? 1.0} Years', style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.w600)),
-                    Text('Default Price: $currencySymbol${defaultPrice.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.w600, color: Color(0xFF000080))),
+                    Text(
+                      'Make: ${battery['make_name'] ?? ''}',
+                      style: GoogleFonts.inter(
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      'Ampere: ${battery['ampere_name'] ?? ''}',
+                      style: GoogleFonts.inter(
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      'Segment: ${battery['segment_name'] ?? ''}',
+                      style: GoogleFonts.inter(
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      'Warranty: ${battery['warranty_years'] ?? 1.0} Years',
+                      style: GoogleFonts.inter(
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      'Default Price: $currencySymbol${defaultPrice.toStringAsFixed(2)}',
+                      style: GoogleFonts.inter(
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF000080),
+                      ),
+                    ),
                   ],
                 ),
               ),
               SizedBox(height: 16),
-              Text('Battery Price ($currencySymbol) - Editable:', style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.bold, color: Color(0xFF000080))),
+              Text(
+                'Battery Price ($currencySymbol) - Editable:',
+                style: GoogleFonts.inter(
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF000080),
+                ),
+              ),
               SizedBox(height: 6),
               TextField(
                 controller: priceCtrl,
                 keyboardType: TextInputType.numberWithOptions(decimal: true),
                 autofocus: true,
-                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16.sp, color: Color(0xFF000080)),
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16.sp,
+                  color: Color(0xFF000080),
+                ),
                 decoration: InputDecoration(
                   prefixText: '$currencySymbol ',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Color(0xFF000080))),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: Color(0xFF000080)),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                 ),
               ),
             ],
@@ -5615,11 +7317,15 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dlgCtx),
-              child: Text(context.tr('Cancel'), style: const TextStyle(color: Colors.grey)),
+              child: Text(
+                context.tr('Cancel'),
+                style: const TextStyle(color: Colors.grey),
+              ),
             ),
             ElevatedButton.icon(
               onPressed: () {
-                final finalPrice = double.tryParse(priceCtrl.text) ?? defaultPrice;
+                final finalPrice =
+                    double.tryParse(priceCtrl.text) ?? defaultPrice;
                 Navigator.pop(dlgCtx);
 
                 for (final item in row.batteryItems) {
@@ -5632,7 +7338,8 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                   makeName: battery['make_name']?.toString() ?? '',
                   ampereName: battery['ampere_name']?.toString() ?? '',
                   segmentName: battery['segment_name']?.toString() ?? '',
-                  warrantyYears: (battery['warranty_years'] as num?)?.toDouble() ?? 1.0,
+                  warrantyYears:
+                      (battery['warranty_years'] as num?)?.toDouble() ?? 1.0,
                   initialPrice: finalPrice,
                 );
 
@@ -5645,12 +7352,21 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 _syncAmountCollected();
                 _updateUi();
               },
-              icon: Icon(Icons.add_shopping_cart, color: Colors.white, size: 18),
-              label: Text(context.tr('Confirm Battery'), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+              icon: Icon(
+                Icons.add_shopping_cart,
+                color: Colors.white,
+                size: 18,
+              ),
+              label: Text(
+                context.tr('Confirm Battery'),
+                style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Color(0xFF000080),
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             ),
           ],
@@ -5695,7 +7411,8 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               final name = (ext['name']?.toString() ?? '').toLowerCase();
               final catId = ext['service_type_id']?.toString() ?? 'general';
               final matchesQuery = name.contains(query);
-              final matchesCategory = modalCategoryFilter == 'all' || catId == modalCategoryFilter;
+              final matchesCategory =
+                  modalCategoryFilter == 'all' || catId == modalCategoryFilter;
               return matchesQuery && matchesCategory;
             }).toList();
 
@@ -5740,7 +7457,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     autofocus: false,
                     decoration: InputDecoration(
                       hintText: context.tr('Search extra item...'),
-                      prefixIcon: const Icon(Icons.search, color: Color(0xFF000080)),
+                      prefixIcon: const Icon(
+                        Icons.search,
+                        color: Color(0xFF000080),
+                      ),
                       suffixIcon: searchController.text.isNotEmpty
                           ? IconButton(
                               icon: const Icon(Icons.clear),
@@ -5750,8 +7470,13 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                               },
                             )
                           : null,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
                     ),
                     onChanged: (_) => setModalState(() {}),
                   ),
@@ -5766,15 +7491,22 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                               context.tr('All'),
                               style: GoogleFonts.inter(
                                 fontSize: 12.sp,
-                                color: modalCategoryFilter == 'all' ? Colors.white : Color(0xFF1E293B),
-                                fontWeight: modalCategoryFilter == 'all' ? FontWeight.bold : FontWeight.normal,
+                                color: modalCategoryFilter == 'all'
+                                    ? Colors.white
+                                    : Color(0xFF1E293B),
+                                fontWeight: modalCategoryFilter == 'all'
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
                               ),
                             ),
                             selected: modalCategoryFilter == 'all',
                             selectedColor: const Color(0xFF000080),
                             backgroundColor: const Color(0xFFF1F5F9),
                             onSelected: (selected) {
-                              if (selected) setModalState(() => modalCategoryFilter = 'all');
+                              if (selected)
+                                setModalState(
+                                  () => modalCategoryFilter = 'all',
+                                );
                             },
                           ),
                           const SizedBox(width: 6),
@@ -5787,15 +7519,22 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                                   entry.value,
                                   style: GoogleFonts.inter(
                                     fontSize: 12.sp,
-                                    color: isSel ? Colors.white : Color(0xFF1E293B),
-                                    fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
+                                    color: isSel
+                                        ? Colors.white
+                                        : Color(0xFF1E293B),
+                                    fontWeight: isSel
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
                                   ),
                                 ),
                                 selected: isSel,
                                 selectedColor: const Color(0xFF000080),
                                 backgroundColor: const Color(0xFFF1F5F9),
                                 onSelected: (selected) {
-                                  if (selected) setModalState(() => modalCategoryFilter = entry.key);
+                                  if (selected)
+                                    setModalState(
+                                      () => modalCategoryFilter = entry.key,
+                                    );
                                 },
                               ),
                             );
@@ -5823,10 +7562,15 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                                 children: [
                                   Container(
                                     width: double.infinity,
-                                    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
                                     margin: EdgeInsets.only(top: 8, bottom: 4),
                                     decoration: BoxDecoration(
-                                      color: Color(0xFF000080).withValues(alpha: 0.06),
+                                      color: Color(
+                                        0xFF000080,
+                                      ).withValues(alpha: 0.06),
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Text(
@@ -5840,34 +7584,57 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                                   ),
                                   ...catItems.map((ext) {
                                     final name = ext['name'] ?? '';
-                                    final catLabel = ext['service_type_name'] ?? '';
+                                    final catLabel =
+                                        ext['service_type_name'] ?? '';
                                     return ListTile(
-                                      contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                      contentPadding: EdgeInsets.symmetric(
+                                        horizontal: 4,
+                                        vertical: 2,
+                                      ),
                                       leading: CircleAvatar(
-                                        backgroundColor: Color(0xFF000080).withValues(alpha: 0.08),
-                                        child: Icon(Icons.stars, color: Color(0xFF000080), size: 18),
+                                        backgroundColor: Color(
+                                          0xFF000080,
+                                        ).withValues(alpha: 0.08),
+                                        child: Icon(
+                                          Icons.stars,
+                                          color: Color(0xFF000080),
+                                          size: 18,
+                                        ),
                                       ),
                                       title: Text(
                                         name,
-                                        style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14.sp),
+                                        style: GoogleFonts.inter(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14.sp,
+                                        ),
                                       ),
                                       subtitle: catLabel.isNotEmpty
                                           ? Text(
                                               catLabel,
-                                              style: GoogleFonts.inter(fontSize: 11.sp, color: Colors.grey.shade600),
+                                              style: GoogleFonts.inter(
+                                                fontSize: 11.sp,
+                                                color: Colors.grey.shade600,
+                                              ),
                                             )
                                           : null,
                                       trailing: Container(
                                         padding: EdgeInsets.all(6),
                                         decoration: BoxDecoration(
-                                          color: Color(0xFF000080).withValues(alpha: 0.1),
+                                          color: Color(
+                                            0xFF000080,
+                                          ).withValues(alpha: 0.1),
                                           shape: BoxShape.circle,
                                         ),
-                                        child: Icon(Icons.add, color: Color(0xFF000080), size: 16),
+                                        child: Icon(
+                                          Icons.add,
+                                          color: Color(0xFF000080),
+                                          size: 16,
+                                        ),
                                       ),
                                       onTap: () {
                                         Navigator.pop(ctx);
-                                        final controller = TextEditingController(text: '0');
+                                        final controller =
+                                            TextEditingController(text: '0');
                                         controller.addListener(() {
                                           _syncAmountCollected();
                                           _updateUi();
@@ -5895,8 +7662,6 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
     );
   }
 
-
-
   void _showOilProductSearchPicker(_OilItemRow item) {
     String selectedCategory = item.selectedOilCategory ?? 'Engine Oil';
     final searchController = TextEditingController();
@@ -5921,7 +7686,11 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               final brand = oil['brand']?.toString() ?? '';
               final grade = oil['grade']?.toString() ?? '';
               final name = oil['name']?.toString() ?? '';
-              final key = [brand, grade, name].where((s) => s.isNotEmpty).join(' • ');
+              final key = [
+                brand,
+                grade,
+                name,
+              ].where((s) => s.isNotEmpty).join(' • ');
               uniqueGroupKeys.add(key);
             }
             final sortedGroupKeys = uniqueGroupKeys.toList()..sort();
@@ -5932,13 +7701,19 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 final brand = oil['brand']?.toString() ?? '';
                 final grade = oil['grade']?.toString() ?? '';
                 final name = oil['name']?.toString() ?? '';
-                final key = [brand, grade, name].where((s) => s.isNotEmpty).join(' • ');
+                final key = [
+                  brand,
+                  grade,
+                  name,
+                ].where((s) => s.isNotEmpty).join(' • ');
                 return key == groupKey;
               }).toList();
             }
 
             final query = searchController.text.trim().toLowerCase();
-            final filteredKeys = sortedGroupKeys.where((k) => k.toLowerCase().contains(query)).toList();
+            final filteredKeys = sortedGroupKeys
+                .where((k) => k.toLowerCase().contains(query))
+                .toList();
 
             return Container(
               height: MediaQuery.of(context).size.height * 0.8,
@@ -5950,7 +7725,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     children: [
                       Text(
                         context.tr('Select Product'),
-                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16.sp),
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16.sp,
+                        ),
                       ),
                       IconButton(
                         icon: Icon(Icons.close),
@@ -5972,7 +7750,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                               context.tr(cat),
                               style: TextStyle(
                                 fontSize: 11.sp,
-                                fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
+                                fontWeight: isSel
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
                                 color: isSel ? Colors.white : Colors.black87,
                               ),
                             ),
@@ -5997,7 +7777,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     controller: searchController,
                     autofocus: false,
                     decoration: InputDecoration(
-                      hintText: context.tr('Search brand, grade or product name...'),
+                      hintText: context.tr(
+                        'Search brand, grade or product name...',
+                      ),
                       prefixIcon: const Icon(Icons.search),
                       suffixIcon: searchController.text.isNotEmpty
                           ? IconButton(
@@ -6008,8 +7790,13 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                               },
                             )
                           : null,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
                     ),
                     onChanged: (_) => setModalState(() {}),
                   ),
@@ -6020,7 +7807,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                             child: Padding(
                               padding: const EdgeInsets.all(16.0),
                               child: Text(
-                                context.tr('No products found in ${context.tr(selectedCategory)}'),
+                                context.tr(
+                                  'No products found in ${context.tr(selectedCategory)}',
+                                ),
                                 style: TextStyle(color: Colors.grey.shade600),
                                 textAlign: TextAlign.center,
                               ),
@@ -6028,36 +7817,52 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                           )
                         : ListView.separated(
                             itemCount: filteredKeys.length,
-                            separatorBuilder: (_, __) => const Divider(height: 1),
+                            separatorBuilder: (_, __) =>
+                                const Divider(height: 1),
                             itemBuilder: (_, index) {
                               final key = filteredKeys[index];
-                              final isSelected = item.selectedOilGroupKey == key;
+                              final isSelected =
+                                  item.selectedOilGroupKey == key;
                               final variants = getVariantsForGroup(key);
 
                               return ListTile(
                                 selected: isSelected,
-                                selectedTileColor: Color(0xFF000080).withValues(alpha: 0.08),
+                                selectedTileColor: Color(
+                                  0xFF000080,
+                                ).withValues(alpha: 0.08),
                                 leading: CircleAvatar(
-                                  backgroundColor: isSelected ? Color(0xFF000080) : Colors.grey.shade200,
+                                  backgroundColor: isSelected
+                                      ? Color(0xFF000080)
+                                      : Colors.grey.shade200,
                                   child: Icon(
                                     Icons.oil_barrel,
                                     size: 18,
-                                    color: isSelected ? Colors.white : Color(0xFF000080),
+                                    color: isSelected
+                                        ? Colors.white
+                                        : Color(0xFF000080),
                                   ),
                                 ),
                                 title: Text(
                                   key,
                                   style: GoogleFonts.inter(
-                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                    fontWeight: isSelected
+                                        ? FontWeight.bold
+                                        : FontWeight.w500,
                                     fontSize: 14.sp,
                                   ),
                                 ),
                                 subtitle: Text(
                                   '${variants.length} volume variant(s)',
-                                  style: TextStyle(fontSize: 12.sp, color: Colors.grey.shade600),
+                                  style: TextStyle(
+                                    fontSize: 12.sp,
+                                    color: Colors.grey.shade600,
+                                  ),
                                 ),
                                 trailing: isSelected
-                                    ? Icon(Icons.check_circle, color: Color(0xFF000080))
+                                    ? Icon(
+                                        Icons.check_circle,
+                                        color: Color(0xFF000080),
+                                      )
                                     : const Icon(Icons.chevron_right, size: 18),
                                 onTap: () {
                                   Navigator.pop(ctx);
@@ -6071,12 +7876,18 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
 
                                   if (variants.length == 1) {
                                     final v = variants.first;
-                                    final vol = (v['recommended_qty_litres'] as num).toDouble();
+                                    final vol =
+                                        (v['recommended_qty_litres'] as num)
+                                            .toDouble();
                                     item.selectedOilVolume = vol;
                                     item.selectedOilProductId = v['id'];
-                                    item.selectedOilRunKm = v['oil_run_km'] as int?;
-                                    item.oilPricePerLitre = (v['price_per_litre'] as num).toDouble();
-                                    item.oilLitresController.text = vol.toString();
+                                    item.selectedOilRunKm =
+                                        v['oil_run_km'] as int?;
+                                    item.oilPricePerLitre =
+                                        (v['price_per_litre'] as num)
+                                            .toDouble();
+                                    item.oilLitresController.text = vol
+                                        .toString();
                                     _fetchOilPriceForProduct(item, v['id']);
                                   }
                                   _syncAmountCollected();
@@ -6124,7 +7935,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     children: [
                       Text(
                         context.tr('Select Oil Filter'),
-                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16.sp),
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16.sp,
+                        ),
                       ),
                       IconButton(
                         icon: Icon(Icons.close),
@@ -6148,8 +7962,13 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                               },
                             )
                           : null,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
                     ),
                     onChanged: (_) => setModalState(() {}),
                   ),
@@ -6159,7 +7978,11 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                       leading: Icon(Icons.clear_all, color: Colors.red),
                       title: Text(
                         context.tr('Clear Filter Selection'),
-                        style: GoogleFonts.inter(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 13.sp),
+                        style: GoogleFonts.inter(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13.sp,
+                        ),
                       ),
                       onTap: () {
                         Navigator.pop(ctx);
@@ -6182,40 +8005,56 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                           )
                         : ListView.separated(
                             itemCount: filteredFilters.length,
-                            separatorBuilder: (_, __) => const Divider(height: 1),
+                            separatorBuilder: (_, __) =>
+                                const Divider(height: 1),
                             itemBuilder: (_, index) {
                               final filter = filteredFilters[index];
                               final filterId = filter['id'] as String;
-                              final isSelected = row.selectedOilFilterId == filterId;
-                              final brand = filter['brand_name']?.toString() ?? '';
+                              final isSelected =
+                                  row.selectedOilFilterId == filterId;
+                              final brand =
+                                  filter['brand_name']?.toString() ?? '';
                               final name = filter['name']?.toString() ?? '';
-                              final price = (filter['price'] as num?)?.toDouble() ?? 0.0;
+                              final price =
+                                  (filter['price'] as num?)?.toDouble() ?? 0.0;
                               final km = filter['running_km'] ?? 5000;
 
                               return ListTile(
                                 selected: isSelected,
                                 selectedTileColor: Colors.blue.shade50,
                                 leading: CircleAvatar(
-                                  backgroundColor: isSelected ? Colors.blue.shade700 : Colors.grey.shade200,
+                                  backgroundColor: isSelected
+                                      ? Colors.blue.shade700
+                                      : Colors.grey.shade200,
                                   child: Icon(
                                     Icons.filter_alt,
                                     size: 18,
-                                    color: isSelected ? Colors.white : Colors.blue.shade800,
+                                    color: isSelected
+                                        ? Colors.white
+                                        : Colors.blue.shade800,
                                   ),
                                 ),
                                 title: Text(
                                   '$brand - $name',
                                   style: GoogleFonts.inter(
-                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                                    fontWeight: isSelected
+                                        ? FontWeight.bold
+                                        : FontWeight.w600,
                                     fontSize: 14.sp,
                                   ),
                                 ),
                                 subtitle: Text(
                                   'Price: ${CountryConfig.currencySymbol}${price.toStringAsFixed(2)}  •  Lifespan: $km KM',
-                                  style: TextStyle(fontSize: 12.sp, color: Colors.grey.shade700),
+                                  style: TextStyle(
+                                    fontSize: 12.sp,
+                                    color: Colors.grey.shade700,
+                                  ),
                                 ),
                                 trailing: isSelected
-                                    ? Icon(Icons.check_circle, color: Colors.blue)
+                                    ? Icon(
+                                        Icons.check_circle,
+                                        color: Colors.blue,
+                                      )
                                     : null,
                                 onTap: () {
                                   Navigator.pop(ctx);
@@ -6272,7 +8111,8 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 const SizedBox(width: 6),
               ],
               Expanded(
-                child: titleWidget ??
+                child:
+                    titleWidget ??
                     Text(
                       context.tr(title),
                       style: GoogleFonts.inter(
@@ -6285,7 +8125,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               if (badge != null)
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 2),
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: badgeColor ?? const Color(0xFF000080),
                     borderRadius: BorderRadius.circular(20),
@@ -6308,8 +8150,12 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
     );
   }
 
-  Widget _summaryRow(String label, String value,
-      {Color? valueColor, bool isBold = false}) {
+  Widget _summaryRow(
+    String label,
+    String value, {
+    Color? valueColor,
+    bool isBold = false,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
