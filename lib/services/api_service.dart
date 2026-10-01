@@ -2795,19 +2795,21 @@ class ApiService {
 
   // ─── Insurance Module APIs ───────────────────────────────────────────────
 
+  // ─── Insurance Module APIs ───────────────────────────────────────────────
+
   static Future<Map<String, dynamic>> insuranceCustomerSearch(
     String token, {
     String? search,
   }) async {
-    String url = '\$baseUrl/insurance/customer-search/';
+    String url = '$baseUrl/insurance/customer-search/';
     if (search != null && search.isNotEmpty) {
-      url += '?search=\${Uri.encodeComponent(search)}';
+      url += '?q=${Uri.encodeComponent(search)}';
     }
     final response = await http.get(
       Uri.parse(url),
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer \$token',
+        'Authorization': 'Bearer $token',
       },
     );
     if (response.statusCode == 200 || response.statusCode == 401) {
@@ -2820,10 +2822,10 @@ class ApiService {
     String token,
   ) async {
     final response = await http.get(
-      Uri.parse('\$baseUrl/insurance/services/'),
+      Uri.parse('$baseUrl/insurance/services/'),
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer \$token',
+        'Authorization': 'Bearer $token',
       },
     );
     if (response.statusCode == 200 || response.statusCode == 401) {
@@ -2838,19 +2840,20 @@ class ApiService {
     bool showAll = false,
     String? search,
   }) async {
-    String url = '\$baseUrl/insurance/reminders/';
+    String url = '$baseUrl/insurance/reminders/';
     final params = <String, String>{};
     if (date != null && date.isNotEmpty) params['date'] = date;
     if (showAll) params['show_all'] = 'true';
     if (search != null && search.isNotEmpty) params['search'] = search;
     if (params.isNotEmpty) {
-      url += '?' + params.entries.map((e) => '\${e.key}=\${Uri.encodeComponent(e.value)}').join('&');
+      final queryStr = params.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value)}').join('&');
+      url += '?$queryStr';
     }
     final response = await http.get(
       Uri.parse(url),
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer \$token',
+        'Authorization': 'Bearer $token',
       },
     );
     if (response.statusCode == 200 || response.statusCode == 401) {
@@ -2858,5 +2861,4 @@ class ApiService {
     }
     throw Exception('Failed to load insurance reminders.');
   }
-
 }

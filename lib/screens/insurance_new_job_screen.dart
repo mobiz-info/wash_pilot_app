@@ -9,6 +9,7 @@ import '../config/country_config.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import 'add_customer_screen.dart';
+import 'add_vehicle_screen.dart';
 import 'invoice_create_screen.dart';
 
 class InsuranceNewJobScreen extends StatefulWidget {
@@ -25,13 +26,13 @@ class _InsuranceNewJobScreenState extends State<InsuranceNewJobScreen> {
   final ValueNotifier<String> _selectedCountryIsoNotifier =
       ValueNotifier(CountryConfig.phoneIsoCode);
 
-  // Suggestions (while typing)
+  // Suggestions (while typing < 10 digits)
   final ValueNotifier<List<dynamic>> _suggestionsNotifier =
       ValueNotifier([]);
   final ValueNotifier<bool> _isSearchingSuggestionsNotifier =
       ValueNotifier(false);
 
-  // Found customer (after selecting or exact match)
+  // Found customer (shown when 10 digits entered or suggestion selected or search tapped)
   final ValueNotifier<Map<String, dynamic>?> _customerNotifier =
       ValueNotifier(null);
   final ValueNotifier<bool> _isLoadingCustomerNotifier =
@@ -40,9 +41,17 @@ class _InsuranceNewJobScreenState extends State<InsuranceNewJobScreen> {
       ValueNotifier('');
 
   Timer? _debounce;
+  String _lastSearchedText = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _mobileController.addListener(_onMobileChanged);
+  }
 
   @override
   void dispose() {
+    _mobileController.removeListener(_onMobileChanged);
     _mobileController.dispose();
     _selectedCountryCodeNotifier.dispose();
     _selectedCountryIsoNotifier.dispose();
@@ -55,30 +64,51 @@ class _InsuranceNewJobScreenState extends State<InsuranceNewJobScreen> {
     super.dispose();
   }
 
-  // ── Auto-suggest as user types ──────────────────────────────────────────
-  void _onMobileChanged(BuildContext context) {
+  // ── Text change listener ───────────────────────────────────────────────────
+  void _onMobileChanged() {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     final text = _mobileController.text.trim();
 
-    // Clear customer whenever input changes
+    if (text.isEmpty) {
+      _customerNotifier.value = null;
+      _notFoundMessageNotifier.value = '';
+      _suggestionsNotifier.value = [];
+      _lastSearchedText = '';
+      return;
+    }
+
+    // If 10 or more digits, automatically fetch the full customer!
+    final digits = text.replaceAll(RegExp(r'\D'), '');
+    if (digits.length >= 10) {
+      if (_lastSearchedText == text && _customerNotifier.value != null) {
+        return;
+      }
+      _suggestionsNotifier.value = [];
+      _debounce = Timer(const Duration(milliseconds: 300), () {
+        _searchCustomer(autoFetch: true);
+      });
+      return;
+    }
+
+    // Under 10 digits: clear customer card & show suggestions if >= 3 chars
     _customerNotifier.value = null;
     _notFoundMessageNotifier.value = '';
 
     if (text.length >= 3) {
-      _debounce = Timer(const Duration(milliseconds: 350), () {
-        _fetchSuggestions(context, text);
+      _debounce = Timer(const Duration(milliseconds: 300), () {
+        _fetchSuggestions(text);
       });
     } else {
       _suggestionsNotifier.value = [];
     }
   }
 
-  Future<void> _fetchSuggestions(BuildContext context, String q) async {
+  // ── Fetch suggestions while typing (>= 3 chars) ───────────────────────────
+  Future<void> _fetchSuggestions(String q) async {
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
     _isSearchingSuggestionsNotifier.value = true;
     try {
-      // Use the insurance-specific search endpoint
       final res = await ApiService.insuranceCustomerSearch(token, search: q);
       if (res['success'] == true) {
         _suggestionsNotifier.value =
@@ -93,13 +123,75 @@ class _InsuranceNewJobScreenState extends State<InsuranceNewJobScreen> {
     }
   }
 
-  // ── Select from suggestion → load full customer ─────────────────────────
-  void _selectSuggestion(
-      BuildContext context, Map<String, dynamic> suggestion) {
+  // ── Search customer (auto-fetch or search button or suggestion tap) ────────
+  Future<void> _searchCustomer({bool autoFetch = false}) async {
+    final text = _mobileController.text.trim();
+    if (text.isEmpty) return;
+
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
+
+    if (!autoFetch) {
+      FocusScope.of(context).unfocus();
+    }
+
+    _lastSearchedText = text;
+    _suggestionsNotifier.value = [];
+    _isLoadingCustomerNotifier.value = true;
+    _customerNotifier.value = null;
+    _notFoundMessageNotifier.value = '';
+
+    final formattedPhone = CountryConfig.formatPhoneWithCountryCode(
+        text, _selectedCountryCodeNotifier.value);
+
+    try {
+      // 1. Try search with entered text
+      var res = await ApiService.insuranceCustomerSearch(token, search: text);
+      var list = (res['success'] == true)
+          ? List<dynamic>.from(res['customers'] ?? [])
+          : <dynamic>[];
+
+      // 2. If not found and formattedPhone is different, retry with formattedPhone
+      if (list.isEmpty && formattedPhone != text) {
+        res = await ApiService.insuranceCustomerSearch(token,
+            search: formattedPhone);
+        list = (res['success'] == true)
+            ? List<dynamic>.from(res['customers'] ?? [])
+            : <dynamic>[];
+      }
+
+      // 3. If still not found and digits are >= 10, try clean 10-digit suffix
+      final digits = text.replaceAll(RegExp(r'\D'), '');
+      if (list.isEmpty && digits.length >= 10) {
+        final last10 = digits.substring(digits.length - 10);
+        if (last10 != text && last10 != formattedPhone) {
+          res = await ApiService.insuranceCustomerSearch(token, search: last10);
+          list = (res['success'] == true)
+              ? List<dynamic>.from(res['customers'] ?? [])
+              : <dynamic>[];
+        }
+      }
+
+      if (list.isNotEmpty) {
+        _customerNotifier.value = list.first as Map<String, dynamic>;
+        _notFoundMessageNotifier.value = '';
+      } else {
+        _customerNotifier.value = null;
+        _notFoundMessageNotifier.value = formattedPhone;
+      }
+    } catch (_) {
+      _customerNotifier.value = null;
+      _notFoundMessageNotifier.value = formattedPhone;
+    } finally {
+      _isLoadingCustomerNotifier.value = false;
+    }
+  }
+
+  // ── Select customer from suggestion dropdown ──────────────────────────────
+  void _selectSuggestion(Map<String, dynamic> suggestion) {
     _suggestionsNotifier.value = [];
     FocusScope.of(context).unfocus();
 
-    // Fill the phone field
     final rawPhone = suggestion['phone']?.toString() ?? '';
     String strippedPhone = rawPhone;
     final allCountries = CountryConfig.all
@@ -115,46 +207,11 @@ class _InsuranceNewJobScreenState extends State<InsuranceNewJobScreen> {
         break;
       }
     }
-    _mobileController.text = strippedPhone;
 
-    // Show the customer card directly (we already have the data)
+    _lastSearchedText = strippedPhone;
+    _mobileController.text = strippedPhone;
     _customerNotifier.value = suggestion;
     _notFoundMessageNotifier.value = '';
-  }
-
-  // ── Search button pressed ────────────────────────────────────────────────
-  void _searchCustomer(BuildContext context) {
-    FocusScope.of(context).unfocus();
-    _suggestionsNotifier.value = [];
-    final text = _mobileController.text.trim();
-    if (text.isEmpty) return;
-
-    final token = context.read<AuthProvider>().token;
-    if (token == null) return;
-
-    _isLoadingCustomerNotifier.value = true;
-    _customerNotifier.value = null;
-    _notFoundMessageNotifier.value = '';
-
-    final formattedPhone = CountryConfig.formatPhoneWithCountryCode(
-        text, _selectedCountryCodeNotifier.value);
-
-    ApiService.insuranceCustomerSearch(token, search: text).then((res) {
-      _isLoadingCustomerNotifier.value = false;
-      if (res['success'] == true) {
-        final list = List<dynamic>.from(res['customers'] ?? []);
-        if (list.isNotEmpty) {
-          _customerNotifier.value = list.first as Map<String, dynamic>;
-        } else {
-          _notFoundMessageNotifier.value = formattedPhone;
-        }
-      } else {
-        _notFoundMessageNotifier.value = formattedPhone;
-      }
-    }).catchError((_) {
-      _isLoadingCustomerNotifier.value = false;
-      _notFoundMessageNotifier.value = formattedPhone;
-    });
   }
 
   @override
@@ -174,14 +231,13 @@ class _InsuranceNewJobScreenState extends State<InsuranceNewJobScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // ── Phone input row ────────────────────────────────────────────
-            ValueListenableBuilder<String>(
-              valueListenable: _selectedCountryIsoNotifier,
-              builder: (ctx, iso, _) => Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: IntlPhoneField(
-                      key: ValueKey('ins_phone_$iso'),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: ValueListenableBuilder<String>(
+                    valueListenable: _selectedCountryIsoNotifier,
+                    builder: (ctx, iso, _) => IntlPhoneField(
                       controller: _mobileController,
                       keyboardType: TextInputType.phone,
                       initialCountryCode: iso,
@@ -196,15 +252,14 @@ class _InsuranceNewJobScreenState extends State<InsuranceNewJobScreen> {
                             '+${country.dialCode}';
                         _selectedCountryIsoNotifier.value = country.code;
                       },
-                      onChanged: (_) => _onMobileChanged(context),
-                      onSubmitted: (_) => _searchCustomer(context),
+                      onSubmitted: (_) => _searchCustomer(),
                       decoration: InputDecoration(
                         hintText: 'Enter Mobile Number',
-                        hintStyle: GoogleFonts.inter(
-                            color: Colors.grey.shade400),
+                        hintStyle:
+                            GoogleFonts.inter(color: Colors.grey.shade400),
                         filled: true,
                         fillColor: Colors.white,
-                        contentPadding: EdgeInsets.symmetric(
+                        contentPadding: const EdgeInsets.symmetric(
                             vertical: 16, horizontal: 16),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -220,31 +275,47 @@ class _InsuranceNewJobScreenState extends State<InsuranceNewJobScreen> {
                           borderSide:
                               const BorderSide(color: Color(0xFF000080)),
                         ),
+                        suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                          valueListenable: _mobileController,
+                          builder: (_, val, __) {
+                            if (val.text.isEmpty) {
+                              return const SizedBox.shrink();
+                            }
+                            return IconButton(
+                              icon: const Icon(Icons.clear, size: 20),
+                              color: Colors.grey.shade400,
+                              onPressed: () {
+                                _mobileController.clear();
+                              },
+                            );
+                          },
+                        ),
                       ),
                     ),
                   ),
-                  SizedBox(width: 8.w),
-                  // Search button
-                  InkWell(
-                    onTap: () => _searchCustomer(context),
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      padding: EdgeInsets.all(16.r),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF000080),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(Icons.search,
-                          color: Colors.white, size: 24.r),
+                ),
+                SizedBox(width: 8.w),
+                // Search button
+                InkWell(
+                  onTap: () => _searchCustomer(),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    height: 54.h,
+                    width: 54.h,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF000080),
+                      borderRadius: BorderRadius.circular(12),
                     ),
+                    child:
+                        Icon(Icons.search, color: Colors.white, size: 24.r),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
 
             SizedBox(height: 8.h),
 
-            // ── Suggestions dropdown ───────────────────────────────────────
+            // ── Suggestions dropdown (shown while typing) ───────────────────
             ValueListenableBuilder<bool>(
               valueListenable: _isSearchingSuggestionsNotifier,
               builder: (_, searching, __) {
@@ -256,7 +327,8 @@ class _InsuranceNewJobScreenState extends State<InsuranceNewJobScreen> {
                       child: SizedBox(
                         width: 18.r,
                         height: 18.r,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child:
+                            const CircularProgressIndicator(strokeWidth: 2),
                       ),
                     ),
                   );
@@ -284,13 +356,13 @@ class _InsuranceNewJobScreenState extends State<InsuranceNewJobScreen> {
                         shrinkWrap: true,
                         padding: EdgeInsets.symmetric(vertical: 4.h),
                         itemCount: suggestions.length,
-                        separatorBuilder: (_, __) =>
-                            Divider(height: 1, color: Colors.grey.shade100),
+                        separatorBuilder: (_, __) => Divider(
+                            height: 1, color: Colors.grey.shade100),
                         itemBuilder: (_, i) {
                           final s =
                               suggestions[i] as Map<String, dynamic>;
                           return InkWell(
-                            onTap: () => _selectSuggestion(context, s),
+                            onTap: () => _selectSuggestion(s),
                             child: Padding(
                               padding: EdgeInsets.symmetric(
                                   horizontal: 16.w, vertical: 12.h),
@@ -298,8 +370,9 @@ class _InsuranceNewJobScreenState extends State<InsuranceNewJobScreen> {
                                 children: [
                                   CircleAvatar(
                                     radius: 18.r,
-                                    backgroundColor: const Color(0xFF000080)
-                                        .withValues(alpha: 0.08),
+                                    backgroundColor:
+                                        const Color(0xFF000080)
+                                            .withValues(alpha: 0.08),
                                     child: Icon(Icons.person,
                                         color: const Color(0xFF000080),
                                         size: 18.r),
@@ -339,7 +412,7 @@ class _InsuranceNewJobScreenState extends State<InsuranceNewJobScreen> {
               },
             ),
 
-            SizedBox(height: 16.h),
+            SizedBox(height: 12.h),
 
             // ── Main content area ──────────────────────────────────────────
             Expanded(
@@ -357,21 +430,7 @@ class _InsuranceNewJobScreenState extends State<InsuranceNewJobScreen> {
                       if (customer != null) {
                         return _CustomerFoundSection(
                           customer: customer,
-                          onAddCustomer: () async {
-                            final phone =
-                                _mobileController.text.trim();
-                            final created =
-                                await Navigator.push<Map<String, dynamic>?>(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => AddCustomerScreen(
-                                    phoneNumber: phone),
-                              ),
-                            );
-                            if (created != null) {
-                              _customerNotifier.value = created;
-                            }
-                          },
+                          onRefresh: () => _searchCustomer(),
                         );
                       }
 
@@ -383,19 +442,30 @@ class _InsuranceNewJobScreenState extends State<InsuranceNewJobScreen> {
                             return _NotFoundSection(
                               phone: notFoundPhone,
                               onAddCustomer: () async {
+                                final rawMobile =
+                                    _mobileController.text.trim();
+                                final formattedMobile =
+                                    CountryConfig.formatPhoneWithCountryCode(
+                                        rawMobile,
+                                        _selectedCountryCodeNotifier.value);
                                 final created = await Navigator.push<
                                     Map<String, dynamic>?>(
                                   context,
                                   MaterialPageRoute(
                                     builder: (_) => AddCustomerScreen(
-                                        phoneNumber: _mobileController
-                                            .text
-                                            .trim()),
+                                      phoneNumber: formattedMobile,
+                                      initialCountryIso:
+                                          _selectedCountryIsoNotifier.value,
+                                      initialDialCode:
+                                          _selectedCountryCodeNotifier.value,
+                                    ),
                                   ),
                                 );
                                 if (created != null) {
                                   _notFoundMessageNotifier.value = '';
                                   _customerNotifier.value = created;
+                                } else {
+                                  _searchCustomer();
                                 }
                               },
                             );
@@ -408,16 +478,16 @@ class _InsuranceNewJobScreenState extends State<InsuranceNewJobScreen> {
                               children: [
                                 Icon(Icons.shield_outlined,
                                     size: 72.r,
-                                    color: Colors.grey.shade200),
+                                    color: Colors.grey.shade300),
                                 SizedBox(height: 16.h),
-                                Text('Search for a customer',
+                                Text('Enter Customer Number',
                                     style: GoogleFonts.inter(
                                         fontSize: 17.sp,
                                         fontWeight: FontWeight.w700,
-                                        color: Colors.grey.shade500)),
+                                        color: Colors.grey.shade600)),
                                 SizedBox(height: 6.h),
                                 Text(
-                                    'Enter mobile number to start an\ninsurance job',
+                                    'Enter phone number to automatically find customer and start insurance job',
                                     textAlign: TextAlign.center,
                                     style: GoogleFonts.inter(
                                         fontSize: 13.sp,
@@ -444,217 +514,390 @@ class _InsuranceNewJobScreenState extends State<InsuranceNewJobScreen> {
 // ─────────────────────────────────────────────────────────────────────────────
 class _CustomerFoundSection extends StatelessWidget {
   final Map<String, dynamic> customer;
-  final VoidCallback onAddCustomer;
+  final VoidCallback onRefresh;
 
   const _CustomerFoundSection({
     required this.customer,
-    required this.onAddCustomer,
+    required this.onRefresh,
   });
 
   @override
   Widget build(BuildContext context) {
     final vehicles = List<dynamic>.from(customer['vehicles'] ?? []);
+    final category =
+        (customer['customer_category'] ?? 'motor').toString().toLowerCase();
+    final isNonMotor = category == 'non_motor';
 
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ── Customer card ────────────────────────────────────────────────
+          // ── Customer Card ────────────────────────────────────────────────
           Container(
             padding: EdgeInsets.all(16.r),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16.r),
               border: Border.all(color: Colors.grey.shade200),
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 24.r,
-                  backgroundColor:
-                      const Color(0xFF000080).withValues(alpha: 0.1),
-                  child: Icon(Icons.person,
-                      color: const Color(0xFF000080), size: 24.r),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
-                SizedBox(width: 14.w),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CircleAvatar(
+                      radius: 24.r,
+                      backgroundColor:
+                          const Color(0xFF000080).withValues(alpha: 0.1),
+                      child: Icon(Icons.person,
+                          color: const Color(0xFF000080), size: 24.r),
+                    ),
+                    SizedBox(width: 14.w),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment:
+                                MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  customer['name'] ?? '',
+                                  style: GoogleFonts.inter(
+                                      fontSize: 17.sp,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFF1E293B)),
+                                ),
+                              ),
+                              // Category Badge (Motor / Non-Motor)
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 8.w, vertical: 4.h),
+                                decoration: BoxDecoration(
+                                  color: isNonMotor
+                                      ? Colors.purple.shade50
+                                      : Colors.blue.shade50,
+                                  borderRadius: BorderRadius.circular(8.r),
+                                  border: Border.all(
+                                    color: isNonMotor
+                                        ? Colors.purple.shade200
+                                        : Colors.blue.shade200,
+                                  ),
+                                ),
+                                child: Text(
+                                  isNonMotor ? 'Non-Motor' : 'Motor',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11.sp,
+                                    fontWeight: FontWeight.w700,
+                                    color: isNonMotor
+                                        ? Colors.purple.shade800
+                                        : const Color(0xFF000080),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 4.h),
+                          Text(
+                            customer['phone'] ?? '',
+                            style: GoogleFonts.inter(
+                                fontSize: 13.sp,
+                                color: Colors.grey.shade600),
+                          ),
+                          if ((customer['type'] ??
+                                  customer['customer_type'] ??
+                                  '')
+                              .toString()
+                              .isNotEmpty) ...[
+                            SizedBox(height: 2.h),
+                            Text(
+                              'Type: ${customer['type'] ?? customer['customer_type']}',
+                              style: GoogleFonts.inter(
+                                  fontSize: 12.sp,
+                                  color: const Color(0xFF000080),
+                                  fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                          if ((customer['branch'] ??
+                                  customer['branch_name'] ??
+                                  '')
+                              .toString()
+                              .isNotEmpty) ...[
+                            SizedBox(height: 2.h),
+                            Text(
+                              'Branch: ${customer['branch'] ?? customer['branch_name']}',
+                              style: GoogleFonts.inter(
+                                  fontSize: 12.sp,
+                                  color: Colors.grey.shade600),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                // Aadhaar & DOB for Non-Motor
+                if (isNonMotor) ...[
+                  Divider(height: 20.h, color: Colors.grey.shade200),
+                  Row(
                     children: [
-                      Text(
-                        customer['name'] ?? '',
-                        style: GoogleFonts.inter(
-                            fontSize: 17.sp,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF1E293B)),
-                      ),
-                      SizedBox(height: 3.h),
-                      Text(
-                        customer['phone'] ?? '',
-                        style: GoogleFonts.inter(
-                            fontSize: 13.sp,
-                            color: Colors.grey.shade600),
-                      ),
-                      if ((customer['customer_type'] ?? '').isNotEmpty) ...[
-                        SizedBox(height: 3.h),
-                        Text(
-                          'Type: ${customer['customer_type']}',
-                          style: GoogleFonts.inter(
-                              fontSize: 12.sp,
-                              color: const Color(0xFF000080),
-                              fontWeight: FontWeight.w600),
+                      if ((customer['aadhaar_number'] ?? '')
+                          .toString()
+                          .isNotEmpty)
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Aadhaar Number',
+                                  style: GoogleFonts.inter(
+                                      fontSize: 11.sp,
+                                      color: Colors.grey.shade500)),
+                              SizedBox(height: 2.h),
+                              Text(customer['aadhaar_number'].toString(),
+                                  style: GoogleFonts.inter(
+                                      fontSize: 13.sp,
+                                      fontWeight: FontWeight.w600)),
+                            ],
+                          ),
                         ),
-                      ],
+                      if ((customer['date_of_birth'] ?? '')
+                          .toString()
+                          .isNotEmpty)
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Date of Birth',
+                                  style: GoogleFonts.inter(
+                                      fontSize: 11.sp,
+                                      color: Colors.grey.shade500)),
+                              SizedBox(height: 2.h),
+                              Text(customer['date_of_birth'].toString(),
+                                  style: GoogleFonts.inter(
+                                      fontSize: 13.sp,
+                                      fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
                     ],
                   ),
-                ),
+                ],
               ],
             ),
           ),
 
           SizedBox(height: 20.h),
 
-          // ── Vehicles ─────────────────────────────────────────────────────
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Vehicles',
-                  style: GoogleFonts.inter(
-                      fontSize: 16.sp, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          SizedBox(height: 12.h),
-
-          if (vehicles.isEmpty)
-            Container(
-              padding: EdgeInsets.all(20.r),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12.r),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: Center(
-                child: Text('No vehicles found for this customer',
+          // ── Vehicles Section (For Motor Customers) ────────────────────────
+          if (!isNonMotor) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Customer Vehicles',
                     style: GoogleFonts.inter(
-                        color: Colors.grey.shade500, fontSize: 13.sp)),
-              ),
-            )
-          else
-            ...vehicles.asMap().entries.map((entry) {
-              final v = entry.value as Map<String, dynamic>;
-              final vehicleNo =
-                  v['vehicle_number']?.toString() ?? v['no']?.toString() ?? '';
-              final model = v['vehicle_model']?.toString() ??
-                  v['model']?.toString() ?? '';
-              final type = v['vehicle_type']?.toString() ?? '';
-
-              return Padding(
-                padding: EdgeInsets.only(bottom: 12.h),
-                child: InkWell(
-                  onTap: () {
-                    Navigator.push(
+                        fontSize: 16.sp, fontWeight: FontWeight.bold)),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    final token = context.read<AuthProvider>().token;
+                    if (token == null) return;
+                    final res = await Navigator.push<bool>(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => InvoiceCreateScreen(
-                          customer: customer,
-                          vehicle: v,
+                        builder: (_) => AddVehicleScreen(
+                          customerData: customer,
+                          token: token,
                         ),
                       ),
                     );
+                    if (res == true) {
+                      onRefresh();
+                    }
                   },
-                  borderRadius: BorderRadius.circular(16.r),
-                  child: Container(
-                    padding: EdgeInsets.all(16.r),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16.r),
-                      border: Border.all(
-                        color: const Color(0xFF000080).withValues(alpha: 0.18),
-                        width: 1.5,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF000080).withValues(alpha: 0.04),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(10.r),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF000080).withValues(alpha: 0.08),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(Icons.directions_car,
-                              color: const Color(0xFF000080), size: 22.r),
-                        ),
-                        SizedBox(width: 14.w),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                vehicleNo,
-                                style: GoogleFonts.inter(
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 16.sp,
-                                    color: const Color(0xFF1E293B)),
-                              ),
-                              if (model.isNotEmpty || type.isNotEmpty) ...[
-                                SizedBox(height: 3.h),
-                                Text(
-                                  [type, model]
-                                      .where((s) => s.isNotEmpty)
-                                      .join(' · '),
-                                  style: GoogleFonts.inter(
-                                      fontSize: 12.sp,
-                                      color: Colors.grey.shade600),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                              horizontal: 12.w, vertical: 6.h),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF000080),
-                            borderRadius: BorderRadius.circular(10.r),
-                          ),
-                          child: Text('New Job',
-                              style: GoogleFonts.inter(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 12.sp)),
-                        ),
-                      ],
+                  icon: Icon(Icons.add_circle_outline, size: 16.r),
+                  label: Text('Add Vehicle',
+                      style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w700, fontSize: 12.sp)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                        const Color(0xFF000080).withValues(alpha: 0.08),
+                    foregroundColor: const Color(0xFF000080),
+                    elevation: 0,
+                    padding: EdgeInsets.symmetric(
+                        horizontal: 14.w, vertical: 8.h),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10.r),
+                      side: const BorderSide(
+                          color: Color(0xFF000080), width: 1.2),
                     ),
                   ),
                 ),
-              );
-            }),
-
-          // ── No vehicle → still allow new job without vehicle ─────────────
-          if (vehicles.isEmpty) ...[
+              ],
+            ),
             SizedBox(height: 12.h),
+
+            if (vehicles.isEmpty)
+              Container(
+                padding: EdgeInsets.all(20.r),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12.r),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Center(
+                  child: Text('No vehicles found for this customer',
+                      style: GoogleFonts.inter(
+                          color: Colors.grey.shade500, fontSize: 13.sp)),
+                ),
+              )
+            else
+              ...vehicles.asMap().entries.map((entry) {
+                final v = entry.value as Map<String, dynamic>;
+                final vehicleNo = v['no']?.toString() ??
+                    v['vehicle_number']?.toString() ??
+                    '';
+                final model = v['type']?.toString() ??
+                    v['vehicle_model']?.toString() ??
+                    '';
+                final type = v['vehicle_type']?.toString() ?? '';
+
+                return Padding(
+                  padding: EdgeInsets.only(bottom: 12.h),
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => InvoiceCreateScreen(
+                            customer: customer,
+                            vehicle: v,
+                          ),
+                        ),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(16.r),
+                    child: Container(
+                      padding: EdgeInsets.all(16.r),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16.r),
+                        border: Border.all(
+                          color: const Color(0xFF000080)
+                              .withValues(alpha: 0.18),
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF000080)
+                                .withValues(alpha: 0.04),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(10.r),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF000080)
+                                  .withValues(alpha: 0.08),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(Icons.directions_car,
+                                color: const Color(0xFF000080), size: 22.r),
+                          ),
+                          SizedBox(width: 14.w),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  vehicleNo,
+                                  style: GoogleFonts.inter(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 16.sp,
+                                      color: const Color(0xFF1E293B)),
+                                ),
+                                if (model.isNotEmpty || type.isNotEmpty) ...[
+                                  SizedBox(height: 3.h),
+                                  Text(
+                                    [type, model]
+                                        .where((s) => s.isNotEmpty)
+                                        .join(' · '),
+                                    style: GoogleFonts.inter(
+                                        fontSize: 12.sp,
+                                        color: Colors.grey.shade600),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 12.w, vertical: 6.h),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF000080),
+                              borderRadius: BorderRadius.circular(10.r),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text('New Job',
+                                    style: GoogleFonts.inter(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 12.sp)),
+                                SizedBox(width: 4.w),
+                                Icon(Icons.arrow_forward_ios,
+                                    color: Colors.white, size: 10.r),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }),
+          ],
+
+          // ── Start Job Button (For Non-Motor or Motor with 0 vehicles) ─────
+          if (isNonMotor || vehicles.isEmpty) ...[
+            SizedBox(height: 16.h),
             ElevatedButton.icon(
               onPressed: () {
+                final fallbackVehicle = {
+                  'id': '',
+                  'no': isNonMotor ? 'Non-Motor' : 'General',
+                  'vehicle_number': isNonMotor ? 'Non-Motor' : 'General',
+                  'type': 'Insurance',
+                  'vehicle_type': 'General',
+                  'wheel_type': 'normal_wheel',
+                };
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => InvoiceCreateScreen(
                       customer: customer,
-                      vehicle: const {},
+                      vehicle: fallbackVehicle,
                     ),
                   ),
                 );
               },
               icon: Icon(Icons.shield_outlined, size: 18.r),
               label: Text('Start Insurance Job',
-                  style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+                  style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w700, fontSize: 15.sp)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF000080),
                 foregroundColor: Colors.white,
@@ -693,7 +936,7 @@ class _NotFoundSection extends StatelessWidget {
                 fontWeight: FontWeight.w700,
                 color: Colors.grey.shade700)),
         SizedBox(height: 6.h),
-        Text('No customer found for\n$phone',
+        Text('No customer found for $phone',
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
                 fontSize: 13.sp, color: Colors.grey.shade500)),
@@ -702,8 +945,8 @@ class _NotFoundSection extends StatelessWidget {
           onPressed: onAddCustomer,
           icon: Icon(Icons.person_add_outlined, size: 18.r),
           label: Text('Add New Customer',
-              style:
-                  GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14.sp)),
+              style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w700, fontSize: 14.sp)),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF000080),
             foregroundColor: Colors.white,
