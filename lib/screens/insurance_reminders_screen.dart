@@ -131,7 +131,9 @@ class _InsuranceRemindersScreenState extends State<InsuranceRemindersScreen> {
           : (companyName.isNotEmpty ? companyName : 'Mobiz Auto Care Pro');
     }
 
-    return "Dear $custName, $insService policy expiry reminder.\n"
+    final insCompany = (plan['insurance_company_name'] ?? '').toString().trim();
+    final serviceLabel = insCompany.isNotEmpty ? "$insCompany $insService" : insService;
+    return "Dear $custName, $serviceLabel policy expiry reminder.\n"
         "Expiry date: $expiryDate\n"
         "Kindly contact for the renewal.\n"
         "$branchName support team";
@@ -361,34 +363,7 @@ class _InsuranceRemindersScreenState extends State<InsuranceRemindersScreen> {
                         ],
                       ),
                     ),
-                    ElevatedButton.icon(
-                      onPressed: _isSendingBulk ? null : _sendBulkReminders,
-                      icon: _isSendingBulk
-                          ? SizedBox(
-                              width: 16.r,
-                              height: 16.r,
-                              child: const CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.send, size: 16),
-                      label: Text(
-                        _isSendingBulk
-                            ? context.tr('Sending...')
-                            : '${context.tr("Send Selected")} (${_selectedReminderIds.length})',
-                        style: GoogleFonts.inter(fontWeight: FontWeight.w700),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF000080),
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 20.w, vertical: 12.h),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10.r),
-                        ),
-                      ),
-                    ),
+                 
                   ],
                 ),
               ),
@@ -526,66 +501,11 @@ class _InsuranceRemindersScreenState extends State<InsuranceRemindersScreen> {
             ),
           ),
 
+          Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h)),
+
           // ── Selection & Counter Row ──────────────────────────────────────
-          if (_reminders.isNotEmpty)
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-              child: Row(
-                children: [
-                  Text(
-                    '${_reminders.length} ${context.tr("reminders")}',
-                    style: GoogleFonts.inter(
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey.shade700,
-                    ),
-                  ),
-                  const Spacer(),
-                  InkWell(
-                    onTap: () {
-                      setState(() {
-                        if (_selectedReminderIds.length == _reminders.length) {
-                          _selectedReminderIds.clear();
-                        } else {
-                          _selectedReminderIds.clear();
-                          for (final r in _reminders) {
-                            final id = (r['id'] ?? '').toString();
-                            if (id.isNotEmpty) _selectedReminderIds.add(id);
-                          }
-                        }
-                      });
-                    },
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 4.h),
-                      child: Row(
-                        children: [
-                          Icon(
-                            _selectedReminderIds.length == _reminders.length
-                                ? Icons.check_box
-                                : (_selectedReminderIds.isNotEmpty
-                                    ? Icons.indeterminate_check_box
-                                    : Icons.check_box_outline_blank),
-                            size: 18.r,
-                            color: const Color(0xFF000080),
-                          ),
-                          SizedBox(width: 4.w),
-                          Text(
-                            _selectedReminderIds.length == _reminders.length
-                                ? context.tr('Deselect All')
-                                : context.tr('Select All'),
-                            style: GoogleFonts.inter(
-                              fontSize: 12.sp,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF000080),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+        
 
           // ── Results List ────────────────────────────────────────────────
           Expanded(
@@ -634,15 +554,15 @@ class _InsuranceRemindersScreenState extends State<InsuranceRemindersScreen> {
                                 reminder: item,
                                 isSelected: isSelected,
                                 isSendingSingle: isSendingSingle,
-                                onToggleSelect: () {
-                                  setState(() {
-                                    if (isSelected) {
-                                      _selectedReminderIds.remove(planId);
-                                    } else {
-                                      _selectedReminderIds.add(planId);
-                                    }
-                                  });
-                                },
+                                // onToggleSelect: () {
+                                //   setState(() {
+                                //     if (isSelected) {
+                                //       _selectedReminderIds.remove(planId);
+                                //     } else {
+                                //       _selectedReminderIds.add(planId);
+                                //     }
+                                //   });
+                                // },
                                 onWhatsAppChat: () =>
                                     _launchDirectWhatsApp(item),
                                 onSendApi: () => _sendSingleReminderApi(item),
@@ -664,7 +584,7 @@ class _InsuranceReminderCard extends StatelessWidget {
   final Map<String, dynamic> reminder;
   final bool isSelected;
   final bool isSendingSingle;
-  final VoidCallback onToggleSelect;
+  // final VoidCallback onToggleSelect;
   final VoidCallback onWhatsAppChat;
   final VoidCallback onSendApi;
   final String Function(String?) formatDate;
@@ -673,7 +593,7 @@ class _InsuranceReminderCard extends StatelessWidget {
     required this.reminder,
     required this.isSelected,
     required this.isSendingSingle,
-    required this.onToggleSelect,
+    // required this.onToggleSelect,
     required this.onWhatsAppChat,
     required this.onSendApi,
     required this.formatDate,
@@ -687,6 +607,7 @@ class _InsuranceReminderCard extends StatelessWidget {
         DateTime.now().toIso8601String().substring(0, 10);
     final vehicleNo = (reminder['vehicle_number'] ?? '').toString().trim();
     final serviceName = (reminder['service_name'] ?? '').toString().trim();
+    final insCompany = (reminder['insurance_company_name'] ?? '').toString().trim();
     final invoiceNo = (reminder['invoice_number'] ?? '').toString().trim();
 
     return Container(
@@ -709,19 +630,19 @@ class _InsuranceReminderCard extends StatelessWidget {
         children: [
           // Top row: Checkbox + Avatar + Name + Phone + Badge
           Padding(
-            padding: EdgeInsets.fromLTRB(8.w, 12.h, 14.w, 8.h),
+            padding: EdgeInsets.fromLTRB(12.w, 12.h, 14.w, 12.h),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Selection Checkbox
-                Checkbox(
-                  value: isSelected,
-                  activeColor: const Color(0xFF000080),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4.r),
-                  ),
-                  onChanged: (_) => onToggleSelect(),
-                ),
+                // Checkbox(
+                //   value: isSelected,
+                //   activeColor: const Color(0xFF000080),
+                //   shape: RoundedRectangleBorder(
+                //     borderRadius: BorderRadius.circular(4.r),
+                //   ),
+                //   onChanged: (_) => onToggleSelect(),
+                // ),
 
                 // Shield Icon
                 Container(
@@ -805,6 +726,14 @@ class _InsuranceReminderCard extends StatelessWidget {
                   label: context.tr('Service'),
                   value: serviceName.isNotEmpty ? serviceName : 'Insurance',
                 ),
+                if (insCompany.isNotEmpty) ...[
+                  SizedBox(height: 5.h),
+                  _DetailRow(
+                    icon: Icons.business_outlined,
+                    label: context.tr('Company'),
+                    value: insCompany,
+                  ),
+                ],
                 SizedBox(height: 5.h),
                 _DetailRow(
                   icon: Icons.calendar_today_outlined,

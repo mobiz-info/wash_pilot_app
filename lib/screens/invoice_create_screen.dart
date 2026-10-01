@@ -214,6 +214,8 @@ class _ServiceRow {
   // Auto Insurance Expiry Date & Reminders
   DateTime? insuranceExpiryDate;
   bool isInsuranceDateInitialized = false;
+  String? selectedInsuranceCompanyId;
+  String? selectedInsuranceCompanyName;
 
   bool get isInsuranceCategory {
     final cat = serviceCategory.toLowerCase();
@@ -450,6 +452,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
   List<dynamic> _oilProducts = [];
   List<dynamic> _oilFilters = [];
   List<dynamic> _tyreBrands = [];
+  List<dynamic> _insuranceCompanies = [];
   List<dynamic> _tyres = [];
   List<dynamic> _batteries = [];
   List<dynamic> _enabledCategories = [];
@@ -669,12 +672,14 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
       Map<String, dynamic>? tyreBrandRes;
       Map<String, dynamic>? tyresListRes;
       Map<String, dynamic>? batteryRes;
+      Map<String, dynamic>? insuranceCompaniesRes;
       try {
         oilRes = await ApiService.getOilProducts(token);
         filterRes = await ApiService.getOilFilters(token);
         tyreBrandRes = await ApiService.getTyreBrands(token);
         tyresListRes = await ApiService.getTyres(token);
         batteryRes = await ApiService.getBatteries(token);
+        insuranceCompaniesRes = await ApiService.getInsuranceCompanies(token);
       } catch (_) {}
 
       if (svcRes['success'] == true) {
@@ -756,6 +761,9 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
       }
       if (batteryRes != null && batteryRes['success'] == true) {
         _batteries = batteryRes['batteries'] ?? [];
+      }
+      if (insuranceCompaniesRes != null && insuranceCompaniesRes['success'] == true) {
+        _insuranceCompanies = insuranceCompaniesRes['insurance_companies'] ?? [];
       }
       try {
         final staffRes = await ApiService.getStaffList(token);
@@ -1363,6 +1371,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               'service_category': 'auto_insurance',
               'insurance_expiry_date':
                   "${expiry.year}-${expiry.month.toString().padLeft(2, '0')}-${expiry.day.toString().padLeft(2, '0')}",
+              if (r.selectedInsuranceCompanyId != null)
+                'insurance_company_id': r.selectedInsuranceCompanyId,
+              if (r.selectedInsuranceCompanyName != null)
+                'insurance_company_name': r.selectedInsuranceCompanyName,
             };
           }
           return {
@@ -1375,6 +1387,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                   '${(r.insuranceExpiryDate ?? _selectedInvoiceDate.add(const Duration(days: 365))).year}-'
                   '${(r.insuranceExpiryDate ?? _selectedInvoiceDate.add(const Duration(days: 365))).month.toString().padLeft(2, '0')}-'
                   '${(r.insuranceExpiryDate ?? _selectedInvoiceDate.add(const Duration(days: 365))).day.toString().padLeft(2, '0')}',
+              if (r.selectedInsuranceCompanyId != null)
+                'insurance_company_id': r.selectedInsuranceCompanyId,
+              if (r.selectedInsuranceCompanyName != null)
+                'insurance_company_name': r.selectedInsuranceCompanyName,
             },
             if (detail != null) 'service_detail': detail,
           };
@@ -2583,6 +2599,101 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               onChanged: (_) {
                 _syncAmountCollected();
                 _updateUi();
+              },
+            ),
+            const SizedBox(height: 14),
+
+            // ── Insurance Company Dropdown ─────────────────────────
+            Row(
+              children: [
+                const Icon(
+                  Icons.business_outlined,
+                  color: Color(0xFF000080),
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  context.tr('Insurance Company'),
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12.sp,
+                    color: const Color(0xFF000080),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            DropdownButtonFormField<String>(
+              isExpanded: true,
+              value: row.selectedInsuranceCompanyId,
+              decoration: InputDecoration(
+                hintText: context.tr('-- Select Insurance Company --'),
+                hintStyle: GoogleFonts.inter(
+                  fontSize: 13.sp,
+                  color: Colors.grey.shade500,
+                ),
+                isDense: true,
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Color(0xFF000080)),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+              ),
+              items: [
+                DropdownMenuItem<String>(
+                  value: null,
+                  child: Text(
+                    context.tr('-- Select Insurance Company --'),
+                    style: GoogleFonts.inter(
+                      fontSize: 13.sp,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ),
+                ..._insuranceCompanies.map<DropdownMenuItem<String>>((c) {
+                  final id = c['id']?.toString() ?? '';
+                  final name = c['name']?.toString() ?? '';
+                  return DropdownMenuItem<String>(
+                    value: id,
+                    child: Text(
+                      name,
+                      style: GoogleFonts.inter(
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF0F172A),
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  );
+                }),
+              ],
+              onChanged: (val) {
+                setState(() {
+                  row.selectedInsuranceCompanyId = val;
+                  if (val != null) {
+                    final found = _insuranceCompanies.firstWhere(
+                      (c) => c['id']?.toString() == val,
+                      orElse: () => null,
+                    );
+                    row.selectedInsuranceCompanyName =
+                        found != null ? found['name']?.toString() : null;
+                  } else {
+                    row.selectedInsuranceCompanyName = null;
+                  }
+                });
               },
             ),
             const SizedBox(height: 14),

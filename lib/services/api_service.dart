@@ -2381,6 +2381,20 @@ class ApiService {
     throw Exception('Failed to load oil filters.');
   }
 
+  static Future<Map<String, dynamic>> getInsuranceCompanies(String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/insurance-companies/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to load insurance companies.');
+  }
+
   static Future<Map<String, dynamic>> getTyreBrands(String token) async {
     final response = await http.get(
       Uri.parse('$baseUrl/tyre-brands/'),
