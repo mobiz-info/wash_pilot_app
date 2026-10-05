@@ -118,6 +118,7 @@ class _TradingItemRow {
   final TextEditingController discountController = TextEditingController(
     text: '0.00',
   );
+  final TextEditingController remarkController = TextEditingController();
   double currentStock = 0.0;
   String unitName = 'Pcs';
   bool isOperational = false;
@@ -136,6 +137,7 @@ class _TradingItemRow {
     rateController.dispose();
     qtyController.dispose();
     discountController.dispose();
+    remarkController.dispose();
   }
 }
 
@@ -254,13 +256,22 @@ class _ServiceRow {
 
   bool get isDetailingCategory {
     final cat = serviceCategory.toLowerCase();
+    final svcCat =
+        (service['service_category'] ?? service['category'] ?? '')
+            .toString()
+            .toLowerCase();
     final typeName =
-        (service['service_type'] ?? service['service_category'] ?? '')
+        (service['service_type'] ??
+                service['service_category'] ??
+                service['service_type_name'] ??
+                '')
             .toString()
             .toLowerCase();
     final name = serviceName.toLowerCase();
     return cat == 'car_detailing' ||
         cat == 'detailing' ||
+        svcCat == 'car_detailing' ||
+        svcCat == 'detailing' ||
         typeName.contains('detail') ||
         name.contains('detail') ||
         name.contains('coating') ||
@@ -457,17 +468,6 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
   List<dynamic> _batteries = [];
   List<dynamic> _enabledCategories = [];
   String _selectedCategoryFilter = 'all';
-
-  static const List<String> _oilCategories = [
-    'Engine Oil',
-    'Brake Fluid',
-    'Power Steering Oil',
-    'Transmission Fluid',
-    'Differential Oil',
-    'Coolant',
-    'Gear Oil',
-    'Transfer Case Fluid',
-  ];
 
   // Branch Staff State
   bool _addStaffs = false;
@@ -781,7 +781,18 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
       } catch (_) {}
 
       if (widget.invoiceToEdit != null) {
-        final editInv = widget.invoiceToEdit!;
+        Map<String, dynamic> editInv = Map<String, dynamic>.from(widget.invoiceToEdit!);
+        final invId = (widget.invoiceToEdit!['id'] ?? widget.invoiceToEdit!['invoice_id'])?.toString();
+        if (invId != null && invId.isNotEmpty) {
+          try {
+            final freshRes = await ApiService.listInvoices(token, invoiceId: invId);
+            if (freshRes['success'] == true &&
+                freshRes['invoices'] is List &&
+                (freshRes['invoices'] as List).isNotEmpty) {
+              editInv = Map<String, dynamic>.from(freshRes['invoices'][0]);
+            }
+          } catch (_) {}
+        }
         if (editInv['date'] != null) {
           try {
             _selectedInvoiceDate = DateTime.parse(editInv['date'].toString());
@@ -795,7 +806,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
         if (editInv['amount_collected'] != null) {
           _amountCollectedController.text =
               (double.tryParse(editInv['amount_collected'].toString()) ?? 0.0)
-                  .toStringAsFixed(0);
+                  .toStringAsFixed(2);
         }
         if (editInv['invoice_type'] == 'creditinvoice') {
           _selectedSalesType = 'credit';
@@ -824,6 +835,123 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               double.tryParse(item['rate']?.toString() ?? '') ?? 0.0;
           final itemDisc =
               double.tryParse(item['discount']?.toString() ?? '') ?? 0.0;
+
+          // Check if item is an Extra
+          bool isExtra = item['is_extra'] == true || item['extra_id'] != null;
+          Map<String, dynamic>? matchedExtra;
+          String cleanExtraName = svcName.trim();
+          String extraRemark = (item['remark'] ?? '').toString().trim();
+
+          if (cleanExtraName.contains('(') && cleanExtraName.endsWith(')')) {
+            final openIdx = cleanExtraName.lastIndexOf('(');
+            if (openIdx > 0) {
+              if (extraRemark.isEmpty) {
+                extraRemark = cleanExtraName
+                    .substring(openIdx + 1, cleanExtraName.length - 1)
+                    .trim();
+              }
+              cleanExtraName = cleanExtraName.substring(0, openIdx).trim();
+            }
+          }
+
+          final matchesServiceFk = item['service_id'] != null &&
+              item['service_id'].toString().isNotEmpty &&
+              _allServices.any(
+                (s) => s['id']?.toString() == item['service_id'].toString(),
+              );
+
+          if (!matchesServiceFk) {
+            for (final ext in _availableExtras) {
+              if (ext is! Map) continue;
+              final extMap = Map<String, dynamic>.from(ext);
+              final extId = extMap['id']?.toString();
+              final extName = (extMap['name'] ?? '')
+                  .toString()
+                  .trim()
+                  .toLowerCase();
+
+              if (extId != null &&
+                  (extId == item['extra_id']?.toString() ||
+                      extId == item['id']?.toString() ||
+                      extId == svcFkId)) {
+                matchedExtra = extMap;
+                isExtra = true;
+                break;
+              }
+
+              if (extName.isNotEmpty) {
+                final lowerClean = cleanExtraName.toLowerCase();
+                final lowerSvc = svcName.trim().toLowerCase();
+                if (lowerClean == extName || lowerSvc == extName) {
+                  matchedExtra = extMap;
+                  isExtra = true;
+                  break;
+                } else if (lowerSvc.startsWith('$extName (')) {
+                  matchedExtra = extMap;
+                  isExtra = true;
+                  if (extraRemark.isEmpty) {
+                    final raw = svcName
+                        .trim()
+                        .substring(extMap['name'].toString().trim().length)
+                        .trim();
+                    extraRemark = raw
+                        .replaceAll(RegExp(r'^\(+|\)+$'), '')
+                        .trim();
+                  }
+                  break;
+                }
+              }
+            }
+          }
+
+          if (isExtra || matchedExtra != null) {
+            final qtyVal =
+                double.tryParse(item['qty']?.toString() ?? '1') ?? 1.0;
+            final qtyStr = qtyVal % 1 == 0
+                ? qtyVal.toInt().toString()
+                : qtyVal.toString();
+            final rateVal = itemRate > 0
+                ? itemRate
+                : (double.tryParse(item['rate']?.toString() ?? '0') ?? 0.0);
+            final rateStr = rateVal.toStringAsFixed(2);
+
+            final extraObj = matchedExtra ??
+                {
+                  'id': item['extra_id'] ??
+                      item['id'] ??
+                      'extra_${DateTime.now().millisecondsSinceEpoch}',
+                  'name': (matchedExtra != null
+                          ? matchedExtra['name']
+                          : cleanExtraName)
+                      .toString(),
+                  'service_type_name': 'Extra',
+                };
+
+            final qtyCtrl = TextEditingController(text: qtyStr)
+              ..addListener(() {
+                _syncAmountCollected();
+                _updateUi();
+              });
+            final rateCtrl = TextEditingController(text: rateStr)
+              ..addListener(() {
+                _syncAmountCollected();
+                _updateUi();
+              });
+            final remarkCtrl = TextEditingController(text: extraRemark)
+              ..addListener(() {
+                _updateUi();
+              });
+
+            _selectedExtras.add({
+              'extra': extraObj,
+              'qtyController': qtyCtrl,
+              'rateController': rateCtrl,
+              'priceController': rateCtrl,
+              'remarkController': remarkCtrl,
+            });
+            _addExtras = true;
+            continue;
+          }
 
           Map<String, dynamic> matchedSvc = {};
           // Try matching by service FK id first, then fall back to name match
@@ -865,6 +993,58 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
               row.isSmokeTestPeriodInitialized = true;
             }
           }
+
+          // Restore Car Detailing Warranty Value & Unit
+          final savedWarrantyVal =
+              detailMap['warranty_value'] ?? item['warranty_value'];
+          if (savedWarrantyVal != null &&
+              savedWarrantyVal.toString().trim().isNotEmpty) {
+            row.warrantyValueController.text =
+                savedWarrantyVal.toString().trim();
+          }
+          final savedWarrantyUnit =
+              detailMap['warranty_unit'] ?? item['warranty_unit'];
+          if (savedWarrantyUnit != null &&
+              savedWarrantyUnit.toString().trim().isNotEmpty) {
+            final unitLower =
+                savedWarrantyUnit.toString().toLowerCase().trim();
+            if (unitLower == 'year' || unitLower == 'years') {
+              row.warrantyUnit = 'year';
+            } else if (unitLower == 'month' || unitLower == 'months') {
+              row.warrantyUnit = 'month';
+            } else {
+              row.warrantyUnit = unitLower;
+            }
+          }
+
+          // Restore other service details if present
+          if (detailMap['odometer_at_service'] != null) {
+            row.odometerController.text =
+                detailMap['odometer_at_service'].toString();
+          }
+          if (detailMap['next_oil_change_km'] != null) {
+            row.nextOilChangeKmController.text =
+                detailMap['next_oil_change_km'].toString();
+          }
+          if (detailMap['next_tyre_change_km'] != null) {
+            row.nextTyreChangeKmController.text =
+                detailMap['next_tyre_change_km'].toString();
+          }
+          if (detailMap['next_alignment_km'] != null) {
+            row.nextAlignmentKmController.text =
+                detailMap['next_alignment_km'].toString();
+          }
+          if (detailMap['alignment_notes'] != null) {
+            row.alignmentNotesController.text =
+                detailMap['alignment_notes'].toString();
+          }
+          if (detailMap['alignment_done'] != null) {
+            row.alignmentDone = detailMap['alignment_done'] == true;
+          }
+          if (detailMap['balancing_done'] != null) {
+            row.balancingDone = detailMap['balancing_done'] == true;
+          }
+
           // Always set the actual rate from the saved invoice
           row.customRateController.text = itemRate.toStringAsFixed(2);
           if (itemDisc > 0) {
@@ -879,6 +1059,69 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
             _updateUi();
           });
           _rows.add(row);
+        }
+
+        final existingExtras = editInv['extras'] as List<dynamic>? ?? [];
+        for (final item in existingExtras) {
+          final extId = item['extra_id']?.toString() ?? item['id']?.toString();
+          if (extId != null &&
+              _selectedExtras.any(
+                (se) => se['extra']?['id']?.toString() == extId,
+              )) {
+            continue;
+          }
+          final svcName =
+              (item['name'] ?? item['service_name'] ?? '').toString();
+          Map<String, dynamic>? matchedExtra;
+          for (final ext in _availableExtras) {
+            if (ext is! Map) continue;
+            final extMap = Map<String, dynamic>.from(ext);
+            if (extMap['id']?.toString() == extId ||
+                extMap['name']?.toString().toLowerCase() ==
+                    svcName.toLowerCase()) {
+              matchedExtra = extMap;
+              break;
+            }
+          }
+          final qtyVal =
+              double.tryParse(item['qty']?.toString() ?? '1') ?? 1.0;
+          final qtyStr = qtyVal % 1 == 0
+                ? qtyVal.toInt().toString()
+                : qtyVal.toString();
+          final rateVal =
+              double.tryParse(item['rate']?.toString() ?? '0') ?? 0.0;
+          final rateStr = rateVal.toStringAsFixed(2);
+          final extraObj = matchedExtra ??
+              {
+                'id': extId ??
+                    'extra_${DateTime.now().millisecondsSinceEpoch}',
+                'name': (matchedExtra != null ? matchedExtra['name'] : svcName)
+                    .toString(),
+                'service_type_name': 'Extra',
+              };
+          final qtyCtrl = TextEditingController(text: qtyStr)
+            ..addListener(() {
+              _syncAmountCollected();
+              _updateUi();
+            });
+          final rateCtrl = TextEditingController(text: rateStr)
+            ..addListener(() {
+              _syncAmountCollected();
+              _updateUi();
+            });
+          final remarkCtrl = TextEditingController(
+            text: item['remark']?.toString() ?? '',
+          )..addListener(() {
+            _updateUi();
+          });
+          _selectedExtras.add({
+            'extra': extraObj,
+            'qtyController': qtyCtrl,
+            'rateController': rateCtrl,
+            'priceController': rateCtrl,
+            'remarkController': remarkCtrl,
+          });
+          _addExtras = true;
         }
 
         final existingTrading =
@@ -899,6 +1142,8 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 )?.toStringAsFixed(2) ??
                 '0.00';
             tRow.isOperational = (t['is_operational'] == true);
+            tRow.remarkController.text =
+                (t['remarks'] ?? t['remark'] ?? '').toString();
             if (t['id'] != null) {
               final stockMatch = _availableStockItems.firstWhere(
                 (st) => st['id'].toString() == t['id'].toString(),
@@ -932,6 +1177,51 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
             }
           }
         }
+
+        // Restore Custom Reminders
+        final rawReminders = editInv['custom_reminders'] as List<dynamic>? ??
+            editInv['reminders'] as List<dynamic>? ??
+            [];
+        final List<int> reminderDaysList = [];
+        for (final r in rawReminders) {
+          if (r is num && r > 0) {
+            reminderDaysList.add(r.toInt());
+          } else if (r is String) {
+            final parsed = int.tryParse(r) ?? 0;
+            if (parsed > 0) reminderDaysList.add(parsed);
+          } else if (r is Map) {
+            final tmpl = (r['template_name'] ?? '').toString().toLowerCase();
+            if (tmpl == 'insurancereminder' || tmpl == 'smoketest') continue;
+            int daysVal = 0;
+            final d = r['days_after'] ?? r['days'];
+            if (d != null) {
+              daysVal = int.tryParse(d.toString()) ?? 0;
+            }
+            if (daysVal <= 0 && r['scheduled_date'] != null) {
+              try {
+                final sDate = DateTime.parse(r['scheduled_date'].toString());
+                final invDate = _selectedInvoiceDate;
+                daysVal = sDate.difference(DateTime(invDate.year, invDate.month, invDate.day)).inDays;
+              } catch (_) {}
+            }
+            if (daysVal > 0) {
+              reminderDaysList.add(daysVal);
+            }
+          }
+        }
+
+        if (reminderDaysList.isNotEmpty) {
+          _addCustomReminders = true;
+          for (final c in _reminderDaysControllers) {
+            c.dispose();
+          }
+          _reminderDaysControllers.clear();
+          for (final days in reminderDaysList) {
+            _reminderDaysControllers.add(
+              TextEditingController(text: days.toString()),
+            );
+          }
+        }
       }
 
       _isLoading = false;
@@ -942,7 +1232,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                       widget.invoiceToEdit!['amount_collected'].toString(),
                     ) ??
                     0.0)
-                .toStringAsFixed(0);
+                .toStringAsFixed(2);
       } else {
         _syncAmountCollected();
       }
@@ -957,7 +1247,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
   void _syncAmountCollected() {
     // When editing an existing invoice, don't auto-overwrite the saved collected amount
     if (widget.invoiceToEdit != null) return;
-    _amountCollectedController.text = total.round().toString();
+    _amountCollectedController.text = total.toStringAsFixed(2);
   }
 
   bool get _hasWheelAlignmentService =>
@@ -986,7 +1276,13 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
       _rows.insert(0, row);
       _loadSchemesForRow(row);
     }
-    if (_hasWheelAlignmentService ||
+    if (_rows.isEmpty) {
+      _addCustomReminders = false;
+      for (final c in _reminderDaysControllers) {
+        c.dispose();
+      }
+      _reminderDaysControllers.clear();
+    } else if (_hasWheelAlignmentService ||
         _hasOilChangeService ||
         _hasInsuranceService) {
       _addCustomReminders = true;
@@ -1023,39 +1319,6 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
       if (!mounted) return;
       row.availableSchemes = [];
       row.isLoadingSchemes = false;
-      _updateUi();
-    }
-  }
-
-  Future<void> _fetchOilPriceForProduct(
-    _OilItemRow item,
-    String oilProductId,
-  ) async {
-    final token = context.read<AuthProvider>().token;
-    if (token == null) return;
-    item.isLoadingOilPrice = true;
-    _updateUi();
-
-    try {
-      final res = await ApiService.getOilPrice(
-        token,
-        oilProductId,
-        vehicleMakeId: widget.vehicle['make_id']?.toString(),
-        vehicleTypeId: widget.vehicle['vehicle_type_id']?.toString(),
-      );
-      if (!mounted) return;
-      item.isLoadingOilPrice = false;
-      if (res['success'] == true) {
-        if (res['price_per_litre'] != null &&
-            (res['price_per_litre'] as num) > 0) {
-          item.oilPricePerLitre = (res['price_per_litre'] as num).toDouble();
-        }
-      }
-      _syncAmountCollected();
-      _updateUi();
-    } catch (_) {
-      if (!mounted) return;
-      item.isLoadingOilPrice = false;
       _updateUi();
     }
   }
@@ -1395,37 +1658,40 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
             if (detail != null) 'service_detail': detail,
           };
         }),
-        ..._selectedExtras.map((e) {
-          final qtyVal =
-              double.tryParse(
-                (e['qtyController'] as TextEditingController?)?.text ?? '1',
-              ) ??
-              1.0;
-          final rateVal =
-              double.tryParse(
-                (e['rateController'] as TextEditingController?)?.text ??
-                    (e['priceController'] as TextEditingController?)?.text ??
-                    '0',
-              ) ??
-              0.0;
-          final remarkVal =
-              (e['remarkController'] as TextEditingController?)?.text.trim() ??
-              '';
+        if (_addExtras)
+          ..._selectedExtras.map((e) {
+            final qtyVal =
+                double.tryParse(
+                  (e['qtyController'] as TextEditingController?)?.text ?? '1',
+                ) ??
+                1.0;
+            final rateVal =
+                double.tryParse(
+                  (e['rateController'] as TextEditingController?)?.text ??
+                      (e['priceController'] as TextEditingController?)?.text ??
+                      '0',
+                ) ??
+                0.0;
+            final remarkVal =
+                (e['remarkController'] as TextEditingController?)?.text.trim() ??
+                '';
 
-          String extraName = e['extra']['name'] as String;
-          if (remarkVal.isNotEmpty) {
-            extraName = '$extraName ($remarkVal)';
-          }
+            String extraName = (e['extra']['name'] ?? '').toString();
+            if (remarkVal.isNotEmpty) {
+              extraName = '$extraName ($remarkVal)';
+            }
 
-          return {
-            'id': e['extra']['id'],
-            'name': extraName,
-            'rate': rateVal,
-            'qty': qtyVal,
-            'remark': remarkVal,
-            'discount': 0.0,
-          };
-        }),
+            return {
+              'id': e['extra']['id'],
+              'extra_id': e['extra']['id'],
+              'is_extra': true,
+              'name': extraName,
+              'rate': rateVal,
+              'qty': qtyVal,
+              'remark': remarkVal,
+              'discount': 0.0,
+            };
+          }),
       ];
 
       final tradingItemsPayload = _addTradingItems
@@ -1440,6 +1706,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                     'discount': r.discount,
                     'net_taxable': r.netTaxable,
                     'is_operational': r.isOperational,
+                    'remarks': r.remarkController.text.trim(),
                   },
                 )
                 .toList()
@@ -1788,9 +2055,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                         const SizedBox(height: 16),
                         _warrantyPdfCheckboxCard(),
                       ],
-                      const SizedBox(height: 16),
-                      _customRemindersCard(),
-                      const SizedBox(height: 16),
+                      if (_rows.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        _customRemindersCard(),
+                      ],
 
                       if (_availableTaxes.isNotEmpty) ...[
                         _taxSelectionSection(),
@@ -4425,7 +4693,6 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
         ),
       );
     }
-    return const SizedBox.shrink();
   }
 
   // ── Scheme chip (compact selection) ──────────────────────────────────────
@@ -5023,9 +5290,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                 final lineTotal = qty * rate;
 
                 String label = e['extra']['name'] as String;
-                if (qty > 1) {
-                  label = '$label (x${qty % 1 == 0 ? qty.toInt() : qty})';
-                }
+                label = '$label (${qty % 1 == 0 ? qty.toInt() : qty} × $currencySymbol${rate.toStringAsFixed(2)})';
                 if (remark.isNotEmpty) {
                   label = '$label - $remark';
                 }
@@ -5409,6 +5674,10 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
           builder: (context, setModalState) {
             final query = searchController.text.trim().toLowerCase();
             final filteredItems = _availableStockItems.where((item) {
+              final stockQty = (item['quantity'] as num?)?.toDouble() ??
+                  double.tryParse(item['quantity']?.toString() ?? '') ??
+                  0.0;
+              if (stockQty <= 0) return false;
               final name = (item['item_name'] ?? '').toString().toLowerCase();
               final brand = (item['brand'] ?? '').toString().toLowerCase();
               final group = (item['group_name'] ?? '').toString().toLowerCase();
@@ -5546,10 +5815,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                               return InkWell(
                                 onTap: () {
                                   row.selectedStockItem =
-                                      Map<String, dynamic>.from(item as Map);
-                                  row.currentStock = qty;
-                                  row.selectedStockItem =
-                                      Map<String, dynamic>.from(item as Map);
+                                      Map<String, dynamic>.from(item);
                                   row.currentStock = qty;
                                   row.unitName = unitName;
                                   row.isOperational = false;
@@ -6142,12 +6408,6 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
   }
 
   Widget _tradingItemRowWidget(_TradingItemRow row, int index) {
-    final bool isTrading =
-        (row.selectedStockItem?['is_trading'] as bool?) ?? true;
-    final bool isOperationalItem =
-        (row.selectedStockItem?['is_operational'] as bool?) ?? false;
-    final bool isDualUse = isTrading && isOperationalItem;
-
     return Container(
       padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -6467,6 +6727,27 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
             ),
           ],
           const SizedBox(height: 10),
+          TextField(
+            controller: row.remarkController,
+            decoration: InputDecoration(
+              labelText: context.tr('Remarks (optional)'),
+              hintText: context.tr('Remarks for this item...'),
+              prefixIcon: const Icon(
+                Icons.comment_outlined,
+                size: 18,
+                color: Color(0xFF000080),
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 8,
+              ),
+              isDense: true,
+            ),
+          ),
+          const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -6643,13 +6924,27 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                                   ).withValues(alpha: 0.06),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
-                                child: Text(
-                                  '$currencySymbol ${itemTotal.toStringAsFixed(2)}',
-                                  style: GoogleFonts.inter(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13.sp,
-                                    color: const Color(0xFF000080),
-                                  ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      '$currencySymbol ${itemTotal.toStringAsFixed(2)}',
+                                      style: GoogleFonts.inter(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13.sp,
+                                        color: const Color(0xFF000080),
+                                      ),
+                                    ),
+                                    Text(
+                                      '${qty % 1 == 0 ? qty.toInt() : qty} × $currencySymbol${rate.toStringAsFixed(2)}',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 10.sp,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                               const SizedBox(width: 4),
@@ -6852,6 +7147,57 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                               ),
                             ],
                           ),
+                          const SizedBox(height: 10),
+
+                          // Calculation Container: Qty * Rate = Total
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xFF000080,
+                              ).withValues(alpha: 0.05),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: const Color(
+                                  0xFF000080,
+                                ).withValues(alpha: 0.12),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.calculate_outlined,
+                                      size: 16,
+                                      color: Color(0xFF000080),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      '${context.tr('Total')} (${context.tr('Qty')} × ${context.tr('Rate')}):',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 12.sp,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.grey.shade800,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Text(
+                                  '${qty % 1 == 0 ? qty.toInt() : qty} × $currencySymbol${rate.toStringAsFixed(2)} = $currencySymbol${itemTotal.toStringAsFixed(2)}',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF000080),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     );
@@ -6952,6 +7298,7 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
   }
 
   Widget _customRemindersCard() {
+    if (_rows.isEmpty) return const SizedBox.shrink();
     final bool isReminderLocked =
         _hasWheelAlignmentService ||
         _hasDetailingService ||
@@ -7744,15 +8091,29 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                                       ),
                                       onTap: () {
                                         Navigator.pop(ctx);
-                                        final controller =
-                                            TextEditingController(text: '0');
-                                        controller.addListener(() {
+                                        final qtyCtrl =
+                                            TextEditingController(text: '1');
+                                        final rateCtrl =
+                                            TextEditingController(text: '0.00');
+                                        final remarkCtrl =
+                                            TextEditingController();
+                                        qtyCtrl.addListener(() {
                                           _syncAmountCollected();
+                                          _updateUi();
+                                        });
+                                        rateCtrl.addListener(() {
+                                          _syncAmountCollected();
+                                          _updateUi();
+                                        });
+                                        remarkCtrl.addListener(() {
                                           _updateUi();
                                         });
                                         _selectedExtras.add({
                                           'extra': ext,
-                                          'priceController': controller,
+                                          'qtyController': qtyCtrl,
+                                          'rateController': rateCtrl,
+                                          'priceController': rateCtrl,
+                                          'remarkController': remarkCtrl,
                                         });
                                         _syncAmountCollected();
                                         _updateUi();
@@ -7760,422 +8121,6 @@ class _InvoiceCreateScreenState extends State<InvoiceCreateScreen> {
                                     );
                                   }),
                                 ],
-                              );
-                            },
-                          ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _showOilProductSearchPicker(_OilItemRow item) {
-    String selectedCategory = item.selectedOilCategory ?? 'Engine Oil';
-    final searchController = TextEditingController();
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            // Filter products by selected category
-            final categoryOils = _oilProducts.where((oil) {
-              final cat = oil['category']?.toString() ?? 'Engine Oil';
-              return cat == selectedCategory;
-            }).toList();
-
-            final uniqueGroupKeys = <String>{};
-            for (var oil in categoryOils) {
-              final brand = oil['brand']?.toString() ?? '';
-              final grade = oil['grade']?.toString() ?? '';
-              final name = oil['name']?.toString() ?? '';
-              final key = [
-                brand,
-                grade,
-                name,
-              ].where((s) => s.isNotEmpty).join(' • ');
-              uniqueGroupKeys.add(key);
-            }
-            final sortedGroupKeys = uniqueGroupKeys.toList()..sort();
-
-            List<dynamic> getVariantsForGroup(String? groupKey) {
-              if (groupKey == null) return [];
-              return categoryOils.where((oil) {
-                final brand = oil['brand']?.toString() ?? '';
-                final grade = oil['grade']?.toString() ?? '';
-                final name = oil['name']?.toString() ?? '';
-                final key = [
-                  brand,
-                  grade,
-                  name,
-                ].where((s) => s.isNotEmpty).join(' • ');
-                return key == groupKey;
-              }).toList();
-            }
-
-            final query = searchController.text.trim().toLowerCase();
-            final filteredKeys = sortedGroupKeys
-                .where((k) => k.toLowerCase().contains(query))
-                .toList();
-
-            return Container(
-              height: MediaQuery.of(context).size.height * 0.8,
-              padding: EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        context.tr('Select Product'),
-                        style: GoogleFonts.inter(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16.sp,
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.close),
-                        onPressed: () => Navigator.pop(ctx),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 6),
-                  // Category Filter Chips
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: _oilCategories.map((cat) {
-                        final isSel = selectedCategory == cat;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 6),
-                          child: ChoiceChip(
-                            label: Text(
-                              context.tr(cat),
-                              style: TextStyle(
-                                fontSize: 11.sp,
-                                fontWeight: isSel
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                                color: isSel ? Colors.white : Colors.black87,
-                              ),
-                            ),
-                            selected: isSel,
-                            selectedColor: const Color(0xFF000080),
-                            backgroundColor: Colors.grey.shade100,
-                            onSelected: (val) {
-                              if (val) {
-                                setModalState(() {
-                                  selectedCategory = cat;
-                                  item.selectedOilCategory = cat;
-                                });
-                              }
-                            },
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: searchController,
-                    autofocus: false,
-                    decoration: InputDecoration(
-                      hintText: context.tr(
-                        'Search brand, grade or product name...',
-                      ),
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: () {
-                                searchController.clear();
-                                setModalState(() {});
-                              },
-                            )
-                          : null,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                    ),
-                    onChanged: (_) => setModalState(() {}),
-                  ),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: filteredKeys.isEmpty
-                        ? Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Text(
-                                context.tr(
-                                  'No products found in ${context.tr(selectedCategory)}',
-                                ),
-                                style: TextStyle(color: Colors.grey.shade600),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          )
-                        : ListView.separated(
-                            itemCount: filteredKeys.length,
-                            separatorBuilder: (_, __) =>
-                                const Divider(height: 1),
-                            itemBuilder: (_, index) {
-                              final key = filteredKeys[index];
-                              final isSelected =
-                                  item.selectedOilGroupKey == key;
-                              final variants = getVariantsForGroup(key);
-
-                              return ListTile(
-                                selected: isSelected,
-                                selectedTileColor: Color(
-                                  0xFF000080,
-                                ).withValues(alpha: 0.08),
-                                leading: CircleAvatar(
-                                  backgroundColor: isSelected
-                                      ? Color(0xFF000080)
-                                      : Colors.grey.shade200,
-                                  child: Icon(
-                                    Icons.oil_barrel,
-                                    size: 18,
-                                    color: isSelected
-                                        ? Colors.white
-                                        : Color(0xFF000080),
-                                  ),
-                                ),
-                                title: Text(
-                                  key,
-                                  style: GoogleFonts.inter(
-                                    fontWeight: isSelected
-                                        ? FontWeight.bold
-                                        : FontWeight.w500,
-                                    fontSize: 14.sp,
-                                  ),
-                                ),
-                                subtitle: Text(
-                                  '${variants.length} volume variant(s)',
-                                  style: TextStyle(
-                                    fontSize: 12.sp,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                ),
-                                trailing: isSelected
-                                    ? Icon(
-                                        Icons.check_circle,
-                                        color: Color(0xFF000080),
-                                      )
-                                    : const Icon(Icons.chevron_right, size: 18),
-                                onTap: () {
-                                  Navigator.pop(ctx);
-                                  item.selectedOilCategory = selectedCategory;
-                                  item.selectedOilGroupKey = key;
-                                  item.selectedOilVolume = null;
-                                  item.selectedOilProductId = null;
-                                  item.selectedOilRunKm = null;
-                                  item.oilPricePerLitre = null;
-                                  item.oilLitresController.clear();
-
-                                  if (variants.length == 1) {
-                                    final v = variants.first;
-                                    final vol =
-                                        (v['recommended_qty_litres'] as num)
-                                            .toDouble();
-                                    item.selectedOilVolume = vol;
-                                    item.selectedOilProductId = v['id'];
-                                    item.selectedOilRunKm =
-                                        v['oil_run_km'] as int?;
-                                    item.oilPricePerLitre =
-                                        (v['price_per_litre'] as num)
-                                            .toDouble();
-                                    item.oilLitresController.text = vol
-                                        .toString();
-                                    _fetchOilPriceForProduct(item, v['id']);
-                                  }
-                                  _syncAmountCollected();
-                                  _updateUi();
-                                },
-                              );
-                            },
-                          ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _showOilFilterSearchPicker(_ServiceRow row) {
-    final searchController = TextEditingController();
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            final query = searchController.text.trim().toLowerCase();
-            final filteredFilters = _oilFilters.where((f) {
-              final brand = (f['brand_name']?.toString() ?? '').toLowerCase();
-              final name = (f['name']?.toString() ?? '').toLowerCase();
-              return brand.contains(query) || name.contains(query);
-            }).toList();
-
-            return Container(
-              height: MediaQuery.of(context).size.height * 0.75,
-              padding: EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        context.tr('Select Oil Filter'),
-                        style: GoogleFonts.inter(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16.sp,
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.close),
-                        onPressed: () => Navigator.pop(ctx),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: searchController,
-                    autofocus: false,
-                    decoration: InputDecoration(
-                      hintText: context.tr('Search brand or filter part no...'),
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: () {
-                                searchController.clear();
-                                setModalState(() {});
-                              },
-                            )
-                          : null,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                    ),
-                    onChanged: (_) => setModalState(() {}),
-                  ),
-                  SizedBox(height: 12),
-                  if (row.selectedOilFilterId != null) ...[
-                    ListTile(
-                      leading: Icon(Icons.clear_all, color: Colors.red),
-                      title: Text(
-                        context.tr('Clear Filter Selection'),
-                        style: GoogleFonts.inter(
-                          color: Colors.red,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13.sp,
-                        ),
-                      ),
-                      onTap: () {
-                        Navigator.pop(ctx);
-                        row.selectedOilFilterId = null;
-                        row.oilFilterPrice = 0.0;
-                        row.selectedOilFilterRunKm = null;
-                        _syncAmountCollected();
-                        _updateUi();
-                      },
-                    ),
-                    const Divider(height: 1),
-                  ],
-                  Expanded(
-                    child: filteredFilters.isEmpty
-                        ? Center(
-                            child: Text(
-                              context.tr('No oil filters found'),
-                              style: TextStyle(color: Colors.grey.shade600),
-                            ),
-                          )
-                        : ListView.separated(
-                            itemCount: filteredFilters.length,
-                            separatorBuilder: (_, __) =>
-                                const Divider(height: 1),
-                            itemBuilder: (_, index) {
-                              final filter = filteredFilters[index];
-                              final filterId = filter['id'] as String;
-                              final isSelected =
-                                  row.selectedOilFilterId == filterId;
-                              final brand =
-                                  filter['brand_name']?.toString() ?? '';
-                              final name = filter['name']?.toString() ?? '';
-                              final price =
-                                  (filter['price'] as num?)?.toDouble() ?? 0.0;
-                              final km = filter['running_km'] ?? 5000;
-
-                              return ListTile(
-                                selected: isSelected,
-                                selectedTileColor: Colors.blue.shade50,
-                                leading: CircleAvatar(
-                                  backgroundColor: isSelected
-                                      ? Colors.blue.shade700
-                                      : Colors.grey.shade200,
-                                  child: Icon(
-                                    Icons.filter_alt,
-                                    size: 18,
-                                    color: isSelected
-                                        ? Colors.white
-                                        : Colors.blue.shade800,
-                                  ),
-                                ),
-                                title: Text(
-                                  '$brand - $name',
-                                  style: GoogleFonts.inter(
-                                    fontWeight: isSelected
-                                        ? FontWeight.bold
-                                        : FontWeight.w600,
-                                    fontSize: 14.sp,
-                                  ),
-                                ),
-                                subtitle: Text(
-                                  'Price: ${CountryConfig.currencySymbol}${price.toStringAsFixed(2)}  •  Lifespan: $km KM',
-                                  style: TextStyle(
-                                    fontSize: 12.sp,
-                                    color: Colors.grey.shade700,
-                                  ),
-                                ),
-                                trailing: isSelected
-                                    ? Icon(
-                                        Icons.check_circle,
-                                        color: Colors.blue,
-                                      )
-                                    : null,
-                                onTap: () {
-                                  Navigator.pop(ctx);
-                                  row.selectedOilFilterId = filterId;
-                                  row.oilFilterPrice = price;
-                                  row.selectedOilFilterRunKm = km as int?;
-                                  row._onOdometerChanged();
-                                  _syncAmountCollected();
-                                  _updateUi();
-                                },
                               );
                             },
                           ),
