@@ -173,10 +173,14 @@ class InvoiceViewScreen extends StatelessWidget {
   // ── PDF generation ────────────────────────────────────────────────────────
   Future<Uint8List> _getInvoicePdfBytes(BuildContext context) async {
     final cleanInvoiceNo = invoiceNumber.replaceAll('/', '_');
-    final pdfUrl = "http://68.183.94.11:78/media/invoices/invoice-$cleanInvoiceNo.pdf";
+    final baseUrl = ApiService.baseUrl.replaceAll('/api', '');
+    final pdfUrl = "$baseUrl/media/invoices/invoice-$cleanInvoiceNo.pdf?t=${DateTime.now().millisecondsSinceEpoch}";
     try {
-      final response = await http.get(Uri.parse(pdfUrl));
-      if (response.statusCode == 200) {
+      final response = await http.get(
+        Uri.parse(pdfUrl),
+        headers: {'Cache-Control': 'no-cache', 'Pragma': 'no-cache'},
+      );
+      if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
         return response.bodyBytes;
       }
     } catch (_) {}
@@ -318,7 +322,10 @@ class InvoiceViewScreen extends StatelessWidget {
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.end,
                     children: [
-                      pw.Text('PROFORMA INVOICE',
+                      pw.Text(
+                          ((double.tryParse(invoiceData['tax_amount']?.toString() ?? '0') ?? 0.0) > 0 || (invoiceData['taxes'] is List && (invoiceData['taxes'] as List).isNotEmpty))
+                              ? 'TAX INVOICE'
+                              : 'PROFORMA INVOICE',
                           style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
                       pw.SizedBox(height: 4),
                       pw.Text(invoiceNumber,
@@ -341,26 +348,50 @@ class InvoiceViewScreen extends StatelessWidget {
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text('BILLED TO',
-                          style: pw.TextStyle(
-                              fontSize: 9,
-                              color: PdfColors.grey600,
-                              fontWeight: pw.FontWeight.bold,
-                              letterSpacing: 0.5)),
-                      pw.SizedBox(height: 4),
-                      pw.Text(customer['name'],
-                          style: pw.TextStyle(
-                              fontSize: 13,
-                              fontWeight: pw.FontWeight.bold)),
-                      if ((customer['phone'] ?? '').toString().isNotEmpty)
-                        pw.Text(customer['phone'],
-                            style: const pw.TextStyle(
-                                fontSize: 11, color: PdfColors.grey700)),
-                    ],
+                  pw.Expanded(
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text('BILLED TO',
+                            style: pw.TextStyle(
+                                fontSize: 9,
+                                color: PdfColors.grey600,
+                                fontWeight: pw.FontWeight.bold,
+                                letterSpacing: 0.5)),
+                        pw.SizedBox(height: 4),
+                        pw.Text(customer['name'] ?? '',
+                            style: pw.TextStyle(
+                                fontSize: 13,
+                                fontWeight: pw.FontWeight.bold)),
+                        if ((customer['phone'] ?? '').toString().isNotEmpty)
+                          pw.Text(customer['phone'].toString(),
+                              style: const pw.TextStyle(
+                                  fontSize: 10, color: PdfColors.grey700)),
+                        if ((customer['address'] ?? '').toString().isNotEmpty)
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.only(top: 2, right: 10),
+                            child: pw.Text(customer['address'].toString(),
+                                style: const pw.TextStyle(
+                                    fontSize: 9, color: PdfColors.grey700)),
+                          ),
+                        if ((customer['tax_number'] ?? '').toString().isNotEmpty)
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.only(top: 2),
+                            child: pw.Text("Tax/TRN: ${customer['tax_number']}",
+                                style: pw.TextStyle(
+                                    fontSize: 9, color: PdfColors.grey800, fontWeight: pw.FontWeight.bold)),
+                          ),
+                        if ((customer['tin_number'] ?? '').toString().isNotEmpty)
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.only(top: 2),
+                            child: pw.Text("TIN: ${customer['tin_number']}",
+                                style: pw.TextStyle(
+                                    fontSize: 9, color: PdfColors.grey800)),
+                          ),
+                      ],
+                    ),
                   ),
+                  pw.SizedBox(width: 16),
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.end,
                     children: [
@@ -513,6 +544,39 @@ class InvoiceViewScreen extends StatelessWidget {
                 ),
               ),
 
+              // Remarks / Notes
+              if ((invoiceData['remarks']?.toString() ?? '').trim().isNotEmpty) ...[
+                pw.SizedBox(height: 16),
+                pw.Container(
+                  width: double.infinity,
+                  padding: const pw.EdgeInsets.all(10),
+                  decoration: pw.BoxDecoration(
+                    color: PdfColors.grey50,
+                    border: pw.Border(
+                      left: pw.BorderSide(color: PdfColors.indigo900, width: 3),
+                      top: pw.BorderSide(color: PdfColors.grey300, width: 0.5),
+                      right: pw.BorderSide(color: PdfColors.grey300, width: 0.5),
+                      bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5),
+                    ),
+                    borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                  ),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text('REMARKS / NOTES',
+                          style: pw.TextStyle(
+                              fontSize: 8,
+                              fontWeight: pw.FontWeight.bold,
+                              color: PdfColors.indigo900,
+                              letterSpacing: 0.5)),
+                      pw.SizedBox(height: 4),
+                      pw.Text(invoiceData['remarks'].toString().trim(),
+                          style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey800)),
+                    ],
+                  ),
+                ),
+              ],
+
               pw.Spacer(),
               pw.Center(
                 child: pw.Column(
@@ -613,10 +677,15 @@ class InvoiceViewScreen extends StatelessWidget {
       final doubleColl = double.tryParse(collected.toString()) ?? 0.0;
       final balanceVal = doubleTot - doubleColl;
 
-      final messageText = 
+      final bool hasTax = (double.tryParse(invoiceData['tax_amount']?.toString() ?? '0') ?? 0.0) > 0 ||
+          (invoiceData['taxes'] is List && (invoiceData['taxes'] as List).isNotEmpty);
+      final invTypeLower = hasTax ? context.tr('tax invoice') : context.tr('proforma invoice');
+      final invTypeTitle = hasTax ? context.tr('Tax Invoice Details') : context.tr('Proforma Invoice Details');
+
+      final messageText =
           "${context.tr('Dear')} ${customer['name']},\n\n"
-          "${context.tr('Your invoice')} *$invoiceNumber* ${context.tr('has been generated successfully at')} $companyName.\n\n"
-          "*${context.tr('Invoice Details')}:*\n"
+          "${context.tr('Your')} $invTypeLower *$invoiceNumber* ${context.tr('has been generated successfully at')} $companyName.\n\n"
+          "*$invTypeTitle:*\n"
           "${context.tr('Vehicle')}: ${vehicle['no'] ?? vehicle['number'] ?? ''}\n"
           "${context.tr('Services')}:\n$servicesStr\n"
           "${context.tr('Total')}: $currencySymbol$total\n"
@@ -683,8 +752,8 @@ class InvoiceViewScreen extends StatelessWidget {
 
       final messageText = 
           "${context.tr('Dear')} ${customer['name']},\n\n"
-          "${context.tr('Your invoice')} *$invoiceNumber* ${context.tr('has been generated successfully at')} $companyName.\n\n"
-          "*${context.tr('Invoice Details')}:*\n"
+          "${context.tr('Your proforma invoice')} *$invoiceNumber* ${context.tr('has been generated successfully at')} $companyName.\n\n"
+          "*${context.tr('Proforma Invoice Details')}:*\n"
           "${context.tr('Vehicle')}: ${vehicle['no'] ?? vehicle['number'] ?? ''}\n"
           "${context.tr('Services')}:\n$servicesStr\n"
           "${context.tr('Total')}: $currencySymbol$total\n"
@@ -887,25 +956,50 @@ class InvoiceViewScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(context.tr('BILLED TO'),
-                          style: GoogleFonts.inter(
-                              fontSize: 10.sp,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey.shade500,
-                              letterSpacing: 0.5)),
-                      SizedBox(height: 6),
-                      Text(customer['name'],
-                          style: GoogleFonts.inter(
-                              fontWeight: FontWeight.w700, fontSize: 15.sp)),
-                      SizedBox(height: 2),
-                      Text(customer['phone'] ?? '',
-                          style: GoogleFonts.inter(
-                              color: Colors.grey.shade600, fontSize: 13.sp)),
-                    ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(context.tr('BILLED TO'),
+                            style: GoogleFonts.inter(
+                                fontSize: 10.sp,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey.shade500,
+                                letterSpacing: 0.5)),
+                        SizedBox(height: 6),
+                        Text(customer['name'] ?? '',
+                            style: GoogleFonts.inter(
+                                fontWeight: FontWeight.w700, fontSize: 15.sp)),
+                        if ((customer['phone'] ?? '').toString().isNotEmpty) ...[
+                          SizedBox(height: 2),
+                          Text(customer['phone'].toString(),
+                              style: GoogleFonts.inter(
+                                  color: Colors.grey.shade600, fontSize: 13.sp)),
+                        ],
+                        if ((customer['address'] ?? '').toString().isNotEmpty) ...[
+                          SizedBox(height: 2),
+                          Text(customer['address'].toString(),
+                              style: GoogleFonts.inter(
+                                  color: Colors.grey.shade600, fontSize: 12.sp)),
+                        ],
+                        if ((customer['tax_number'] ?? '').toString().isNotEmpty) ...[
+                          SizedBox(height: 2),
+                          Text("Tax/TRN: ${customer['tax_number']}",
+                              style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey.shade700,
+                                  fontSize: 12.sp)),
+                        ],
+                        if ((customer['tin_number'] ?? '').toString().isNotEmpty) ...[
+                          SizedBox(height: 2),
+                          Text("TIN: ${customer['tin_number']}",
+                              style: GoogleFonts.inter(
+                                  color: Colors.grey.shade600, fontSize: 12.sp)),
+                        ],
+                      ],
+                    ),
                   ),
+                  SizedBox(width: 16),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [

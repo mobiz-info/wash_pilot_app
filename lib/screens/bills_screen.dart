@@ -190,10 +190,14 @@ class _BillsScreenState extends State<BillsScreen> {
   Future<Uint8List> _getInvoicePdfBytes(BuildContext context, Map<String, dynamic> inv) async {
     final invoiceNumber = inv['invoice_number'] as String? ?? '';
     final cleanInvoiceNo = invoiceNumber.replaceAll('/', '_');
-    final pdfUrl = "http://68.183.94.11:78/media/invoices/invoice-$cleanInvoiceNo.pdf";
+    final baseUrl = ApiService.baseUrl.replaceAll('/api', '');
+    final pdfUrl = "$baseUrl/media/invoices/invoice-$cleanInvoiceNo.pdf?t=${DateTime.now().millisecondsSinceEpoch}";
     try {
-      final response = await http.get(Uri.parse(pdfUrl));
-      if (response.statusCode == 200) {
+      final response = await http.get(
+        Uri.parse(pdfUrl),
+        headers: {'Cache-Control': 'no-cache', 'Pragma': 'no-cache'},
+      );
+      if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
         return response.bodyBytes;
       }
     } catch (_) {}
@@ -213,6 +217,34 @@ class _BillsScreenState extends State<BillsScreen> {
       ),
     );
     final services = inv['services'] as List<dynamic>? ?? [];
+    final tradingItems = inv['trading_items'] as List<dynamic>? ?? [];
+    final allItems = <Map<String, dynamic>>[];
+    for (final s in services) {
+      final qty = (s['qty'] as num?)?.toDouble() ?? 1.0;
+      final rate = (s['rate'] as num?)?.toDouble() ?? 0.0;
+      final net = (s['net_taxable_amount'] as num?)?.toDouble() ?? (qty * rate);
+      final qtyStr = qty > 1 ? qty.toStringAsFixed(qty.truncateToDouble() == qty ? 0 : 1) : '1';
+      allItems.add({
+        'name': s['name'] ?? '',
+        'qty': qtyStr,
+        'rate': _fmt(rate),
+        'net': _fmt(net),
+      });
+    }
+    for (final t in tradingItems) {
+      if (t['is_operational'] == true) continue;
+      final qty = (t['qty'] as num?)?.toDouble() ?? 1.0;
+      final rate = (t['rate'] as num?)?.toDouble() ?? 0.0;
+      final disc = (t['discount'] as num?)?.toDouble() ?? 0.0;
+      final net = (qty * rate) - disc;
+      final qtyStr = qty > 1 ? qty.toStringAsFixed(qty.truncateToDouble() == qty ? 0 : 1) : '1';
+      allItems.add({
+        'name': t['item_name'] ?? 'Stock Item',
+        'qty': qtyStr,
+        'rate': _fmt(rate),
+        'net': _fmt(net),
+      });
+    }
 
     pw.ImageProvider? logoImage;
     try {
@@ -301,7 +333,10 @@ class _BillsScreenState extends State<BillsScreen> {
               pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.end,
                 children: [
-                  pw.Text('PROFORMA INVOICE',
+                  pw.Text(
+                      (double.tryParse(inv['tax_amount']?.toString() ?? '0') ?? 0.0) > 0
+                          ? 'TAX INVOICE'
+                          : 'PROFORMA INVOICE',
                       style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
                   pw.SizedBox(height: 4),
                   pw.Text(inv['invoice_number'],
@@ -317,20 +352,43 @@ class _BillsScreenState extends State<BillsScreen> {
           pw.Divider(height: 30),
 
           // Customer & Vehicle
-          pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-            pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-              pw.Text('BILLED TO', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.grey500)),
-              pw.SizedBox(height: 4),
-              pw.Text(inv['customer']['name'], style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-              pw.Text(inv['customer']['phone'], style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey700)),
-            ]),
-            pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
-              pw.Text('VEHICLE', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.grey500)),
-              pw.SizedBox(height: 4),
-              pw.Text(inv['vehicle']['number'], style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-              pw.Text(inv['vehicle']['model'], style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey700)),
-            ]),
-          ]),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Expanded(
+                child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+                  pw.Text('BILLED TO', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.grey500)),
+                  pw.SizedBox(height: 4),
+                  pw.Text(inv['customer']?['name'] ?? '', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                  if ((inv['customer']?['phone'] ?? '').toString().isNotEmpty)
+                    pw.Text(inv['customer']['phone'].toString(), style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+                  if ((inv['customer']?['address'] ?? '').toString().isNotEmpty)
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.only(top: 2, right: 10),
+                      child: pw.Text(inv['customer']['address'].toString(), style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
+                    ),
+                  if ((inv['customer']?['tax_number'] ?? '').toString().isNotEmpty)
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.only(top: 2),
+                      child: pw.Text("Tax/TRN: ${inv['customer']['tax_number']}", style: pw.TextStyle(fontSize: 9, color: PdfColors.grey800, fontWeight: pw.FontWeight.bold)),
+                    ),
+                  if ((inv['customer']?['tin_number'] ?? '').toString().isNotEmpty)
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.only(top: 2),
+                      child: pw.Text("TIN: ${inv['customer']['tin_number']}", style: pw.TextStyle(fontSize: 9, color: PdfColors.grey800)),
+                    ),
+                ]),
+              ),
+              pw.SizedBox(width: 16),
+              pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
+                pw.Text('VEHICLE', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.grey500)),
+                pw.SizedBox(height: 4),
+                pw.Text(inv['vehicle']?['number'] ?? '', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                pw.Text(inv['vehicle']?['model'] ?? '', style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey700)),
+              ]),
+            ],
+          ),
           pw.SizedBox(height: 24),
 
           // Services table
@@ -338,18 +396,12 @@ class _BillsScreenState extends State<BillsScreen> {
           pw.SizedBox(height: 8),
           pw.Table.fromTextArray(
             headers: ['Service / Item', 'Qty', 'Rate ($symbol)', 'Amount ($symbol)'],
-            data: services.map((s) {
-              final qty = (s['qty'] as num?)?.toDouble() ?? 1.0;
-              final rate = (s['rate'] as num?)?.toDouble() ?? 0.0;
-              final net = (s['net_taxable_amount'] as num?)?.toDouble() ?? (qty * rate);
-              final qtyStr = qty > 1 ? qty.toStringAsFixed(qty.truncateToDouble() == qty ? 0 : 1) : '1';
-              return [
-                s['name'] ?? '',
-                qtyStr,
-                _fmt(rate),
-                _fmt(net),
-              ];
-            }).toList(),
+            data: allItems.map((item) => [
+              item['name'] ?? '',
+              item['qty'] ?? '1',
+              item['rate'] ?? '',
+              item['net'] ?? '',
+            ]).toList(),
             headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
             headerDecoration: const pw.BoxDecoration(color: PdfColors.indigo900),
             cellHeight: 28,
@@ -372,6 +424,38 @@ class _BillsScreenState extends State<BillsScreen> {
                   style: pw.TextStyle(fontSize: 12, color: PdfColors.green700)),
             ]),
           ),
+          // Remarks / Notes
+          if ((inv['remarks']?.toString() ?? '').trim().isNotEmpty) ...[
+            pw.SizedBox(height: 16),
+            pw.Container(
+              width: double.infinity,
+              padding: const pw.EdgeInsets.all(10),
+              decoration: pw.BoxDecoration(
+                color: PdfColors.grey50,
+                border: pw.Border(
+                  left: pw.BorderSide(color: PdfColors.indigo900, width: 3),
+                  top: pw.BorderSide(color: PdfColors.grey300, width: 0.5),
+                  right: pw.BorderSide(color: PdfColors.grey300, width: 0.5),
+                  bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5),
+                ),
+                borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text('REMARKS / NOTES',
+                      style: pw.TextStyle(
+                          fontSize: 8,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.indigo900,
+                          letterSpacing: 0.5)),
+                  pw.SizedBox(height: 4),
+                  pw.Text(inv['remarks'].toString().trim(),
+                      style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey800)),
+                ],
+              ),
+            ),
+          ],
           pw.Spacer(),
           pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -481,10 +565,14 @@ class _BillsScreenState extends State<BillsScreen> {
       final doubleColl = double.tryParse(collected.toString()) ?? 0.0;
       final balanceVal = doubleTot - doubleColl;
 
-      final messageText = 
+      final bool hasTax = (double.tryParse(inv['tax_amount']?.toString() ?? '0') ?? 0.0) > 0;
+      final invTypeLower = hasTax ? context.tr('tax invoice') : context.tr('proforma invoice');
+      final invTypeTitle = hasTax ? context.tr('Tax Invoice Details') : context.tr('Proforma Invoice Details');
+
+      final messageText =
           "${context.tr('Dear')} ${customer['name']},\n\n"
-          "${context.tr('Your invoice')} *$invoiceNumber* ${context.tr('has been generated successfully at')} $companyName.\n\n"
-          "*${context.tr('Invoice Details')}:*\n"
+          "${context.tr('Your')} $invTypeLower *$invoiceNumber* ${context.tr('has been generated successfully at')} $companyName.\n\n"
+          "*$invTypeTitle:*\n"
           "${context.tr('Vehicle')}: ${vehicle['number'] ?? vehicle['no'] ?? ''}\n"
           "${context.tr('Services')}:\n$servicesStr\n"
           "${context.tr('Total')}: $symbol$total\n"
@@ -545,8 +633,8 @@ class _BillsScreenState extends State<BillsScreen> {
 
       final messageText = 
           "${context.tr('Dear')} ${customer['name']},\n\n"
-          "${context.tr('Your invoice')} *$invoiceNumber* ${context.tr('has been generated successfully at')} $companyName.\n\n"
-          "*${context.tr('Invoice Details')}:*\n"
+          "${context.tr('Your proforma invoice')} *$invoiceNumber* ${context.tr('has been generated successfully at')} $companyName.\n\n"
+          "*${context.tr('Proforma Invoice Details')}:*\n"
           "${context.tr('Vehicle')}: ${vehicle['number'] ?? vehicle['no'] ?? ''}\n"
           "${context.tr('Services')}:\n$servicesStr\n"
           "${context.tr('Total')}: $symbol$total\n"

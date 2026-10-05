@@ -53,6 +53,9 @@ class _StaffInvoiceDetailsScreenState extends State<StaffInvoiceDetailsScreen> {
     final invNo = (inv['invoice_number'] ?? '').toString();
     final custName = (inv['customer_name'] ?? 'N/A').toString();
     final custPhone = (inv['customer_phone'] ?? '').toString();
+    final custAddress = (inv['customer_address'] ?? inv['address'] ?? '').toString();
+    final custTax = (inv['customer_tax_number'] ?? inv['tax_number'] ?? '').toString();
+    final custTin = (inv['customer_tin_number'] ?? inv['tin_number'] ?? '').toString();
     final vehNo = (inv['vehicle_number'] ?? 'N/A').toString();
     final vehType = (inv['vehicle_type'] ?? '').toString();
     final invTotal = (inv['total'] ?? '0.00').toString();
@@ -82,6 +85,9 @@ class _StaffInvoiceDetailsScreenState extends State<StaffInvoiceDetailsScreen> {
     final customer = <String, dynamic>{
       'name': custName,
       'phone': custPhone,
+      'address': custAddress,
+      'tax_number': custTax,
+      'tin_number': custTin,
     };
 
     final vehicle = <String, dynamic>{
