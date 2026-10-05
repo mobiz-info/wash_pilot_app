@@ -49,6 +49,8 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   final _whatsappController = TextEditingController();
   final _emailController = TextEditingController();
   final _addressController = TextEditingController();
+  final _taxNumberController = TextEditingController();
+  final _tinNumberController = TextEditingController();
 
   final _selectedCustomerType = ValueNotifier<Map<String, dynamic>?>(null);
   List<dynamic> _branches = [];
@@ -110,6 +112,8 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     _whatsappController.dispose();
     _emailController.dispose();
     _addressController.dispose();
+    _taxNumberController.dispose();
+    _tinNumberController.dispose();
     for (final row in _vehicleRows) {
       (row['controller'] as TextEditingController).dispose();
     }
@@ -260,6 +264,16 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     if (localPhone.isEmpty) { _showError('Please enter phone number.'); return; }
     if (_selectedCustomerType.value == null) { _showError('Please select a customer type.'); return; }
 
+    final isCorporate = _selectedCustomerType.value != null &&
+        (_selectedCustomerType.value!['name'] ?? '').toString().toLowerCase().contains('corporate');
+    final taxNumber = _taxNumberController.text.trim();
+    final tinNumber = _tinNumberController.text.trim();
+
+    if (isCorporate && taxNumber.isEmpty) {
+      _showError('Tax number is required for Corporate customers.');
+      return;
+    }
+
     final phone = CountryConfig.formatPhoneWithCountryCode(localPhone, _selectedPhoneCode.value);
 
     String localWhatsapp = _whatsappController.text.trim();
@@ -321,6 +335,10 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
         'email': _emailController.text.trim(),
         'address': _addressController.text.trim(),
         'customer_type_id': _selectedCustomerType.value!['id'],
+        if (isCorporate) ...{
+          'tax_number': taxNumber,
+          if (tinNumber.isNotEmpty) 'tin_number': tinNumber,
+        },
         if (_selectedBranch.value != null) 'branch_id': _selectedBranch.value!['id'],
         'vehicles': isMotorSave ? vehicles : [],
         'customer_category': _customerCategory.value,
@@ -499,6 +517,23 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                                       hint: 'Select customer type',
                                       onChanged: (val) => _selectedCustomerType.value = val,
                                     ),
+                                  ),
+                                  ValueListenableBuilder<Map<String, dynamic>?>(
+                                    valueListenable: _selectedCustomerType,
+                                    builder: (context, selectedCustType, _) {
+                                      final isCorporate = selectedCustType != null &&
+                                          (selectedCustType['name'] ?? '').toString().toLowerCase().contains('corporate');
+                                      if (!isCorporate) return const SizedBox.shrink();
+                                      return Column(
+                                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                                        children: [
+                                          const SizedBox(height: 14),
+                                          _buildTextField(_taxNumberController, 'Tax Number *', Icons.receipt_long),
+                                          const SizedBox(height: 14),
+                                          _buildTextField(_tinNumberController, 'TIN Number (Optional)', Icons.badge_outlined),
+                                        ],
+                                      );
+                                    },
                                   ),
                                   if (context.watch<AuthProvider>().isCompanyAdmin && _branches.isNotEmpty) ...[
                                     SizedBox(height: 14),

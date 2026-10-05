@@ -55,6 +55,8 @@ class _CustomersScreenState extends State<CustomersScreen> {
   final _whatsappController = TextEditingController();
   final _emailController = TextEditingController();
   final _addressController = TextEditingController();
+  final _taxNumberController = TextEditingController();
+  final _tinNumberController = TextEditingController();
   final _selectedCustomerType = ValueNotifier<Map<String, dynamic>?>(null);
   final _selectedPhoneCode = ValueNotifier<String>('+91');
   final _selectedWhatsappCode = ValueNotifier<String>('+91');
@@ -83,6 +85,8 @@ class _CustomersScreenState extends State<CustomersScreen> {
     _whatsappController.dispose();
     _emailController.dispose();
     _addressController.dispose();
+    _taxNumberController.dispose();
+    _tinNumberController.dispose();
     for (final row in _existingVehicleRows) {
       (row['controller'] as TextEditingController).dispose();
     }
@@ -336,6 +340,8 @@ class _CustomersScreenState extends State<CustomersScreen> {
       _whatsappController.text = rawWhatsapp;
       _emailController.text = c['email'] ?? '';
       _addressController.text = c['address'] ?? '';
+      _taxNumberController.text = c['tax_number'] ?? '';
+      _tinNumberController.text = c['tin_number'] ?? '';
 
       // Build existing vehicle rows with controllers
       for (final row in _existingVehicleRows) {
@@ -435,6 +441,16 @@ class _CustomersScreenState extends State<CustomersScreen> {
       _showMsg('Please enter phone number.', isError: true);
       return;
     }
+    final isCorporate = _selectedCustomerType.value != null &&
+        (_selectedCustomerType.value!['name'] ?? '').toString().toLowerCase().contains('corporate');
+    final taxNumber = _taxNumberController.text.trim();
+    final tinNumber = _tinNumberController.text.trim();
+
+    if (isCorporate && taxNumber.isEmpty) {
+      _showMsg('Tax number is required for Corporate customers.', isError: true);
+      return;
+    }
+
     if (_selectedCustomerType.value == null) {
       _showMsg('Please select a customer type.', isError: true);
       return;
@@ -532,6 +548,10 @@ class _CustomersScreenState extends State<CustomersScreen> {
         'name': name,
         'phone': phone,
         'customer_type_id': _selectedCustomerType.value!['id'],
+        if (isCorporate) ...{
+          'tax_number': taxNumber,
+          'tin_number': tinNumber,
+        },
         'whatsapp_number': whatsappVal,
         'email': _emailController.text.trim(),
         'address': _addressController.text.trim(),
@@ -1165,6 +1185,25 @@ class _CustomersScreenState extends State<CustomersScreen> {
                             ),
                           ),
                         ),
+                      if ((c['tax_number'] ?? '').toString().isNotEmpty) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: const Color(0xFFCBD5E1)),
+                          ),
+                          child: Text(
+                            'Tax: ${(c['tax_number'] ?? '')}',
+                            style: GoogleFonts.inter(
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w500,
+                              color: const Color(0xFF475569),
+                            ),
+                          ),
+                        ),
+                      ],
                       const SizedBox(width: 8),
                       Icon(Icons.directions_car, size: 13, color: Colors.grey.shade500),
                       const SizedBox(width: 3),
@@ -1371,6 +1410,23 @@ class _CustomersScreenState extends State<CustomersScreen> {
                     ),
                   ),
                 ),
+              ),
+              ValueListenableBuilder<Map<String, dynamic>?>(
+                valueListenable: _selectedCustomerType,
+                builder: (context, selectedCustType, _) {
+                  final isCorporate = selectedCustType != null &&
+                      (selectedCustType['name'] ?? '').toString().toLowerCase().contains('corporate');
+                  if (!isCorporate) return const SizedBox.shrink();
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: 14),
+                      _buildTextField(_taxNumberController, 'Tax Number *', Icons.receipt_long),
+                      const SizedBox(height: 14),
+                      _buildTextField(_tinNumberController, 'TIN Number (Optional)', Icons.badge_outlined),
+                    ],
+                  );
+                },
               ),
             ],
           ),

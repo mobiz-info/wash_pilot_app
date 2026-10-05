@@ -42,6 +42,8 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
   final _whatsappController = TextEditingController();
   final _emailController = TextEditingController();
   final _addressController = TextEditingController();
+  final _taxNumberController = TextEditingController();
+  final _tinNumberController = TextEditingController();
   final _selectedCustomerType = ValueNotifier<Map<String, dynamic>?>(null);
   final _selectedPhoneCode = ValueNotifier<String>(CountryConfig.phoneDialCode);
   final _selectedWhatsappCode = ValueNotifier<String>(CountryConfig.phoneDialCode);
@@ -70,6 +72,8 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
     _whatsappController.dispose();
     _emailController.dispose();
     _addressController.dispose();
+    _taxNumberController.dispose();
+    _tinNumberController.dispose();
     for (final row in _existingVehicleRows) {
       (row['controller'] as TextEditingController).dispose();
     }
@@ -193,6 +197,8 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
       _whatsappController.text = rawWhatsapp;
       _emailController.text = c['email'] ?? '';
       _addressController.text = c['address'] ?? '';
+      _taxNumberController.text = c['tax_number'] ?? '';
+      _tinNumberController.text = c['tin_number'] ?? '';
 
       // Build existing vehicle rows with controllers
       for (final row in _existingVehicleRows) {
@@ -282,6 +288,16 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
     if (localPhone.isEmpty) { _showMsg('Please enter phone number.', isError: true); return; }
     if (_selectedCustomerType.value == null) { _showMsg('Please select a customer type.', isError: true); return; }
 
+    final isCorporate = _selectedCustomerType.value != null &&
+        (_selectedCustomerType.value!['name'] ?? '').toString().toLowerCase().contains('corporate');
+    final taxNumber = _taxNumberController.text.trim();
+    final tinNumber = _tinNumberController.text.trim();
+
+    if (isCorporate && taxNumber.isEmpty) {
+      _showMsg('Tax number is required for Corporate customers.', isError: true);
+      return;
+    }
+
     final phone = CountryConfig.formatPhoneWithCountryCode(localPhone, _selectedPhoneCode.value);
 
     String localWhatsapp = _whatsappController.text.trim();
@@ -366,6 +382,10 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
         'name': name,
         'phone': phone,
         'customer_type_id': _selectedCustomerType.value!['id'],
+        if (isCorporate) ...{
+          'tax_number': taxNumber,
+          'tin_number': tinNumber,
+        },
         'whatsapp_number': whatsappVal,
         'email': _emailController.text.trim(),
         'address': _addressController.text.trim(),
@@ -729,6 +749,23 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
                     ),
                   ),
                 ),
+              ),
+              ValueListenableBuilder<Map<String, dynamic>?>(
+                valueListenable: _selectedCustomerType,
+                builder: (context, selectedCustType, _) {
+                  final isCorporate = selectedCustType != null &&
+                      (selectedCustType['name'] ?? '').toString().toLowerCase().contains('corporate');
+                  if (!isCorporate) return const SizedBox.shrink();
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: 14),
+                      _buildTextField(_taxNumberController, 'Tax Number *', Icons.receipt_long),
+                      const SizedBox(height: 14),
+                      _buildTextField(_tinNumberController, 'TIN Number (Optional)', Icons.badge_outlined),
+                    ],
+                  );
+                },
               ),
             ],
           ),
